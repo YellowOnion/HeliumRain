@@ -149,6 +149,13 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 	YEngines.Value.Empty();
 	ZEngines.Value.Empty();
 
+	TransactionResource = NULL;
+	TransactionQuantity = NULL;
+	TransactionSourceShip = NULL;
+	TransactionDestination = NULL;
+	TransactionDestinationDock = NULL;
+	TransactionDonation = NULL;
+
 	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
 	for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
 	{
@@ -259,6 +266,54 @@ void UFlareSpacecraftNavigationSystem::SetAngularAccelerationRate(float Accelera
 	Docking
 ----------------------------------------------------*/
 
+bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation)
+
+{
+
+//	if (!TargetStation||!TransactionSourceSpacecraft)
+//	{
+//		return false;
+//	}
+
+//	AFlareSpacecraft* PhysicalSpacecraft = TransactionSourceSpacecraft->GetActive();
+//	bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAt(TargetStation);
+	bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
+	//	TransactionSellOrBuy = TransactionSellOrBuy_;
+
+	if (DockingConfirmed)
+	{
+		TransactionResource = TransactionResource_;
+		TransactionQuantity = TransactionQuantity_;
+		TransactionSourceShip = SourceSpacecraft;
+		TransactionDestination = DestinationSpacecraft;
+		TransactionDestinationDock = TargetStation->GetParent();
+		TransactionDonation = Donation;
+		return true;
+	}
+
+	FFlareShipCommandData CurrentCommand;
+	if (CommandData.Peek(CurrentCommand))
+	{
+		if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
+		{
+			// We are in a automatic docking process
+			AFlareSpacecraft* DockStation = CurrentCommand.ActionTarget;
+			if (DockStation)
+			{
+				return false;
+			}
+		}
+	}
+
+	TransactionResource = NULL;
+	TransactionQuantity = NULL;
+	TransactionSourceShip = NULL;
+	TransactionDestination = NULL;
+	TransactionDestinationDock = NULL;
+	TransactionDonation = NULL;
+	return false;
+}
+
 bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
 {
 	FLOGV("UFlareSpacecraftNavigationSystem::DockAt : '%s' docking at '%s'",
@@ -280,6 +335,12 @@ bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
 
 		FLOG("UFlareSpacecraftNavigationSystem::DockAt : access granted");
 		PushCommandDock(DockingInfo);
+		TransactionResource = NULL;
+		TransactionQuantity = NULL;
+		TransactionSourceShip = NULL;
+		TransactionDestination = NULL;
+		TransactionDestinationDock = NULL;
+		TransactionDonation = NULL;
 		return true;
 	}
 
@@ -911,8 +972,13 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 		Engine->SetAlpha(0.0f);
 	}
 
-
-	Spacecraft->OnDocked(DockStation, TellUser);
+	Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination,TransactionDonation);
+	TransactionResource = NULL;
+	TransactionQuantity = NULL;
+	TransactionSourceShip = NULL;
+	TransactionDestination = NULL;
+	TransactionDestinationDock = NULL;
+	TransactionDonation = NULL;
 }
 
 
@@ -1025,6 +1091,12 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands()
 	}
 
 	SetStatus(EFlareShipStatus::SS_Manual);
+	TransactionResource = NULL;
+	TransactionQuantity = NULL;
+	TransactionSourceShip = NULL;
+	TransactionDestination = NULL;
+	TransactionDestinationDock = NULL;
+	TransactionDonation = NULL;
 }
 
 FVector UFlareSpacecraftNavigationSystem::GetDockLocation()

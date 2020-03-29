@@ -171,6 +171,7 @@ protected:
 	TSharedPtr<SFlareTradeRouteInfo>         TradeRouteInfo;
 	TSharedPtr<SEditableText>                CompanyName;
 	TSharedPtr<SFlareDropList<int32>>        EmblemPicker;
+	TSharedPtr<SFlareDropList<int32>>        DifficultyPicker;
 	TSharedPtr<SVerticalBox>                 CompanyLog;
 	TSharedPtr<SVerticalBox>                 CompanyAccounting;
 

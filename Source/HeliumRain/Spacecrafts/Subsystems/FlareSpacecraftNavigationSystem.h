@@ -160,6 +160,8 @@ public:
 
 	virtual bool DockAt(AFlareSpacecraft* TargetStation);
 
+	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = 0);
+
 	FFlareDockingParameters GetDockingParameters(FFlareDockingInfo StationDockInfo, FVector CameraLocation);
 
 	/** Continue docking sequence has completed until effectif docking */
@@ -300,6 +302,14 @@ protected:
 	TPair<TArray<int>, TArray<int>> YEngines;
 	TPair<TArray<int>, TArray<int>> ZEngines;
 
+	//local trade memory
+	FFlareResourceDescription*				 TransactionResource;
+	uint32									 TransactionQuantity;
+	UFlareSimulatedSpacecraft*				 TransactionSourceShip;
+	UFlareSimulatedSpacecraft*			     TransactionDestination;
+	UFlareSimulatedSpacecraft*			     TransactionDestinationDock;
+	bool								     TransactionDonation;
+
 public:
 
 	/*----------------------------------------------------
@@ -361,4 +371,32 @@ public:
 		return HasUsedOrbitalBoost;
 	}
 
+	inline UFlareSimulatedSpacecraft* GetTransactionDestination() const
+	{
+		return TransactionDestination;
+	}
+	inline UFlareSimulatedSpacecraft* GetTransactionDestinationDock() const
+	{
+		return TransactionDestinationDock;
+	}
+	
+	inline UFlareSimulatedSpacecraft* GetTransactionSourceShip() const
+	{
+		return TransactionSourceShip;
+	}
+
+	inline FFlareResourceDescription* GetTransactionResource() const
+	{
+		return TransactionResource;
+	}
+
+	inline uint32 GetTransactionQuantity() const
+	{
+		return TransactionQuantity;
+	}
+
+	inline bool GetTransactionDonation() const
+	{
+		return TransactionDonation;
+	}
 };

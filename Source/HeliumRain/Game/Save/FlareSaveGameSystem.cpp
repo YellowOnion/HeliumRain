@@ -81,7 +81,7 @@ bool UFlareSaveGameSystem::SaveGame(const FString SaveName, UFlareSaveGame* Save
 	return ret;
 }
 
-UFlareSaveGame* UFlareSaveGameSystem::LoadGame(const FString SaveName)
+UFlareSaveGame* UFlareSaveGameSystem::LoadGame(const FString SaveName, AFlareGame* Game)
 {
 	FLOGV("UFlareSaveGameSystem::LoadGame SaveName=%s", *SaveName);
 
@@ -142,7 +142,7 @@ UFlareSaveGame* UFlareSaveGameSystem::LoadGame(const FString SaveName)
 		if(FJsonSerializer::Deserialize(Reader, Object) && Object.IsValid())
 		{
 			UFlareSaveReaderV1* SaveReader = NewObject<UFlareSaveReaderV1>(this, UFlareSaveReaderV1::StaticClass());
-			SaveGame = SaveReader->LoadGame(Object);
+			SaveGame = SaveReader->LoadGame(Object,Game);
 		}
 		else
 		{

@@ -143,14 +143,24 @@ public:
 	/** Hide the combat value for non-military */
 	EVisibility GetCombatValueVisibility() const;
 
+	/** Hide building icon if station not upgrading/building */
+	EVisibility GetBuildVisibility() const;
+
+	
 	/** Hide the company flag if owned */
 	EVisibility GetCompanyFlagVisibility() const;
 
 	/** Visibility setting for the company/fleet/station data */
 	EVisibility GetSpacecraftInfoVisibility() const;
 
+	/** Visibility setting for the local trade data */
+	EVisibility GetSpacecraftLocalInfoVisibility() const;
+
 	/** Get the company name or the current fleet's name or the production status */
 	FText GetSpacecraftInfo() const;
+
+	/** Get the local ship status information if trading*/
+	FText GetSpacecraftLocalInfo() const;
 
 	/** Get the current fleet's name */
 	FText GetSpacecraftInfoAdditional() const;

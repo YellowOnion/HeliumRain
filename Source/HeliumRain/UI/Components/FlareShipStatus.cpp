@@ -266,7 +266,6 @@ FSlateColor SFlareShipStatus::GetIconColor(EFlareSubsystem::Type Type) const
 			Result.A = 1.0f;
 		}
 	}
-
 	return Result;
 }
 

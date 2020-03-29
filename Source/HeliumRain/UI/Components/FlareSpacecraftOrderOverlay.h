@@ -6,7 +6,6 @@
 #include "../Components/FlareListItem.h"
 #include "../FlareUITypes.h"
 
-
 class UFlareFactory;
 class UFlareSimulatedSector;
 class UFlareSkirmishManager;
@@ -45,7 +44,7 @@ public:
 	void Open(UFlareSimulatedSpacecraft* Complex, FName ConnectorName, FOrderDelegate ConfirmationCallback);
 
 	/** Show the overlay for a shipyard */
-	void Open(UFlareSimulatedSpacecraft* Shipyard, bool IsHeavy);
+	void Open(UFlareSimulatedSpacecraft* Shipyard, bool IsHeavy, bool IsConfig);
 	
 	/** Show the overlay for a sector */
 	void Open(UFlareSimulatedSector* Sector, FOrderDelegate ConfirmationCallback);
@@ -82,7 +81,6 @@ public:
 	/** Can we confirm */
 	EVisibility GetConfirmVisibility() const;
 
-
 	/*----------------------------------------------------
 		Action callbacks
 	----------------------------------------------------*/
@@ -92,7 +90,6 @@ public:
 
 	/** Don't do anything and close */
 	void OnClose();
-
 
 protected:
 
@@ -106,6 +103,7 @@ protected:
 	FOrderDelegate                                            OnConfirmedCB;
 	bool                                                      IsComplexSlotSpecial;
 	bool                                                      OrderForPlayer;
+	bool													  OrderIsConfig;
 
 	// Spacecraft building
 	UFlareSimulatedSpacecraft*                                TargetComplex;
@@ -114,11 +112,11 @@ protected:
 	UFlareSkirmishManager*                                    TargetSkirmish;
 	TArray<TSharedPtr<FInterfaceContainer>>                   SpacecraftList;
 	TSharedPtr<SListView<TSharedPtr<FInterfaceContainer>>>    SpacecraftSelector;
+	FFlareSpacecraftSave									  SpaceCraftData;
 
 	// Slate data
 	TSharedPtr<SFlareButton>                                  ConfirmButon;
 	TSharedPtr<STextBlock>                                    ConfirmText;
 	TSharedPtr<SFlareListItem>                                PreviousSelection;
 	TSharedPtr<FInterfaceContainer>                           SelectedItem;
-
 };

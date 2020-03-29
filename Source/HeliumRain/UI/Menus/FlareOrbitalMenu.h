@@ -61,6 +61,9 @@ public:
 	/** Get the display mode */
 	EFlareOrbitalMode::Type GetDisplayMode() const;
 
+	float GetTimeSinceFFWD() const;
+	bool GetFastForwardActive() const;
+
 	/** Is this mode the current one */
 	bool IsCurrentDisplayMode(EFlareOrbitalMode::Type Mode) const;
 
@@ -100,13 +103,12 @@ protected:
 	FText GetTravelText() const;
 
 	/** Get a widget's position on the screen */
-	FVector2D GetWidgetPosition(int32 Index) const;
+//	FVector2D GetWidgetPosition(int32 Index) const;
 
 	/** Get a widget's size on the screen */
 	FVector2D GetWidgetSize(int32 Index) const;
 
-
-	/*----------------------------------------------------
+/*----------------------------------------------------
 		Action callbacks
 	----------------------------------------------------*/
 

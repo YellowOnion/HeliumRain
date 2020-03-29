@@ -2,9 +2,13 @@
 #include "FlareFleetInfo.h"
 #include "../../Flare.h"
 #include "../../Game/FlareGame.h"
+#include "../../Game/FlareSectorHelper.h"
 #include "../../Game/FlareGameTools.h"
+#include "../../Game/FlareScenarioTools.h"
+
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
+#include "../../Game/FlareGameTools.h"
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftInfo"
 
@@ -32,7 +36,7 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 		.Padding(Theme.SmallContentPadding)
 		[
 			SNew(SHorizontalBox)
-			
+
 			// Data block
 			+ SHorizontalBox::Slot()
 			[
@@ -117,6 +121,83 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 					]
 				]
 
+				// Fleet info line (because unlike individual ships players can rename their fleets so it could be possible for fleet info to scroll off window
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(SHorizontalBox)
+					// Health
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Right)
+					[
+						SNew(SBox)
+						.WidthOverride(50)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SProgressBar)
+						.Percent(this, &SFlareFleetInfo::GetGlobalHealth)
+					.BorderPadding(FVector2D(0, 0))
+					.Style(&Theme.ProgressBarStyle)
+					]
+					]
+					// Power icon
+					+SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					[
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("Propulsion"))
+					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Propulsion)
+					]
+
+					// RCS icon
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					[
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("RCS"))
+					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_RCS)
+					]
+
+					// Weapon icon
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					[
+						//							SAssignNew(WeaponIndicator, SImage)
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("Shell"))
+					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Weapon)
+					]
+
+					// Refilling icon
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(5, 0, 5, 0))
+					[
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("Tank"))
+					.Visibility(this, &SFlareFleetInfo::GetRefillingVisibility)
+					]
+
+					// Reparing icon
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(5, 0, 5, 0))
+					[
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("Repair"))
+					.Visibility(this, &SFlareFleetInfo::GetRepairingVisibility)
+					]
+				]
+
 				// Buttons 
 				+ SVerticalBox::Slot()
 				.Padding(Theme.SmallContentPadding)
@@ -161,6 +242,35 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 						.Width(6)
 					]
 				]
+				+ SVerticalBox::Slot()
+					.Padding(Theme.SmallContentPadding)
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+				// Refill
+				+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SAssignNew(RefillButton, SFlareButton)
+					.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
+					.IsDisabled(this, &SFlareFleetInfo::IsRefillDisabled)
+					.OnClicked(this, &SFlareFleetInfo::OnRefillClicked)
+					.Text(this, &SFlareFleetInfo::GetRefillText)
+					.Width(8)
+					]
+
+				// Repair
+				+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SAssignNew(RepairButton, SFlareButton)
+					.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
+					.IsDisabled(this, &SFlareFleetInfo::IsRepairDisabled)
+					.OnClicked(this, &SFlareFleetInfo::OnRepairClicked)
+					.Text(this, &SFlareFleetInfo::GetRepairText)
+					.Width(8)
+					]
+				]
 			]
 		]
 	];
@@ -173,10 +283,293 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 	Hide();
 }
 
-
 /*----------------------------------------------------
 	Interaction
 ----------------------------------------------------*/
+
+FText SFlareFleetInfo::GetRepairText() const
+{
+	if (!TargetFleet)
+	{
+		return FText();
+	}
+
+	UFlareSimulatedSector* TargetSector = TargetFleet->GetCurrentSector();
+
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	//SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+//	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+	if (IsRepairDisabled())
+	{
+		if (TotalNeededFS > 0)
+		{
+			// Repair needed
+			if (TargetSector->IsInDangerousBattle(PC->GetCompany()))
+			{
+				return LOCTEXT("CantRepairBattle", "Can't repair here : battle in progress!");
+			}
+			else if (AvailableFS == 0) {
+				return LOCTEXT("CantRepairNoFS", "Can't repair here : no fleet supply available !");
+			}
+			else
+			{
+				return LOCTEXT("CantRepairNoMoney", "Can't repair here : not enough money !");
+			}
+		}
+		else if (SectorHelper::HasShipRepairing(TargetFleet->GetShips(), PC->GetCompany()))
+		{
+			// Repair in progress
+			return LOCTEXT("RepairInProgress", "Repair in progress...");
+		}
+		else
+		{
+			// No repair needed
+			return LOCTEXT("NoFleetToRepair", "No ship needs repairing");
+		}
+	}
+	else
+	{
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+		FFlareResourceDescription* FleetSupply = TargetSector->GetGame()->GetScenarioTools()->FleetSupply;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+
+		FText OwnedCostText;
+		FText CostSeparatorText;
+		FText NotOwnedCostText;
+
+		if (UsedOwnedFs > 0)
+		{
+			OwnedCostText = FText::Format(LOCTEXT("RepairOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+		}
+
+		if (UsedNotOwnedFsCost > 0)
+		{
+			NotOwnedCostText = FText::Format(LOCTEXT("RepairNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+		}
+
+		if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+		{
+			CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+		}
+
+		FText CostText = FText::Format(LOCTEXT("RepairCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+		return FText::Format(LOCTEXT("RepairOkayFormat", "Repair all ships ({0}, {1} days)"),
+			CostText,
+			FText::AsNumber(MaxDuration));
+	}
+}
+
+bool SFlareFleetInfo::IsRepairDisabled() const
+{
+	if (!TargetFleet)
+	{
+		return true;
+	}
+
+	UFlareSimulatedSector* TargetSector = TargetFleet->GetCurrentSector();
+	if (!TargetSector || TargetSector->IsInDangerousBattle(PC->GetCompany()))
+	{
+		return true;
+	}
+
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+//	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
+
+	if (TotalNeededFS > 0)
+	{
+		// Repair needed
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, PC->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		if (AffordableFS == 0) {
+			return true;
+		}
+
+		// There is somme affordable FS, can repair
+		return false;
+	}
+	else
+	{
+		// No repair needed
+		return true;
+	}
+}
+
+FText SFlareFleetInfo::GetRefillText() const
+{
+	if (!TargetFleet)
+	{
+		return FText();
+	}
+
+	UFlareSimulatedSector* TargetSector = TargetFleet->GetCurrentSector();
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+	if (IsRefillDisabled())
+	{
+		if (TotalNeededFS > 0)
+		{
+			// Refill needed
+			if (TargetSector->IsInDangerousBattle(PC->GetCompany()))
+			{
+				return LOCTEXT("CantRefillBattle", "Can't refill : battle in progress!");
+			}
+			else if (AvailableFS == 0) {
+				return LOCTEXT("CantRefillNoFS", "Can't refill : no fleet supply available !");
+			}
+			else
+			{
+				return LOCTEXT("CantRefillNoMoney", "Can't refill : not enough money !");
+			}
+		}
+		else if (SectorHelper::HasShipRefilling(TargetFleet->GetShips(), PC->GetCompany()))
+		{
+
+			// Refill in progress
+			return LOCTEXT("RefillInProgress", "Refill in progress...");
+		}
+		else
+		{
+			// No refill needed
+			return LOCTEXT("NoFleetToRefill", "No ship needs refilling");
+		}
+	}
+	else
+	{
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+		FFlareResourceDescription* FleetSupply = TargetSector->GetGame()->GetScenarioTools()->FleetSupply;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+		FText OwnedCostText;
+		FText CostSeparatorText;
+		FText NotOwnedCostText;
+
+		if (UsedOwnedFs > 0)
+		{
+			OwnedCostText = FText::Format(LOCTEXT("RefillOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+		}
+
+		if (UsedNotOwnedFsCost > 0)
+		{
+			NotOwnedCostText = FText::Format(LOCTEXT("RefillNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+		}
+
+		if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+		{
+			CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+		}
+
+		FText CostText = FText::Format(LOCTEXT("RefillCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+		return FText::Format(LOCTEXT("RefillOkayFormat", "Refill ({0}, {1} days)"),
+			CostText,
+			FText::AsNumber(MaxDuration));
+	}
+}
+
+bool SFlareFleetInfo::IsRefillDisabled() const
+{
+	if (!TargetFleet)
+	{
+		return true;
+	}
+
+	UFlareSimulatedSector* TargetSector = TargetFleet->GetCurrentSector();
+
+	if (!TargetSector || TargetSector->IsInDangerousBattle(PC->GetCompany()))
+	{
+		return true;
+	}
+
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
+
+	if (TotalNeededFS > 0)
+	{
+		// Refill needed
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		if (AffordableFS == 0) {
+			return true;
+		}
+
+		// There is somme affordable FS, can refill
+		return false;
+	}
+	else
+	{
+		// No refill needed
+		return true;
+	}
+}
+
+void SFlareFleetInfo::OnRefillClicked()
+{
+	if(TargetFleet)
+	{
+		SectorHelper::RefillFleets(TargetFleet->GetCurrentSector(), TargetFleet->GetFleetCompany(), TargetFleet);
+	}
+}
+
+void SFlareFleetInfo::OnRepairClicked()
+{
+	if(TargetFleet)
+	{
+		SectorHelper::RepairFleets(TargetFleet->GetCurrentSector(),TargetFleet->GetFleetCompany(),TargetFleet);
+	}
+}
 
 void SFlareFleetInfo::SetFleet(UFlareFleet* Fleet)
 {
@@ -196,6 +589,20 @@ void SFlareFleetInfo::SetFleet(UFlareFleet* Fleet)
 		TextFont = &Theme.NameFontBold;
 	}
 	FleetName->SetTextStyle(TextFont);
+	UpdateFleetStatus();
+}
+
+void SFlareFleetInfo::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+	if (TargetFleet&&PC)
+	{
+		UFlareFleet* PCFleet = PC->GetPlayerFleet();
+		if (PCFleet&&TargetFleet->GetCurrentSector() == PCFleet->GetCurrentSector())
+		{
+			UpdateFleetStatus();
+		}
+	}
 }
 
 void SFlareFleetInfo::SetMinimized(bool NewState)
@@ -217,6 +624,8 @@ void SFlareFleetInfo::Show()
 		InspectButton->SetVisibility(EVisibility::Collapsed);
 		TradeRouteButton->SetVisibility(EVisibility::Collapsed);
 		AutoTradeButton->SetVisibility(EVisibility::Collapsed);
+		RefillButton->SetVisibility(EVisibility::Collapsed);
+		RepairButton->SetVisibility(EVisibility::Collapsed);
 	}
 	else if (TargetFleet && TargetFleet->IsValidLowLevel())
 	{
@@ -225,7 +634,8 @@ void SFlareFleetInfo::Show()
 			InspectButton->SetVisibility(EVisibility::Visible);
 			TradeRouteButton->SetVisibility(EVisibility::Visible);
 			AutoTradeButton->SetVisibility(EVisibility::Visible);
-
+			RefillButton->SetVisibility(EVisibility::Visible);
+			RepairButton->SetVisibility(EVisibility::Visible);
 			AutoTradeButton->SetActive(TargetFleet->IsAutoTrading());
 		}
 		else
@@ -233,6 +643,9 @@ void SFlareFleetInfo::Show()
 			InspectButton->SetVisibility(EVisibility::Collapsed);
 			TradeRouteButton->SetVisibility(EVisibility::Collapsed);
 			AutoTradeButton->SetVisibility(EVisibility::Collapsed);
+			RefillButton->SetVisibility(EVisibility::Collapsed);
+			RepairButton->SetVisibility(EVisibility::Collapsed);
+
 		}
 	}
 }
@@ -243,6 +656,48 @@ void SFlareFleetInfo::Hide()
 	SetVisibility(EVisibility::Collapsed);
 }
 
+
+void SFlareFleetInfo::UpdateFleetStatus()
+{
+	FLinearColor Result = FLinearColor::Black;
+	Result.A = 0.0f;
+
+	if (TargetFleet)
+	{
+		TArray<UFlareSimulatedSpacecraft*> FleetShips = TargetFleet->GetShips();
+		IsStranded = false;
+		IsUncontrollable = false;
+		IsDisarmed = false;
+		NeedRefill = false;
+		IsRepairing = false;
+		FleetHealth = 0;
+
+		for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+		{
+			UFlareSimulatedSpacecraft* Ship = FleetShips[ShipIndex];
+
+			// Ignore stations
+			if (Ship && Ship->IsValidLowLevel() && !Ship->IsStation())
+			{
+				UFlareSimulatedSpacecraftDamageSystem* DamageSystem = Ship->GetDamageSystem();
+
+				IsStranded = DamageSystem->IsStranded();
+				IsUncontrollable = DamageSystem->IsUncontrollable();
+				IsDisarmed = DamageSystem->IsDisarmed();
+				if (Ship->GetRefillStock() > 0 && Ship->NeedRefill())
+				{
+					NeedRefill = true;
+				}
+				if (Ship->GetRepairStock() > 0 && Ship->GetDamageSystem()->GetGlobalDamageRatio() < 1.f)
+				{
+					IsRepairing = true;
+				}
+			}
+			FleetHealth += Ship->GetDamageSystem()->GetGlobalHealth();
+		}
+		FleetHealth /= FleetShips.Num();
+	}
+}
 
 /*----------------------------------------------------
 	Callbacks
@@ -284,6 +739,29 @@ void SFlareFleetInfo::OnToggleAutoTrade()
 /*----------------------------------------------------
 	Content
 ----------------------------------------------------*/
+
+TOptional<float> SFlareFleetInfo::GetGlobalHealth() const
+{
+	return FleetHealth;
+}
+
+EVisibility SFlareFleetInfo::GetRefillingVisibility() const
+{
+	if(NeedRefill)
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+EVisibility SFlareFleetInfo::GetRepairingVisibility() const
+{
+	if (IsRepairing)
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
 
 FText SFlareFleetInfo::GetName() const
 {
@@ -408,6 +886,28 @@ bool SFlareFleetInfo::IsAutoTradeDisabled() const
 	{
 		return false;
 	}
+}
+
+FSlateColor SFlareFleetInfo::GetIconColor(EFlareSubsystem::Type Type) const
+{
+	FLinearColor Result = FLinearColor::Black;
+	Result.A = 0.0f;
+	bool IsIncapacitated = false;
+	switch (Type)
+	{
+		case EFlareSubsystem::SYS_Propulsion:    IsIncapacitated = IsStranded;         break;
+		case EFlareSubsystem::SYS_RCS:           IsIncapacitated = IsUncontrollable;   break;
+		case EFlareSubsystem::SYS_Weapon:        IsIncapacitated = IsDisarmed;         break;
+		default: break;
+	}
+	// Show in red when disabled
+	if (IsIncapacitated)
+	{
+		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		Result = Theme.DamageColor;
+		Result.A = 1.0f;
+	}
+	return Result;
 }
 
 FText SFlareFleetInfo::GetComposition() const

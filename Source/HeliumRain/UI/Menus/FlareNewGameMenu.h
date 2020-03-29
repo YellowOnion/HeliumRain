@@ -67,7 +67,6 @@ protected:
 	/** Emblem picked */
 	void OnEmblemPicked(int32 Index);
 
-
 protected:
 
 	/*----------------------------------------------------
@@ -86,11 +85,14 @@ protected:
 	TSharedPtr<SEditableText>                   CompanyIdentifier;
 	TSharedPtr<SFlareColorPanel>                ColorBox;
 	TSharedPtr<SFlareButton>                    TutorialButton;
+	TSharedPtr<SFlareButton>                    StoryButton;
+	TSharedPtr<SFlareButton>                    RandomizeStationButton;
 	TSharedPtr<SFlareDropList<int32>>           EmblemPicker;
 
 	// Scenario data
 	TSharedPtr<SFlareDropList<TSharedPtr<FString> >> ScenarioSelector;
+	TSharedPtr<SFlareDropList<TSharedPtr<FString> >> DifficultySelector;
 	TArray<TSharedPtr<FString>>                 ScenarioList;
-
-
+	TArray<TSharedPtr<FString>>				    DifficultyList;
+//	TArray<TSharedPtr<FText>>					DifficultyList;
 };

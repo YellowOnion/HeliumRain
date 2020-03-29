@@ -92,6 +92,10 @@ struct FFlarePlayerSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 ScenarioId;
 
+	/** Chosen difficulty */
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 DifficultyId;
+
     /** Identifier of the company */
     UPROPERTY(EditAnywhere, Category = Save)
     FName CompanyIdentifier;
@@ -147,4 +151,3 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = Save)
 	bool AutoSave;
 };
-

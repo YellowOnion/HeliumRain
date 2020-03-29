@@ -21,7 +21,7 @@ struct SectorHelper
 
 	static UFlareSimulatedSpacecraft*  FindTradeStation(FlareTradeRequest Request);
 
-	static int32 Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice = NULL, UFlareTradeRoute* TradeRoute = nullptr);
+	static int32 Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice = NULL, UFlareTradeRoute* TradeRoute = nullptr, bool IsDonation = 0);
 
 	static void GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& OwnedFS, int32& AvailableFS, int32& AffordableFS);
 
@@ -31,18 +31,22 @@ struct SectorHelper
 
 	static bool HasShipRepairing(UFlareSimulatedSector* TargetSector, UFlareCompany* Company);
 
+	static bool HasShipRefilling(TArray<UFlareSimulatedSpacecraft*>& Ships, UFlareCompany* Company);
+
+	static bool HasShipRepairing(TArray<UFlareSimulatedSpacecraft*>& Ships, UFlareCompany* Company);
+
 	static void GetRepairFleetSupplyNeeds(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& CurrentNeededFleetSupply, int32& TotalNeededFleetSupply, int64& MaxDuration, bool OnlyPossible);
 
 	static void GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& CurrentNeededFleetSupply, int32& TotalNeededFleetSupply, int64& MaxDuration, bool OnlyPossible);
-
+	
 	static void GetRepairFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArray<UFlareSimulatedSpacecraft*>& ships, int32& CurrentNeededFleetSupply, int32& TotalNeededFleetSupply, int64& MaxDuration, bool OnlyPossible);
 
 	static void GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArray<UFlareSimulatedSpacecraft*>& ships, int32& CurrentNeededFleetSupply, int32& TotalNeededFleetSupply, int64& MaxDuration, bool OnlyPossible);
 
 
-	static void RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company);
+	static void RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr);
 
-	static void RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company);
+	static void RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr);
 
 	static void ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair);
 

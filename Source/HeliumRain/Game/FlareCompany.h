@@ -52,7 +52,7 @@ public:
 		Gameplay
 	----------------------------------------------------*/
 
-	virtual void SimulateAI();
+	virtual void SimulateAI(bool GlobalWar);
 
 	virtual void TickAI();
 
@@ -111,7 +111,7 @@ public:
 	virtual void DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft);
 
 	/** Set a sector discovered */
-	virtual void DiscoverSector(UFlareSimulatedSector* Sector);
+	virtual void DiscoverSector(UFlareSimulatedSector* Sector,bool VisitedSector = false);
 
 	/** Set a sector visited */
 	virtual void VisitSector(UFlareSimulatedSector* Sector);
@@ -241,13 +241,15 @@ protected:
 	TArray<UFlareSimulatedSector*>          KnownSectors;
 	TArray<UFlareSimulatedSector*>          VisitedSectors;
 
-	int32                                   ResearchAmount;
+	int32                                     ResearchAmount;
 	TMap<FName, FFlareTechnologyDescription*> UnlockedTechnologies;
+
+	TArray<UFlareCompany*>					OtherCompaniesCache;
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
-public:
 
+public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
@@ -441,6 +443,8 @@ public:
 
 	float GetConfidenceLevel(UFlareCompany* ReferenceCompany, TArray<UFlareCompany*>& Allies);
 
+
+
 	float ComputeCompanyDiplomaticWeight();
 
 	bool WantWarWith(UFlareCompany* TargetCompany);
@@ -455,7 +459,7 @@ public:
 
 	int32 GetWarCount(UFlareCompany* ExcludeCompany) const;
 
-	bool IsPlayerCompany() const;
+   	bool IsPlayerCompany() const;
 
 	bool WantCapture(UFlareSimulatedSpacecraft const* Station) const;
 

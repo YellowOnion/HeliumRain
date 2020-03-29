@@ -38,6 +38,8 @@ public:
 	/** Create the widget */
 	void Construct(const FArguments& InArgs);
 
+	TSharedPtr<SHorizontalBox> GetCurrentBox();
+
 	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 
@@ -94,7 +96,15 @@ protected:
 
 	// Slate data
 	TSharedPtr<STextBlock>         TextBlock;
-	TSharedPtr<SHorizontalBox>     FleetBox;
+	TSharedPtr<SHorizontalBox>     CurrentBox;
+	TSharedPtr<SHorizontalBox>     FleetBoxOne;
+	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
+	TSharedPtr<SHorizontalBox>     FleetBoxThree;
 
-
+public:
+	bool							CachedFleets;
+	int32							EnemyShips;
+	int32							EnemyStations;
+	int32							CurrentCount;
+	int32							TotalCount;
 };

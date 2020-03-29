@@ -8,7 +8,6 @@
 #include "../Components/FlareListItem.h"
 #include "../Components/FlareCompanyInfo.h"
 
-
 #define LOCTEXT_NAMESPACE "FlareLeaderboardMenu"
 
 
@@ -30,6 +29,17 @@ void SFlareLeaderboardMenu::Construct(const FArguments& InArgs)
 	.Padding(FMargin(0, AFlareMenuManager::GetMainOverlayHeight(), 0, 0))
 	[
 		SNew(SVerticalBox)
+
+		// Title
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(Theme.ContentPadding)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareLeaderboardMenu::GetWindowTitle)
+		.TextStyle(&Theme.TitleFont)
+		.Justification(ETextJustify::Center)
+		]
 
 		// Company list
 		+ SVerticalBox::Slot()
@@ -61,6 +71,7 @@ void SFlareLeaderboardMenu::Construct(const FArguments& InArgs)
 						.ListItemsSource(&CompanyListData)
 						.SelectionMode(ESelectionMode::Single)
 						.OnGenerateRow(this, &SFlareLeaderboardMenu::GenerateCompanyInfo)
+						.OnSelectionChanged(this, &SFlareLeaderboardMenu::OnCompanySelectionChanged)
 					]
 				]
 			]
@@ -80,6 +91,58 @@ void SFlareLeaderboardMenu::Setup()
 	SetVisibility(EVisibility::Collapsed);
 }
 
+void SFlareLeaderboardMenu::OnCompanySelectionChanged(TSharedPtr<FInterfaceContainer> Item, ESelectInfo::Type SelectInfo)
+{
+	FLOG("SFlareLeaderboardMenu::OnCompanySelectionChanged");
+
+	TSharedPtr<SFlareListItem> ItemWidget = StaticCastSharedPtr<SFlareListItem>(CompanyList->WidgetFromItem(Item));
+	SelectedItem = Item;
+
+	// Update selection
+	if (PreviousSelection.IsValid())
+	{
+		PreviousSelection->SetSelected(false);
+	}
+
+	if (ItemWidget.IsValid())
+	{
+		ItemWidget->SetSelected(true);
+		PreviousSelection = ItemWidget;
+	}
+
+//	this->SetCompany(Company);
+}
+
+void SFlareLeaderboardMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+//	if (CompanyList->GetNumItemsSelected() > 0)
+	if (CompanyList->GetNumItemsSelected() > 0)
+	{
+		UFlareCompany* Company = CompanyList->GetSelectedItems()[0]->CompanyPtr;
+		SelectedCompany = Company;
+	}
+}
+
+void SFlareLeaderboardMenu::SetCompany(UFlareCompany* Company)
+{
+	if (Company)
+	{
+		SelectedCompany = Company;
+	}
+}
+
+FText SFlareLeaderboardMenu::GetWindowTitle() const
+{
+	if (SelectedCompany && SelectedCompany != MenuManager->GetPC()->GetCompany())
+	{
+		return FText::Format(LOCTEXT("DiplomacyTitleOther", "Diplomacy from {0} POV"),
+		SelectedCompany->GetCompanyName());
+	}
+
+	return LOCTEXT("DiplomacyTitle", "Diplomacy from player POV");
+}
+
 void SFlareLeaderboardMenu::Enter()
 {
 	FLOG("SFlareLeaderboardMenu::Enter");
@@ -88,7 +151,7 @@ void SFlareLeaderboardMenu::Enter()
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
 	const TArray<UFlareCompany*>& Companies = Game->GetGameWorld()->GetCompanies();
-	
+
 	// Add companies
 	CompanyListData.Empty();
 	for (int32 Index = 0; Index < Companies.Num(); Index++)
@@ -105,6 +168,7 @@ void SFlareLeaderboardMenu::Enter()
 		}
 	};
 
+	SelectedCompany = MenuManager->GetPC()->GetCompany();
 	// Sort
 	CompanyListData.Sort(FSortByValue());
 	CompanyList->RequestListRefresh();
@@ -116,12 +180,21 @@ void SFlareLeaderboardMenu::Exit()
 	SetVisibility(EVisibility::Collapsed);
 	CompanyListData.Empty();
 	CompanyList->RequestListRefresh();
+	CompanyList->ClearSelection();
+
+	SelectedCompany = NULL;
 }
 
 
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
+
+UFlareCompany* SFlareLeaderboardMenu::GetSelectedCompany() const
+{
+	return SelectedCompany;
+}
+
 
 TSharedRef<ITableRow> SFlareLeaderboardMenu::GenerateCompanyInfo(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable)
 {

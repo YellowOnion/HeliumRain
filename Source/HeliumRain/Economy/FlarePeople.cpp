@@ -1,4 +1,4 @@
-
+﻿
 #include "FlarePeople.h"
 #include "../Flare.h"
 
@@ -9,6 +9,7 @@
 #include "../Game/FlareSimulatedSector.h"
 
 #include "../Spacecrafts/FlareSimulatedSpacecraft.h"
+#include "../Player/FlarePlayerController.h"
 
 #include "FlareCargoBay.h"
 
@@ -55,7 +56,7 @@ FFlarePeopleSave* UFlarePeople::Save()
 
 static uint32 BIRTH_POINT_TRESHOLD = 3000;
 static uint32 DEATH_POINT_TRESHOLD = 29200;
-static uint32 MONETARY_CREATION = 10000;
+static uint32 MONETARY_CREATION = 10500;//10000;
 
 // All in kg and kg/hab
 
@@ -185,7 +186,7 @@ void UFlarePeople::SimulateResourcePurchase()
 	bool LockNext = false;
 
 	uint32 FoodConsumption = GetRessourceConsumption(Food, true);
-	uint32 BoughtFood = BuyResourcesInSector(Food, FoodConsumption, 0.001); // In Tons
+	uint32 BoughtFood = BuyResourcesInSector(Food, FoodConsumption, 0.00105); //0.001); // In Tons
 	//if(BoughtFood)
 	//	FLOGV("People in %s bought %u food", *Parent->GetSectorName().ToString(), BoughtFood);
 	PeopleData.FoodStock += BoughtFood * 1000; // In kg
@@ -209,11 +210,11 @@ void UFlarePeople::SimulateResourcePurchase()
 
 	float FuelPrice = Parent->GetResourcePrice(Fuel, EFlareResourcePriceContext::Default);
 	float FuelPriceRatio = (FuelPrice - Fuel->MinPrice) / (float)(Fuel->MaxPrice - Fuel->MinPrice);
+
 	if(!LockNext && FuelPriceRatio < 0.75)
 	{
-
 		uint32 FuelConsumption = GetRessourceConsumption(Fuel, true);
-		uint32 BoughtFuel = BuyResourcesInSector(Fuel, FuelConsumption, 0.002); // In Tons
+		uint32 BoughtFuel = BuyResourcesInSector(Fuel, FuelConsumption, 0.0021);//0.002); // In Tons
 		//if(BoughtFuel)
 		//	FLOGV("People in %s bought %u fuel", *Parent->GetSectorName().ToString(), BoughtFuel);
 		PeopleData.FuelStock += BoughtFuel * 1000; // In kg
@@ -239,7 +240,7 @@ void UFlarePeople::SimulateResourcePurchase()
 	if(!LockNext && ToolPriceRatio < 0.5)
 	{
 		uint32 ToolConsumption = GetRessourceConsumption(Tool, true);
-		uint32 BoughtTool = BuyResourcesInSector(Tool, ToolConsumption, 0.004); // In Tons
+		uint32 BoughtTool = BuyResourcesInSector(Tool, ToolConsumption, 0.0042);//0.004); // In Tons
 		//if(BoughtTool)
 		//	FLOGV("People in %s bought %u tool", *Parent->GetSectorName().ToString(), BoughtTool);
 		PeopleData.ToolStock += BoughtTool * 1000; // In kg
@@ -263,7 +264,7 @@ void UFlarePeople::SimulateResourcePurchase()
 	if(!LockNext)
 	{
 		uint32 TechConsumption = GetRessourceConsumption(Tech, true);
-		uint32 BoughtTech = BuyResourcesInSector(Tech, TechConsumption, 0.006); // In Tons
+		uint32 BoughtTech = BuyResourcesInSector(Tech, TechConsumption, 0.0063);//0.006); // In Tons
 		//if(BoughtTech)
 		//	FLOGV("People in %s bought %u tech", *Parent->GetSectorName().ToString(), BoughtTech);
 		PeopleData.TechStock += BoughtTech * 1000; // In kg
@@ -415,9 +416,65 @@ uint32 UFlarePeople::BuyInStationForCompany(FFlareResourceDescription* Resource,
 			break;
 		}
 
+		double DifficultyMultiplier = 1;
+
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		double Multiplier = 1;
+
+		if (Company == Game->GetPC()->GetCompany())
+		{
+			//AI gets more money from population while the player gets less
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				Multiplier = 1.05;
+				break;
+			case 0: // Normal
+				Multiplier = 1;
+				break;
+			case 1: // Hard
+				Multiplier = 0.95;
+				break;
+			case 2: // Very Hard
+				Multiplier = 0.90;
+				break;
+			case 3: // Expert
+				Multiplier = 0.80;
+				break;
+			case 4: // Unfair
+				Multiplier = 0.70;
+				break;
+			}
+		}
+		else
+			{
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				Multiplier = 0.95;
+				break;
+			case 0: // Normal
+				Multiplier = 1;
+				break;
+			case 1: // Hard
+				Multiplier = 1.05;
+				break;
+			case 2: // Very Hard
+				Multiplier = 1.10;
+				break;
+			case 3: // Expert
+				Multiplier = 1.20;
+				break;
+			case 4: // Unfair
+				Multiplier = 1.30;
+				break;
+			}
+		}
+
 		uint32 TakenQuantity = BestStation->GetActiveCargoBay()->TakeResources(Resource, RemainingQuantity, Company);
 		RemainingQuantity -= TakenQuantity;
-		uint32 Price = (uint32) (ResourcePrice) * TakenQuantity;
+		uint32 Price = (uint32) (ResourcePrice * TakenQuantity) * Multiplier;
 		PeopleData.Money -= Price;
 		Company->GiveMoney(Price, FFlareTransactionLogEntry::LogPeoplePurchase(BestStation, Resource, TakenQuantity));
 

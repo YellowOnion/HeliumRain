@@ -202,7 +202,26 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 						.IsDisabled(this, &SFlareShipMenu::IsShipLSelectorDisabled)
 						.Visibility(this, &SFlareShipMenu::GetShipyardVisibility)
 					]
-					
+				]
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Left)
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SHorizontalBox)
+					// Allow external Configuration
+					+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+						SNew(SFlareButton)
+						.Width(7)
+						.Text(LOCTEXT("ExternalInfoConfiguration", "External Info Configuration"))
+						.HelpText(LOCTEXT("ExternalInfoConfigurationInfo", "Enable or disable specific ships from being bought from other companies"))
+						.OnClicked(this, &SFlareShipMenu::OnOpenExternalConfig)
+						.Visibility(this, &SFlareShipMenu::GetShipyardAllowExternalOrderVisibility)
+						]
+
+
 					// Allow external
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -1366,6 +1385,7 @@ FText SFlareShipMenu::GetShipOrderStatus(int32 Index) const
 void SFlareShipMenu::OnOpenSpacecraftOrder(bool IsHeavy)
 {
 	FFlareMenuParameterData Data;
+	Data.SpacecraftOrderConfig = 0;
 	Data.Spacecraft = TargetSpacecraft;
 	Data.SpacecraftOrderHeavy = IsHeavy;
 	MenuManager->OpenSpacecraftOrder(Data, FOrderDelegate());
@@ -1390,6 +1410,14 @@ void SFlareShipMenu::OnToggleAllowExternalOrders()
 	}
 }
 
+
+void SFlareShipMenu::OnOpenExternalConfig()
+{
+	FFlareMenuParameterData Data;
+	Data.Spacecraft = TargetSpacecraft;
+	Data.SpacecraftOrderConfig = 1;
+	MenuManager->OpenSpacecraftOrder(Data, FOrderDelegate());
+}
 
 /*----------------------------------------------------
 	Content callbacks

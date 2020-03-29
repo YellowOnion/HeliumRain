@@ -43,6 +43,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SavePlayer(FFlarePlayerSave* Data)
 
 	JsonObject->SetStringField("UUID", Data->UUID.ToString());
 	JsonObject->SetStringField("ScenarioId", FormatInt32(Data->ScenarioId));
+	JsonObject->SetStringField("DifficultyId", FormatInt32(Data->DifficultyId));
 	JsonObject->SetStringField("PlayerEmblemIndex", FormatInt32(Data->PlayerEmblemIndex));
 	JsonObject->SetStringField("CompanyIdentifier", Data->CompanyIdentifier.ToString());
 	JsonObject->SetStringField("PlayerFleetIdentifier", Data->PlayerFleetIdentifier.ToString());
@@ -65,6 +66,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 
 	JsonObject->SetStringField("SelectedQuest", Data->SelectedQuest.ToString());
 	JsonObject->SetBoolField("PlayTutorial", Data->PlayTutorial);
+	JsonObject->SetBoolField("PlayStory", Data->PlayStory);
 	JsonObject->SetStringField("NextGeneratedQuestIndex", FormatInt64(Data->NextGeneratedQuestIndex));
 
 
@@ -401,6 +403,13 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 		SalesExcludedResources.Add(MakeShareable(new FJsonValueString(Data->SalesExcludedResources[i].ToString())));
 	}
 	JsonObject->SetArrayField("SalesExcludedResources", SalesExcludedResources);
+
+	TArray< TSharedPtr<FJsonValue> > ShipyardOrderExternalConfig;
+	for (int i = 0; i < Data->ShipyardOrderExternalConfig.Num(); i++)
+	{
+		ShipyardOrderExternalConfig.Add(MakeShareable(new FJsonValueString(Data->ShipyardOrderExternalConfig[i].ToString())));
+	}
+	JsonObject->SetArrayField("ShipyardOrderExternalConfig", ShipyardOrderExternalConfig);
 
 	TArray< TSharedPtr<FJsonValue> > ConnectedStations;
 	for (int i = 0; i < Data->ConnectedStations.Num(); i++)

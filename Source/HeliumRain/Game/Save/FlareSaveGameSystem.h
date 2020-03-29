@@ -23,8 +23,7 @@ public:
 
 	virtual bool SaveGame(const FString SaveName, UFlareSaveGame* SaveData);
 
-	virtual UFlareSaveGame* LoadGame(const FString SaveName);
-
+	virtual UFlareSaveGame* LoadGame(const FString SaveName, AFlareGame* Game);
 
 	virtual bool DeleteGame(const FString SaveName);
 

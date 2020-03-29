@@ -343,7 +343,7 @@ void AFlareMenuManager::OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrder
 	}
 	else if (Data.Spacecraft)
 	{
-		SpacecraftOrder->Open(Data.Spacecraft, Data.SpacecraftOrderHeavy);
+		SpacecraftOrder->Open(Data.Spacecraft, Data.SpacecraftOrderHeavy, Data.SpacecraftOrderConfig);
 	}
 	else if (Data.Sector)
 	{
@@ -750,7 +750,7 @@ bool AFlareMenuManager::CreateGame()
 	// Create a new sandbox game
 	else if (NextMenu.Value.ScenarioIndex >= 0)
 	{
-		PC->GetGame()->CreateGame(*NextMenu.Value.CompanyDescription, NextMenu.Value.ScenarioIndex, NextMenu.Value.PlayerEmblemIndex, NextMenu.Value.PlayTutorial);
+		PC->GetGame()->CreateGame(*NextMenu.Value.CompanyDescription, NextMenu.Value.ScenarioIndex, NextMenu.Value.DifficultyIndex, NextMenu.Value.PlayerEmblemIndex, NextMenu.Value.PlayTutorial, NextMenu.Value.PlayStory, NextMenu.Value.RandomizeStations);
 		PC->GetGame()->ActivateCurrentSector();
 
 		NextMenu.Value.ScenarioIndex = -1;
@@ -1436,6 +1436,16 @@ AFlarePlayerController* AFlareMenuManager::GetPC() const
 TSharedPtr<SFlareShipMenu> AFlareMenuManager::GetShipMenu() const
 {
 	return ShipMenu;
+}
+
+TSharedPtr<SFlareTradeMenu> AFlareMenuManager::GetTradeMenu() const
+{
+	return TradeMenu;
+}
+
+TSharedPtr<SFlareLeaderboardMenu> AFlareMenuManager::GetLeaderboardMenu() const
+{
+	return LeaderboardMenu;
 }
 
 int32 AFlareMenuManager::GetMainOverlayHeight()

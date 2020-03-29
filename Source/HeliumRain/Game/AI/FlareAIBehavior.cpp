@@ -44,10 +44,13 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 		Game = Company->GetGame();
 		ST = Game->GetScenarioTools();
 		check(ST);
-
 		GenerateAffilities();
-
 		ProposeTributeToPlayer = false;
+	}
+	if (BuildLTradeOnlyTreshhold < 1 || BuildLMilitaryOnlyTreshhold < 1)
+		//missing, redo?
+	{
+		GenerateAffilities();
 	}
 }
 
@@ -62,19 +65,63 @@ void UFlareAIBehavior::Simulate()
 	SCOPE_CYCLE_COUNTER(STAT_FlareAIBehavior_Simulate);
 
 	// See how the player is doing
+
 	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
 	SortedCompany.Sort(&CompanyValueComparator);
 	int32 PlayerCompanyIndex = SortedCompany.IndexOfByKey(GetGame()->GetPC()->GetCompany());
-	int32 PlayerArmy = GetGame()->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints;
 
+	int32 PlayerArmy = GetGame()->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints;
+	int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+
+	float PirateRepLoss = -0.5f;
+	float RepLossDevisor = 30.f;
+
+	switch (GameDifficulty)
+	{
+		case -1: // Easy
+			PirateRepLoss = -0.25f;
+			RepLossDevisor = 32.f;
+			break;
+		case 0: // Normal
+			PirateRepLoss = -0.5f;
+			RepLossDevisor = 30.f;
+			break;
+		case 1: // Hard
+			PirateRepLoss = -0.75f;
+			RepLossDevisor = 25.f;
+			break;
+		case 2: // Very Hard
+			PirateRepLoss = -1.00f;
+			RepLossDevisor = 20.f;
+			break;
+		case 3: // Expert
+			PirateRepLoss = -1.50f;
+			RepLossDevisor = 10.f;
+			break;
+		case 4: // Unfair
+			PirateRepLoss = -2.00f;
+			RepLossDevisor = 5.f;
+			break;
+	}
+
+	float ReputationLoss = (PlayerCompanyIndex + 1) / RepLossDevisor;
+/*
+	GetGame()->GetPC()->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoFormat", "Rep loss {0}, PlayerCompanyIndex {1}"),
+			ReputationLoss, PlayerCompanyIndex),
+		"discover-sector",
+		EFlareNotification::NT_Info,
+		false);*/
 	// Pirates hate you
+
 	if (PlayerCompanyIndex > 0 && Company == ST->Pirates)
 	{
-		Company->GivePlayerReputation(-0.5);
+		Company->GivePlayerReputation(PirateRepLoss);
 	}
 
 	// Competitors hate you more if you're doing well
-	float ReputationLoss = PlayerCompanyIndex / 30.f;
 	if (PlayerArmy > 0 && Company != ST->AxisSupplies && Company->GetPlayerReputation() > ReputationLoss)
 	{
 		Company->GivePlayerReputation(-ReputationLoss);
@@ -107,73 +154,19 @@ void UFlareAIBehavior::SimulateGeneralBehavior()
 	Company->GetAI()->UpdateMilitaryMovement();
 }
 
-void UFlareAIBehavior::UpdateDiplomacy()
+void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareAIBehavior_UpdateDiplomacy);
+
+	// Not global war
+	if (GlobalWar)
+	{
+		return;
+	}
 
 	TArray<UFlareCompany*> OtherCompanies = Company->GetOtherCompanies(true); // true for Shuffle
 	UFlareCompany* PlayerCompany = GetGame()->GetPC()->GetCompany();
 
-	int32 MaxCombatPoint = 0;
-	UFlareCompany* MaxCombatPointCompany = NULL;
-
-	for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
-	{
-		struct CompanyValue Value = OtherCompany->GetCompanyValue();
-
-		if (MaxCombatPoint < Value.ArmyCurrentCombatPoints)
-		{
-			MaxCombatPoint = Value.ArmyCurrentCombatPoints;
-			MaxCombatPointCompany = OtherCompany;
-		}
-	}
-
-	float MaxCombatPointRatio = float(MaxCombatPoint) / GetGame()->GetGameWorld()->GetTotalWorldCombatPoint();
-
-	//FLOGV("MaxCombatPointRatio %f", MaxCombatPointRatio);
-	//FLOGV("MaxCombatPoint %d", MaxCombatPoint);
-	//FLOGV("TotalWorldCombatPoint %d", TotalWorldCombatPoint);
-
-	
-	// If a non-player company is not far from half world power, a global alliance is formed
-	if (MaxCombatPointCompany != Company && MaxCombatPointCompany != PlayerCompany && MaxCombatPointRatio > 0.3 && MaxCombatPoint > 500)
-	{
-		bool NewWar = false;
-
-		for (UFlareCompany* OtherCompany : OtherCompanies)
-		{
-			if (MaxCombatPointCompany == OtherCompany && Company->GetCompanyValue().ArmyCurrentCombatPoints > 0)
-			{
-				if (Company->GetWarState(OtherCompany) != EFlareHostility::Hostile)
-				{
-					NewWar = true;
-				}
-
-				Company->GetAI()->GetData()->Pacifism = 0;
-				Company->SetHostilityTo(OtherCompany, true);
-			}
-			else
-			{
-				Company->SetHostilityTo(OtherCompany, false);
-			}
-		}
-
-		// Notify the player that this is happening
-		if (NewWar)
-		{
-			GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War"),
-				FText::Format(LOCTEXT("AIStartGlobalWarInfo", "All companies are now allied to stop the militarization of {0}."),
-					MaxCombatPointCompany->GetCompanyName()),
-				FName("global-war"),
-				EFlareNotification::NT_Military,
-				false,
-				EFlareMenu::MENU_Leaderboard);
-		}
-
-		return;
-	}
-
-	// Not global war
 	if(Company->GetAI()->GetData()->Pacifism >= 100)
 	{
 		// Want peace
@@ -196,11 +189,11 @@ void UFlareAIBehavior::UpdateDiplomacy()
 			}
 		}
 	}
-	else if (Company->GetAI()->GetData()->Pacifism == 0)
+	else if (Company->GetAI()->GetData()->Pacifism <= 0)
 	{
 		//Want war
 
-		if (Company->GetWarCount(PlayerCompany) == 0)
+		if (Company->GetWarCount(PlayerCompany) == 0 )
 		{
 			// Don't fight if already at war
 
@@ -272,18 +265,71 @@ void UFlareAIBehavior::UpdateDiplomacy()
 				++i;
 
 				UFlareCompany* TargetCompany = Target.Key;
+				float Skipchance = 0.2f;
+				if (TargetCompany== PlayerCompany)
+				{
+					//if looking at player, increase the random chance factor to declare war
+					int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+
+					switch (GameDifficulty)
+					{
+					case -1: // Easy
+						Skipchance = 0.25f;
+						break;
+					case 0: // Normal
+						Skipchance = 0.2f;
+						break;
+					case 1: // Hard
+						Skipchance = 0.18f;
+						break;
+					case 2: // Very Hard
+						Skipchance = 0.16f;
+						break;
+					case 3: // Expert
+						Skipchance = 0.12f;
+						break;
+					case 4: // Unfair
+						Skipchance = 0.08f;
+						break;
+					}
+				}
+				else
+				{
+					//if looking at other companies, decrease the random factor chance for declaring war
+
+					int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+
+					switch (GameDifficulty)
+					{
+					case -1: // Easy
+						Skipchance = 0.2f;
+						break;
+					case 0: // Normal
+						Skipchance = 0.2f;
+						break;
+					case 1: // Hard
+						Skipchance = 0.30f;
+						break;
+					case 2: // Very Hard
+						Skipchance = 0.40f;
+						break;
+					case 3: // Expert
+						Skipchance = 0.60f;
+						break;
+					case 4: // Unfair
+						Skipchance = 0.80f;
+						break;
+					}
+				}
 
 				//FLOGV("Target for %s: %s", *Company->GetCompanyName().ToString(), *TargetCompany->GetCompanyName().ToString());
-
-				TArray<UFlareCompany*> Allies;
-
-				float Confidence = Company->GetConfidenceLevel(TargetCompany, Allies);
-
-				if(FMath::FRand() <= 0.2f)
+				if(FMath::FRand() <= Skipchance)
 				{
 					continue;
 				}
 
+				TArray<UFlareCompany*> Allies;
+				float Confidence = Company->GetConfidenceLevel(TargetCompany, Allies);
 				if(Confidence > DeclareWarConfidenceMean(Allies))
 				{
 					FLOGV("Declare alliance agains %s with:", *TargetCompany->GetCompanyName().ToString());
@@ -336,7 +382,7 @@ void UFlareAIBehavior::GenerateAffilities()
 	MaintenanceAffility = 0.1;
 
 	// Budget
-	BudgetTechnologyWeight = 0.2;
+	BudgetTechnologyWeight = 0.25;
 	BudgetMilitaryWeight = 0.5;
 	BudgetStationWeight = 1.0;
 	BudgetTradeWeight = 1.0;
@@ -356,9 +402,31 @@ void UFlareAIBehavior::GenerateAffilities()
 	PacifismIncrementRate = 0.8;
 	PacifismDecrementRate = 0.6;
 
+	DailyProductionCostSensitivityMilitary = 30;
+	DailyProductionCostSensitivityEconomic = 7;
+	CostSafetyMarginMilitaryShip = 1.1f;
+	CostSafetyMarginTradeShip = 1.05f;
+	CostSafetyMarginStation = 1.1f;
+
+	BuildLTradeOnlyTreshhold = 50;
+	BuildLMilitaryOnlyTreshhold = 50;
+
+	BuildMilitaryDiversity = 1;
+	BuildTradeDiversity = 1;
+
 	// Pirate base
 	SetSectorAffility(ST->Boneyard, 0.f);
 
+	BuildMilitaryDiversitySize = 5;
+	BuildTradeDiversitySize = 5;
+	BuildMilitaryDiversitySizeBase = 5;
+	BuildTradeDiversitySizeBase = 10;
+	
+	BuildEfficientMilitaryChance = 0.05;
+	BuildEfficientMilitaryChanceSmall = 0.10;
+
+	BuildEfficientTradeChance = 0.20;
+	BuildEfficientTradeChanceSmall = 0.25;
 
 	if(Company == ST->Pirates)
 	{
@@ -379,17 +447,13 @@ void UFlareAIBehavior::GenerateAffilities()
 		// They need some cargo to buy resources for their shipyard and arsenal
 
 		SetResourceAffilities(0.1f);
-
-
 		SetSectorAffilities(0.f);
 
 		SetSectorAffility(ST->Boneyard, 10.f);
 
-
 		ShipyardAffility = 0.0;
 		ConsumerAffility = 0.0;
 		MaintenanceAffility = 0.0;
-
 
 		// Only buy
 		TradingSell = 0.f;
@@ -416,21 +480,35 @@ void UFlareAIBehavior::GenerateAffilities()
 		PacifismIncrementRate = 1.f;
 		PacifismDecrementRate = 0.8f;
 
+		DailyProductionCostSensitivityMilitary = 0;
+		DailyProductionCostSensitivityEconomic = 0;
+
+		BuildMilitaryDiversity = 2;
+		BuildMilitaryDiversitySize = 4;
+		ResearchOrder.Reserve(4);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("flak");
+		ResearchOrder.Add("fast-travel");
+		ResearchOrder.Add("bombing");
 	}
 	else if(Company == ST->GhostWorksShipyards)
 	{
 		// Loves Hela and doesn't like Nema
-
 		ShipyardAffility = 5.0;
 
 		SetSectorAffilitiesByMoon(ST->Nema,0.5f);
 		SetSectorAffilitiesByMoon(ST->Hela, 6.f);
 
 		// Budget
-		BudgetTechnologyWeight = 0.2;
+		BudgetTechnologyWeight = 0.25;
 		BudgetMilitaryWeight = 1.0;
 		BudgetStationWeight = 1.0;
 		BudgetTradeWeight = 1.0;
+
+		BuildMilitaryDiversity = 2;
+		BuildTradeDiversity = 2;
+		BuildEfficientTradeChance = 0.25;
+		ResearchOrder.Add("instruments");
 	}
 	else if(Company == ST->MiningSyndicate)
 	{
@@ -443,10 +521,22 @@ void UFlareAIBehavior::GenerateAffilities()
 		SetResourceAffility(ST->Hydrogen, 2.f);
 
 		// Budget
-		BudgetTechnologyWeight = 0.2;
+		BudgetTechnologyWeight = 0.25;
 		BudgetMilitaryWeight = 0.5;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
+
+		BuildEfficientMilitaryChance = 0.025;
+		BuildEfficientMilitaryChanceSmall = 0.5;
+
+		BuildEfficientTradeChance = 0.10;
+		BuildEfficientTradeChanceSmall = 0.125;
+		ResearchOrder.Reserve(4);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("orbital-pumps");
+		ResearchOrder.Add("metallurgy");
+		ResearchOrder.Add("chemicals");
+
 	}
 	else if(Company == ST->HelixFoundries)
 	{
@@ -459,10 +549,11 @@ void UFlareAIBehavior::GenerateAffilities()
 		SetSectorAffility(ST->Outpost, 10.f);
 		
 		// Budget
-		BudgetTechnologyWeight = 0.4;
+		BudgetTechnologyWeight = 0.5;
 		BudgetMilitaryWeight = 0.5;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
+		ResearchOrder.Add("instruments");
 	}
 	else if(Company == ST->Sunwatch)
 	{
@@ -471,22 +562,35 @@ void UFlareAIBehavior::GenerateAffilities()
 		SetResourceAffility(ST->Fuel, 10.f);
 		
 		// Budget
-		BudgetTechnologyWeight = 0.6;
+		BudgetTechnologyWeight = 0.55;
 		BudgetMilitaryWeight = 0.5;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
+		//already starts with instruments
+		ResearchOrder.Add("science");
 	}
 	else if(Company == ST->IonLane)
 	{
+		CostSafetyMarginMilitaryShip = 1.2f;
+		CostSafetyMarginTradeShip = 1.0f;
+
 		BudgetTechnologyWeight = 0.2;
 		BudgetMilitaryWeight = 1.0;
-		BudgetStationWeight = 0.1;
+		BudgetStationWeight = 0.25;
 		BudgetTradeWeight = 2.0;
 
 		ArmySize = 10.0;
 		DeclareWarConfidence = 0.1;
 		RequestPeaceConfidence = -0.4;
 		PayTributeConfidence = -0.85;
+
+		BuildLTradeOnlyTreshhold = 40;
+		BuildTradeDiversity = 2;
+		BuildTradeDiversitySize = 4;
+		BuildEfficientTradeChance = 0.30;
+		ResearchOrder.Reserve(2);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("fast-travel");
 	}
 	else if(Company == ST->UnitedFarmsChemicals)
 	{
@@ -496,10 +600,17 @@ void UFlareAIBehavior::GenerateAffilities()
 		SetResourceAffility(ST->Methane, 5.f);
 
 		// Budget
-		BudgetTechnologyWeight = 0.4;
+		BudgetTechnologyWeight = 0.5;
 		BudgetMilitaryWeight = 0.5;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
+
+		BuildEfficientMilitaryChance = 0.025;
+		BuildEfficientMilitaryChanceSmall = 0.5;
+
+		BuildEfficientTradeChance = 0.10;
+		BuildEfficientTradeChanceSmall = 0.125;
+		ResearchOrder.Add("instruments");
 	}
 	else if(Company == ST->NemaHeavyWorks)
 	{
@@ -513,10 +624,19 @@ void UFlareAIBehavior::GenerateAffilities()
 		ShipyardAffility = 3.0;
 
 		// Budget
-		BudgetTechnologyWeight = 0.4;
+		BudgetTechnologyWeight = 0.5;
 		BudgetMilitaryWeight = 0.5;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
+
+		BuildMilitaryDiversity = 2;
+		BuildTradeDiversity = 2;
+
+		BuildEfficientTradeChance = 0.25;
+		ResearchOrder.Reserve(3);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("science");
+		ResearchOrder.Add("shipyard");
 	}
 	else if(Company == ST->AxisSupplies)
 	{
@@ -528,9 +648,12 @@ void UFlareAIBehavior::GenerateAffilities()
 		ConsumerAffility = 1.0;
 		MaintenanceAffility = 10.0;
 
+		CostSafetyMarginMilitaryShip = 1.2f;
+		CostSafetyMarginTradeShip = 1.0f;
+
 		// Budget
-		BudgetTechnologyWeight = 0.2;
-		BudgetMilitaryWeight = 0.25;
+		BudgetTechnologyWeight = 0.25;
+		BudgetMilitaryWeight = 0.30;
 		BudgetStationWeight = 2.0;
 		BudgetTradeWeight = 2.0;
 
@@ -540,8 +663,56 @@ void UFlareAIBehavior::GenerateAffilities()
 		PayTributeConfidence = -0.1;
 
 		DiplomaticReactivity = 0.1;
-	}
+		BuildLTradeOnlyTreshhold = 40;
+		BuildTradeDiversitySize = 4;
 
+		BuildEfficientTradeChance = 0.30;
+		ResearchOrder.Reserve(2);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("fast-travel");
+	}
+	else if (Company == ST->BrokenMoon)
+	{
+		DailyProductionCostSensitivityMilitary = 7;
+		DailyProductionCostSensitivityEconomic = 30;
+		BuildLMilitaryOnlyTreshhold = 40;
+
+		BuildMilitaryDiversity = 2;
+		BuildMilitaryDiversitySize = 4;
+		BuildMilitaryDiversitySizeBase = 0;
+
+		BuildEfficientMilitaryChance = 0.20;
+		BuildEfficientMilitaryChanceSmall = 0.15;
+		ResearchOrder.Reserve(4);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("flak");
+		ResearchOrder.Add("bombing");
+		ResearchOrder.Add("pirate-tech");
+
+	}
+	else if (Company == ST->Quantalium)
+	{
+		SetResourceAffility(ST->Tech, 10.f);
+
+		BudgetTechnologyWeight = 0.8;
+		BudgetMilitaryWeight = 0.5;
+		BudgetStationWeight = 1.0;
+		BudgetTradeWeight = 1.0;
+
+		BuildEfficientMilitaryChance = 0.10;
+		BuildEfficientMilitaryChanceSmall = 0.15;
+
+		BuildEfficientTradeChance = 0.25;
+		BuildEfficientTradeChanceSmall = 0.30;
+		ResearchOrder.Reserve(3);
+		ResearchOrder.Add("instruments");
+		ResearchOrder.Add("science");
+		ResearchOrder.Add("fast-travel");
+	}
+	else
+	{
+	ResearchOrder.Add("instruments");
+	}
 }
 
 void UFlareAIBehavior::SetResourceAffilities(float Value)

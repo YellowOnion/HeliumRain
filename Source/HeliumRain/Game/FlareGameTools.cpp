@@ -261,9 +261,8 @@ void UFlareGameTools::CheckEconomyBalance()
 			{
 				const FFlareFactoryResource* Resource = &FactoryDescription->CycleCost.OutputResources[ResourceIndex];
 
-				MinRevenue += (Resource->Resource->Data.MinPrice - Resource->Resource->Data.TransportFee) * Resource->Quantity;
-				MaxRevenue += (Resource->Resource->Data.MaxPrice - Resource->Resource->Data.TransportFee) * Resource->Quantity;
-
+				MinRevenue += (Resource->Resource->Data.MinPrice - (Resource->Resource->Data.TransportFee *0.5f)) * Resource->Quantity;
+				MaxRevenue += (Resource->Resource->Data.MaxPrice - (Resource->Resource->Data.TransportFee *0.5f)) * Resource->Quantity;
 
 				if(Cycle.Len() > 4)
 				{
@@ -1993,7 +1992,7 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 	}
 	else
 	{
-		Cost += Desc->CycleCost.ProductionCost;
+		Cost += Desc->CycleCost.ProductionCost *1.10f;
 	}
 
 	// Add input resource cost
@@ -2010,7 +2009,7 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 			ResourcePrice = Resource->Resource->Data.MinPrice;
 		}
 
-		Cost += Resource->Quantity * ResourcePrice;
+		Cost += Resource->Quantity * (ResourcePrice *1.10f);
 	}
 
 	// Substract output resource

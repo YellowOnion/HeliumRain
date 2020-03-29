@@ -8,6 +8,12 @@
 #include "../FlareUITypes.h"
 #include "FlareButton.h"
 
+#include "../../Player/FlareMenuManager.h"
+#include "../../UI/Menus/FlareLeaderboardMenu.h"
+
+#include "../Components/FlareListItem.h"
+
+//#include "../../Game/FlareGame.h"
 
 #define LOCTEXT_NAMESPACE "FlareCompanyInfo"
 
@@ -445,12 +451,28 @@ FText SFlareCompanyInfo::GetCompanyInfo() const
 		int32 CompanyShipCount = Company->GetCompanyShips().Num();
 		FText ShipText = FText::Format(LOCTEXT("ShipInfoFormat", "{0} {1}"),
 			FText::AsNumber(CompanyShipCount), CompanyShipCount == 1 ? LOCTEXT("Ship", "ship") : LOCTEXT("Ships", "ships"));
-		
+
+		// Wars
+		int32 CompanyWarsCount = Company->GetWarCount(Company);
+		FText WarsText;
+
+		if (CompanyWarsCount > 0)
+		{
+			WarsText = FText::Format(LOCTEXT("WarInfoFormat", "At war with {0} other {1}"),
+			FText::AsNumber(CompanyWarsCount),
+			CompanyWarsCount == 1 ? LOCTEXT("Company", "company") : LOCTEXT("Companies", "companies"));
+		}
+		else
+		{
+			WarsText = LOCTEXT("WarInfoFormat", "Not at war with other companies");
+		}
+
 		// Full string
-		return FText::Format(LOCTEXT("CompanyInfoFormat", "{0} credits in bank\n{1}, {2} "),
+		return FText::Format(LOCTEXT("CompanyInfoFormat", "{0} credits in bank\n{1}, {2}\n{3}"),
 			FText::AsNumber(UFlareGameTools::DisplayMoney(Company->GetMoney())),
 			StationText,
-			ShipText);
+			ShipText,
+			WarsText);
 	}
 
 	return Result;
@@ -478,9 +500,32 @@ FText SFlareCompanyInfo::GetReputationText() const
 
 	if (Player && Player->GetCompany() != Company)
 	{
-		return LOCTEXT("ReputationInfo", "Your reputation : ");
-	}
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
 
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
+		{
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+		}
+		else
+		{
+			SelectedCompany = Company;
+		}
+
+		if (SelectedCompany)
+		{
+			if (SelectedCompany == Player->GetCompany())// != Company)
+			{
+				return LOCTEXT("ReputationInfo", "Your reputation : ");
+			}
+//			TODO AI Reputation system?
+//			else if(SelectedCompany != Company)
+//			{
+//				return FText::Format(LOCTEXT("ReputationInfoOther", "Their reputation : "),
+//				SelectedCompany->GetCompanyName());
+//			}
+		}
+	}
 	return Result;
 }
 
@@ -502,8 +547,23 @@ FText SFlareCompanyInfo::GetReputationTextValue() const
 
 	if (Player && Company && Player->GetCompany() != Company)
 	{
-		int32 Reputation = Company->GetPlayerReputation();
-		return FText::AsNumber(Reputation);
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
+
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
+		{
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+		}
+		else
+		{
+			SelectedCompany = Company;
+		}
+
+		if (SelectedCompany == Player->GetCompany())
+		{
+			int32 Reputation = Company->GetPlayerReputation();
+			return FText::AsNumber(Reputation);
+		}
 	}
 
 	return Result;
@@ -553,7 +613,22 @@ FText SFlareCompanyInfo::GetConfidenceText() const
 
 	if (Player && Player->GetCompany() != Company)
 	{
-		return LOCTEXT("ConfidenceInfo", "Confidence level : ");
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
+
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
+		{
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+		}
+		else
+		{
+			SelectedCompany = Company;
+		}
+
+		if (SelectedCompany != Company)
+		{
+			return LOCTEXT("ConfidenceInfo", "Confidence level : ");
+		}
 	}
 
 	return Result;
@@ -565,9 +640,24 @@ FText SFlareCompanyInfo::GetConfidenceTextValue() const
 
 	if (Player && Company && Player->GetCompany() != Company)
 	{
-		TArray<UFlareCompany*> Allies;
-		int32 Confidence = 50 + Company->GetConfidenceLevel(Player->GetCompany(), Allies) * 50;
-		return FText::FromString(FString::FromInt(Confidence) + "%");
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
+
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
+		{
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+		}
+		else
+		{
+			SelectedCompany = Company;
+		}
+
+		if(SelectedCompany && SelectedCompany != Company)
+		{
+			TArray<UFlareCompany*> Allies;
+			int32 Confidence = 50 + Company->GetConfidenceLevel(SelectedCompany, Allies) * 50;
+			return FText::FromString(FString::FromInt(Confidence) + "%");
+		}
 	}
 
 	return Result;
@@ -579,18 +669,33 @@ FSlateColor SFlareCompanyInfo::GetConfidenceColor() const
 
 	if (Player && Company)
 	{
-		float Reputation = Company->GetPlayerReputation();
-		TArray<UFlareCompany*> Allies;
-		float Confidence = Company->GetConfidenceLevel(Player->GetCompany(), Allies);
-		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
 
-		if (Reputation <= -100 && Confidence > 0)
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
 		{
-			return Theme.EnemyColor;
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
 		}
 		else
 		{
-			return Theme.NeutralColor;
+			SelectedCompany = Company;
+		}
+		if (SelectedCompany)
+		{
+
+			float Reputation = Company->GetPlayerReputation();
+			TArray<UFlareCompany*> Allies;
+			float Confidence = Company->GetConfidenceLevel(SelectedCompany, Allies);
+			const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
+			if (Reputation <= -100 && Confidence > 0)
+			{
+				return Theme.EnemyColor;
+			}
+			else
+			{
+				return Theme.NeutralColor;
+			}
 		}
 	}
 
@@ -604,10 +709,29 @@ FSlateColor SFlareCompanyInfo::GetWarColor() const
 	if (Player && Company)
 	{
 		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany;
 
-		if (Company->GetPlayerWarState() == EFlareHostility::Hostile)
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
 		{
-			return Theme.EnemyColor;
+			SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+		}
+		else
+		{
+			SelectedCompany = Company;
+		}
+
+		if (SelectedCompany && SelectedCompany != Company)
+		{
+//			if (Company->GetPlayerWarState() == EFlareHostility::Hostile)
+			if (SelectedCompany->IsAtWar(Company))// == EFlareHostility::Hostile)
+			{
+				return Theme.EnemyColor;
+			}
+			else
+			{
+				return Theme.NeutralColor;
+			}
 		}
 		else
 		{
@@ -618,17 +742,24 @@ FSlateColor SFlareCompanyInfo::GetWarColor() const
 	return Result;
 }
 
-
 FText SFlareCompanyInfo::GetCompanyHostility() const
 {
 	FText Result;
 
 	if (Company)
 	{
-		EFlareHostility::Type Hostiliy = Company->GetPlayerHostility();
 
-		switch (Hostiliy)
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		UFlareCompany* SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+
+		if (SelectedCompany != Company && Player->GetCompany() != Company)
 		{
+
+//			EFlareHostility::Type Hostility = Company->GetPlayerHostility();
+			EFlareHostility::Type Hostility = Company->GetHostility(SelectedCompany);
+
+			switch (Hostility)
+			{
 			case EFlareHostility::Friendly:
 				Result = LOCTEXT("Allied", "This company is an ally");
 				break;
@@ -651,6 +782,7 @@ FText SFlareCompanyInfo::GetCompanyHostility() const
 			case EFlareHostility::Owned:
 			default:
 				break;
+			}
 		}
 	}
 
@@ -709,8 +841,19 @@ EVisibility SFlareCompanyInfo::GetToggleHostilityVisibility() const
 	}
 	else
 	{
-		return EVisibility::Visible;
+		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
+		{
+			UFlareCompany* SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
+			if (SelectedCompany != Player->GetCompany())
+			{
+				return EVisibility::Collapsed;
+			}
+		}
 	}
+
+
+	return EVisibility::Visible;
 }
 
 bool SFlareCompanyInfo::IsTributeDisabled() const
@@ -721,6 +864,7 @@ bool SFlareCompanyInfo::IsTributeDisabled() const
 	}
 
 	UFlareCompany* PlayerCompany = Player->GetCompany();
+
 	if (Company->GetPlayerHostility() == EFlareHostility::Hostile)
 	{
 		return (PlayerCompany->GetTributeCost(Company) > PlayerCompany->GetMoney());

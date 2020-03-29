@@ -121,6 +121,9 @@ protected:
 	/** Order a spacecraft */
 	void OnOpenSpacecraftOrder(bool IsHeavy);
 
+	/** Change external config exceptions/allowances */
+	void OnOpenExternalConfig();
+
 	/** Cancel a spacecraft */
 	void OnCancelSpacecraftOrder(int32 Index);
 

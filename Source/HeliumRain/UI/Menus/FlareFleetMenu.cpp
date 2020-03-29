@@ -8,6 +8,10 @@
 #include "../../Player/FlarePlayerController.h"
 #include "../Components/FlareRoundButton.h"
 
+#include "../../Game/FlareSectorHelper.h"
+#include "../../Game/FlareGameTools.h"
+#include "../../Game/FlareScenarioTools.h"
+
 #include "SComplexGradient.h"
 
 
@@ -62,34 +66,26 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 				[
 					SNew(SVerticalBox)
 
-					// Fleet list
-					+ SVerticalBox::Slot()
-					[
-						SAssignNew(FleetList, SFlareList)
-						.MenuManager(MenuManager)
-						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
-					]
-				
 					// Fleet details
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.VAlign(VAlign_Top)
-					.Padding(Theme.TitlePadding)
-					[
-						SNew(STextBlock)
-						.TextStyle(&Theme.SubTitleFont)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.VAlign(VAlign_Top)
+						.Padding(Theme.TitlePadding)
+						[
+							SNew(STextBlock)
+							.TextStyle(&Theme.SubTitleFont)
 						.Text(LOCTEXT("ManageFleet", "Fleet details"))
 						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-					]
-		
+						]
+
 					// Fleet tools
 					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					[
-						SNew(SHorizontalBox)
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SHorizontalBox)
 
-						// Name field
+							// Name field
 						+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Fill)
 						.VAlign(VAlign_Center)
@@ -97,70 +93,78 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						[
 							SAssignNew(EditFleetName, SEditableText)
 							.AllowContextMenu(false)
-							.Style(&Theme.TextInputStyle)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Style(&Theme.TextInputStyle)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 						]
 
-						// Confirm name
-						+ SHorizontalBox::Slot()
+					// Confirm name
+					+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Right)
 						.Padding(Theme.SmallContentPadding)
 						.AutoWidth()
 						[
 							SNew(SFlareButton)
 							.Width(4)
-							.Icon(FFlareStyleSet::GetIcon("OK"))
-							.Text(LOCTEXT("Rename", "Rename"))
-							.HelpText(this, &SFlareFleetMenu::GetRenameHintText)
-							.OnClicked(this, &SFlareFleetMenu::OnRenameFleet)
-							.IsDisabled(this, &SFlareFleetMenu::IsRenameDisabled)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Icon(FFlareStyleSet::GetIcon("OK"))
+						.Text(LOCTEXT("Rename", "Rename"))
+						.HelpText(this, &SFlareFleetMenu::GetRenameHintText)
+						.OnClicked(this, &SFlareFleetMenu::OnRenameFleet)
+						.IsDisabled(this, &SFlareFleetMenu::IsRenameDisabled)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 						]
 
-						// Finish
-						+ SHorizontalBox::Slot()
+					// Finish
+					+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Right)
 						.Padding(Theme.SmallContentPadding)
 						.AutoWidth()
 						[
 							SNew(SFlareButton)
 							.Width(4)
-							.Icon(FFlareStyleSet::GetIcon("Stop"))
-							.Text(LOCTEXT("DoneEditing", "Back"))
-							.HelpText(LOCTEXT("DoneEditingInfo", "Finish editing this fleet"))
-							.OnClicked(this, &SFlareFleetMenu::OnEditFinished)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Icon(FFlareStyleSet::GetIcon("Stop"))
+						.Text(LOCTEXT("DoneEditing", "Back"))
+						.HelpText(LOCTEXT("DoneEditingInfo", "Finish editing this fleet"))
+						.OnClicked(this, &SFlareFleetMenu::OnEditFinished)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 						]
 					]
 
 					// Color box
 					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					[
-						SNew(SOverlay)
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SOverlay)
 
-						+ SOverlay::Slot()
+							+ SOverlay::Slot()
 						.Padding(FMargin(4.0f, 0.0f))
 						[
 							SNew(SComplexGradient)
 							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-							.GradientColors(HueGradientColors)
-							.Orientation(Orient_Vertical)
+						.GradientColors(HueGradientColors)
+						.Orientation(Orient_Vertical)
 						]
 
-						+ SOverlay::Slot()
+					+ SOverlay::Slot()
 						[
 							SNew(SSlider)
 							.IndentHandle(false)
-							.Orientation(Orient_Horizontal)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-							.SliderBarColor(FLinearColor::Transparent)
-							.Value(this, &SFlareFleetMenu::GetColorSpinBoxValue)
-							.OnValueChanged(this, &SFlareFleetMenu::OnColorSpinBoxValueChanged)
+						.Orientation(Orient_Horizontal)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.SliderBarColor(FLinearColor::Transparent)
+						.Value(this, &SFlareFleetMenu::GetColorSpinBoxValue)
+						.OnValueChanged(this, &SFlareFleetMenu::OnColorSpinBoxValueChanged)
 						]
 					]
 
+					// Fleet list
+					+ SVerticalBox::Slot()
+					[
+						SAssignNew(FleetList, SFlareList)
+						.MenuManager(MenuManager)
+						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
+					]
+/*
 					// Fleet list 2
 					+ SVerticalBox::Slot()
 					[
@@ -168,6 +172,7 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						.MenuManager(MenuManager)
 						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
 					]
+*/
 				]
 			]
 
@@ -226,6 +231,108 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						.OnClicked(this, &SFlareFleetMenu::OnRemoveFromFleet)
 						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 					]
+
+					+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+						[
+							// Inspect trade route
+							SAssignNew(TradeRouteButton, SFlareButton)
+							.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
+						.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
+						.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Width(6)
+						]
+					+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+						[
+							// Auto Trade Button
+							SAssignNew(AutoTradeButton, SFlareButton)
+							.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
+						.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
+						.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Toggle(true)
+						.Width(6)
+						]
+
+
+				]
+/*
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.HAlign(HAlign_Left)
+					.Padding(Theme.SmallContentPadding)
+					.AutoWidth()
+					[
+						// Inspect trade route
+						SAssignNew(TradeRouteButton, SFlareButton)
+						.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
+						.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
+						.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Width(6)
+					]
+					+ SHorizontalBox::Slot()
+					.HAlign(HAlign_Left)
+					.Padding(Theme.SmallContentPadding)
+					.AutoWidth()
+					[
+						// Auto Trade Button
+						SAssignNew(AutoTradeButton, SFlareButton)
+						.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
+						.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
+						.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Toggle(true)
+						.Width(6)
+					]
+				]
+*/
+					// Inspect trade route
+
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SHorizontalBox)
+					// Refill
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SAssignNew(RefillButton, SFlareButton)
+						.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
+					.IsDisabled(this, &SFlareFleetMenu::IsRefillDisabled)
+					.OnClicked(this, &SFlareFleetMenu::OnRefillClicked)
+					.Text(this, &SFlareFleetMenu::GetRefillText)
+					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+					.Width(8)
+					]
+
+					// Repair
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SAssignNew(RepairButton, SFlareButton)
+						.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
+					.IsDisabled(this, &SFlareFleetMenu::IsRepairDisabled)
+					.OnClicked(this, &SFlareFleetMenu::OnRepairClicked)
+					.Text(this, &SFlareFleetMenu::GetRepairText)
+					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+					.Width(8)
+					]
 				]
 
 				// Ship list
@@ -270,30 +377,34 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 	ShipToRemove = NULL;
 	FleetToEdit = TargetFleet;
 
-	FleetList->SetTitle(LOCTEXT("AllFleetsListTitle", "Fleets"));
-	OtherFleetList->SetTitle(LOCTEXT("OtherFleetsListTitle", "Other fleets"));
+//	OtherFleetList->SetTitle(LOCTEXT("OtherFleetsListTitle", "Other fleets"));
 
 	// We are in edit mode
 	if (FleetToEdit)
 	{
+		FleetList->SetTitle(LOCTEXT("OtherFleetsListTitle", "Other Fleets"));
 		ShipList->SetUseCompactDisplay(true);
 		EditFleetName->SetText(FleetToEdit->GetFleetName());
 
-		UpdateFleetList(OtherFleetList);
-		FleetList->SetVisibility(EVisibility::Collapsed);
+//		UpdateFleetList(OtherFleetList);
+//		FleetList->SetVisibility(EVisibility::Collapsed);
+//		OtherFleetList->SetVisibility(EVisibility::Collapsed);
 
 		MenuManager->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("fleet-edited").PutName("fleet", FleetToEdit->GetIdentifier()));
+		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
 	}
 
 	// We are in preview mode
 	else
 	{
+		FleetList->SetTitle(LOCTEXT("AllFleetsListTitle", "Fleets"));
 		ShipList->SetUseCompactDisplay(false);
-
-		UpdateFleetList(FleetList);
-		OtherFleetList->SetVisibility(EVisibility::Collapsed);
+		AutoTradeButton->SetActive(false);
+//		UpdateFleetList(FleetList);
+//		OtherFleetList->SetVisibility(EVisibility::Collapsed);
 	}
 
+	UpdateFleetList(FleetList);
 	UpdateShipList(FleetToEdit);
 }
 
@@ -311,6 +422,21 @@ void SFlareFleetMenu::Exit()
 	SetVisibility(EVisibility::Collapsed);
 }
 
+void SFlareFleetMenu::OnToggleShowFlags()
+{
+/*
+	if(FleetToEdit)
+	{
+		UpdateFleetList(OtherFleetList);
+	}
+	else
+	{
+		UpdateFleetList(FleetList);
+	}
+	*/
+	UpdateFleetList(FleetList);
+}
+
 void SFlareFleetMenu::UpdateFleetList(TSharedPtr<SFlareList>& List)
 {
 	List->Reset();
@@ -318,16 +444,17 @@ void SFlareFleetMenu::UpdateFleetList(TSharedPtr<SFlareList>& List)
 
 	int32 FleetCount = MenuManager->GetPC()->GetCompany()->GetCompanyFleets().Num();
 	FLOGV("SFlareFleetMenu::UpdateFleetList : found %d fleets", FleetCount);
-
-	for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
-	{
-		UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
-		if (Fleet && Fleet->GetShips().Num() && Fleet != FleetToEdit)
+	
+		for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
 		{
-			List->AddFleet(Fleet);
-		}
-	}
+			UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
 
+			if (Fleet && Fleet->GetShips().Num() && FleetToEdit != Fleet)
+			{
+				List->AddFleet(Fleet);
+
+			}
+		}
 	List->RefreshList();
 }
 
@@ -363,6 +490,381 @@ void SFlareFleetMenu::UpdateShipList(UFlareFleet* Fleet)
 /*----------------------------------------------------
 	Content callbacks
 ----------------------------------------------------*/
+
+FText SFlareFleetMenu::GetInspectTradeRouteHintText() const
+{
+	if (FleetToEdit && FleetToEdit->GetCurrentTradeRoute())
+	{
+		return LOCTEXT("TradeRouteInfo", "Edit the trade route this fleet is assigned to");
+	}
+	else
+	{
+		return LOCTEXT("CantEditNoTradeRoute", "Assign a trade route to this fleet in the company menu");
+	}
+}
+
+bool SFlareFleetMenu::IsInspectTradeRouteDisabled() const
+{
+	if (FleetToEdit && FleetToEdit->GetCurrentTradeRoute())
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+FText SFlareFleetMenu::GetAutoTradeHintText() const
+{
+	if (!FleetToEdit)
+	{
+		return FText();
+	}
+	if (!FleetToEdit->GetFleetCompany()->IsTechnologyUnlocked("auto-trade"))
+	{
+		return LOCTEXT("CantAutoTradeNoTech", "The Automated Trading technology is required");
+	}
+	else if (FleetToEdit->GetCurrentTradeRoute())
+	{
+		return LOCTEXT("CantAutoTradeOnTradeRoute", "Fleets assigned to a trade route can't do automatic trading");
+	}
+	else if (FleetToEdit == FleetToEdit->GetGame()->GetPC()->GetPlayerFleet())
+	{
+		return LOCTEXT("CantAutoTradeWithPlayerFleet", "Your personal fleet can't trade automatically");
+	}
+	else
+	{
+		return LOCTEXT("AutoTradeInfo", "Command this fleet to start automatic trading");
+	}
+}
+
+bool SFlareFleetMenu::IsAutoTradeDisabled() const
+{
+	if (!FleetToEdit)
+	{
+		return true;
+	}
+	if (!FleetToEdit->GetFleetCompany()->IsTechnologyUnlocked("auto-trade"))
+	{
+		return true;
+	}
+	else if (FleetToEdit->GetCurrentTradeRoute())
+	{
+		return true;
+	}
+	else if (FleetToEdit == FleetToEdit->GetGame()->GetPC()->GetPlayerFleet())
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void SFlareFleetMenu::OnOpenTradeRoute()
+{
+	if (FleetToEdit && FleetToEdit->GetGame()->GetPC() && FleetToEdit->GetCurrentTradeRoute())
+	{
+		FLOGV("SFlareFleetInfo::OnOpenTradeRoute : TargetFleet=%p", FleetToEdit);
+		FFlareMenuParameterData Data;
+		Data.Route = FleetToEdit->GetCurrentTradeRoute();
+		FleetToEdit->GetGame()->GetPC()->GetMenuManager()->OpenMenu(EFlareMenu::MENU_TradeRoute, Data);
+	}
+}
+
+void SFlareFleetMenu::OnToggleAutoTrade()
+{
+	if (FleetToEdit && FleetToEdit->GetGame()->GetPC())
+	{
+		FLOGV("SFlareFleetInfo::OnToggleAutoTrade : TargetFleet=%p", FleetToEdit);
+		FleetToEdit->SetAutoTrading(!FleetToEdit->IsAutoTrading());
+		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
+	}
+}
+
+
+FText SFlareFleetMenu::GetRepairText() const
+{
+	if (!FleetToEdit)
+	{
+		return FText();
+	}
+
+	UFlareSimulatedSector* TargetSector = FleetToEdit->GetCurrentSector();
+
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+	if (IsRepairDisabled())
+	{
+		if (TotalNeededFS > 0)
+		{
+			// Repair needed
+			if (TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+			{
+				return LOCTEXT("CantRepairBattle", "Can't repair here : battle in progress!");
+			}
+			else if (AvailableFS == 0) {
+				return LOCTEXT("CantRepairNoFS", "Can't repair here : no fleet supply available !");
+			}
+			else
+			{
+				return LOCTEXT("CantRepairNoMoney", "Can't repair here : not enough money !");
+			}
+		}
+		else if (SectorHelper::HasShipRepairing(FleetToEdit->GetShips(), MenuManager->GetPC()->GetCompany()))
+		{
+			// Repair in progress
+			return LOCTEXT("RepairInProgress", "Repair in progress...");
+		}
+		else
+		{
+			// No repair needed
+			return LOCTEXT("NoFleetToRepair", "No ship needs repairing");
+		}
+	}
+	else
+	{
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+		FFlareResourceDescription* FleetSupply = TargetSector->GetGame()->GetScenarioTools()->FleetSupply;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+
+		FText OwnedCostText;
+		FText CostSeparatorText;
+		FText NotOwnedCostText;
+
+		if (UsedOwnedFs > 0)
+		{
+			OwnedCostText = FText::Format(LOCTEXT("RepairOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+		}
+
+		if (UsedNotOwnedFsCost > 0)
+		{
+			NotOwnedCostText = FText::Format(LOCTEXT("RepairNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+		}
+
+		if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+		{
+			CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+		}
+
+		FText CostText = FText::Format(LOCTEXT("RepairCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+		return FText::Format(LOCTEXT("RepairOkayFormat", "Repair all ships ({0}, {1} days)"),
+			CostText,
+			FText::AsNumber(MaxDuration));
+	}
+}
+
+bool SFlareFleetMenu::IsRepairDisabled() const
+{
+	if (!FleetToEdit)
+	{
+		return true;
+	}
+
+	UFlareSimulatedSector* TargetSector = FleetToEdit->GetCurrentSector();
+	if (!TargetSector || TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+	{
+		return true;
+	}
+
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
+
+	if (TotalNeededFS > 0)
+	{
+		// Repair needed
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		if (AffordableFS == 0) {
+			return true;
+		}
+
+		// There is somme affordable FS, can repair
+		return false;
+	}
+	else
+	{
+		// No repair needed
+		return true;
+	}
+}
+
+FText SFlareFleetMenu::GetRefillText() const
+{
+	if (!FleetToEdit)
+	{
+		return FText();
+	}
+
+	UFlareSimulatedSector* TargetSector = FleetToEdit->GetCurrentSector();
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+	if (IsRefillDisabled())
+	{
+		if (TotalNeededFS > 0)
+		{
+			// Refill needed
+			if (TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+			{
+				return LOCTEXT("CantRefillBattle", "Can't refill : battle in progress!");
+			}
+			else if (AvailableFS == 0) {
+				return LOCTEXT("CantRefillNoFS", "Can't refill : no fleet supply available !");
+			}
+			else
+			{
+				return LOCTEXT("CantRefillNoMoney", "Can't refill : not enough money !");
+			}
+		}
+		else if (SectorHelper::HasShipRefilling(FleetToEdit->GetShips(), MenuManager->GetPC()->GetCompany()))
+		{
+
+			// Refill in progress
+			return LOCTEXT("RefillInProgress", "Refill in progress...");
+		}
+		else
+		{
+			// No refill needed
+			return LOCTEXT("NoFleetToRefill", "No ship needs refilling");
+		}
+	}
+	else
+	{
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+		FFlareResourceDescription* FleetSupply = TargetSector->GetGame()->GetScenarioTools()->FleetSupply;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+		FText OwnedCostText;
+		FText CostSeparatorText;
+		FText NotOwnedCostText;
+
+		if (UsedOwnedFs > 0)
+		{
+			OwnedCostText = FText::Format(LOCTEXT("RefillOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+		}
+
+		if (UsedNotOwnedFsCost > 0)
+		{
+			NotOwnedCostText = FText::Format(LOCTEXT("RefillNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+		}
+
+		if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+		{
+			CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+		}
+
+		FText CostText = FText::Format(LOCTEXT("RefillCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+		return FText::Format(LOCTEXT("RefillOkayFormat", "Refill ({0}, {1} days)"),
+			CostText,
+			FText::AsNumber(MaxDuration));
+	}
+}
+
+bool SFlareFleetMenu::IsRefillDisabled() const
+{
+	if (!FleetToEdit)
+	{
+		return true;
+	}
+
+	UFlareSimulatedSector* TargetSector = FleetToEdit->GetCurrentSector();
+
+	if (!TargetSector || TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+	{
+		return true;
+	}
+
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
+
+	if (TotalNeededFS > 0)
+	{
+		// Refill needed
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		if (AffordableFS == 0) {
+			return true;
+		}
+
+		// There is somme affordable FS, can refill
+		return false;
+	}
+	else
+	{
+		// No refill needed
+		return true;
+	}
+}
+
+void SFlareFleetMenu::OnRefillClicked()
+{
+	if (FleetToEdit)
+	{
+		SectorHelper::RefillFleets(FleetToEdit->GetCurrentSector(), FleetToEdit->GetFleetCompany(), FleetToEdit);
+	}
+}
+
+void SFlareFleetMenu::OnRepairClicked()
+{
+	if (FleetToEdit)
+	{
+		SectorHelper::RepairFleets(FleetToEdit->GetCurrentSector(), FleetToEdit->GetFleetCompany(), FleetToEdit);
+	}
+}
+
 
 EVisibility SFlareFleetMenu::GetEditVisibility() const
 {
@@ -534,7 +1036,8 @@ void SFlareFleetMenu::OnAddToFleet()
 	FleetToEdit->Merge(FleetToAdd);
 
 	UpdateShipList(FleetToEdit);
-	UpdateFleetList(OtherFleetList);
+//	UpdateFleetList(OtherFleetList);
+	UpdateFleetList(FleetList);
 	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 }
@@ -548,7 +1051,8 @@ void SFlareFleetMenu::OnRemoveFromFleet()
 	FleetToEdit->RemoveShip(ShipToRemove);
 
 	UpdateShipList(FleetToEdit);
-	UpdateFleetList(OtherFleetList);
+//	UpdateFleetList(OtherFleetList);
+	UpdateFleetList(FleetList);
 	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 }

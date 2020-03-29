@@ -33,9 +33,22 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 	Game = MenuManager->GetPC()->GetGame();
 
 	// Game starts
-	//ScenarioList.Add(MakeShareable(new FString(TEXT("Transport"))));
-	//ScenarioList.Add(MakeShareable(new FString(TEXT("Defense"))));
-	//ScenarioList.Add(MakeShareable(new FString(TEXT("Debug"))));
+	// ScenarioList.Add(MakeShareable(new FString(TEXT("Transport"))));
+	// ScenarioList.Add(MakeShareable(new FString(TEXT("Defense"))));
+	// ScenarioList.Add(MakeShareable(new FString(TEXT("Debug"))));
+
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Easy"))));
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Normal"))));
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Hard"))));
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Very Hard"))));
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Expert"))));
+	DifficultyList.Add(MakeShareable(new FString(TEXT("Unfair"))));
+
+//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Easy", "Easy"))));
+//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Normal", "Normal"))));
+//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Hard", "Hard"))));
+//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("VeryHard", "Very Hard"))));
+//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Expert", "Expert"))));
 
 	// Color
 	FLinearColor Color = Theme.NeutralColor;
@@ -245,7 +258,74 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 							.OnItemPicked(this, &SFlareNewGameMenu::OnEmblemPicked)
 						]
 					]
-				]
+				]	
+				//this one
+				+ SVerticalBox::Slot()
+				.Padding(Theme.ContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Fill)
+				[
+					SNew(SHorizontalBox)
+
+					+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+						.Text(LOCTEXT("NewGameScenario", "Game Difficulty"))
+					]
+
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Right)
+					[
+						SNew(SBox)
+						.WidthOverride(0.4 * Theme.ContentWidth)
+						[
+
+							SNew(SBorder)
+							.BorderImage(&Theme.BackgroundBrush)
+							.Padding(Theme.ContentPadding)
+							[
+								SAssignNew(DifficultySelector, SFlareDropList<TSharedPtr<FString>>)
+								.OptionsSource(&DifficultyList)
+								.OnGenerateWidget(this, &SFlareNewGameMenu::OnGenerateComboLine)
+								.OnSelectionChanged(this, &SFlareNewGameMenu::OnComboLineSelectionChanged)
+								[
+									SNew(SBox)
+									.Padding(Theme.ListContentPadding)
+									[
+										SNew(STextBlock)
+										.Text(this, &SFlareNewGameMenu::OnGetCurrentComboLine)
+										.TextStyle(&Theme.TextFont)
+									]
+								]
+							]
+						]
+					]
+				]				
+					/*
+												// List
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(Theme.ContentPadding)
+							[
+								SAssignNew(PlanetSelector, SFlareDropList<FFlareSectorCelestialBodyDescription>)
+								.OptionsSource(&MenuManager->GetPC()->GetGame()->GetOrbitalBodies()->OrbitalBodies)
+								.OnGenerateWidget(this, &SFlareSkirmishSetupMenu::OnGeneratePlanetComboLine)
+								.HeaderWidth(6)
+								.ItemWidth(6)
+								[
+									SNew(SBox)
+									.Padding(Theme.ListContentPadding)
+									[
+										SNew(STextBlock)
+										.Text(this, &SFlareSkirmishSetupMenu::OnGetCurrentPlanetComboLine)
+										.TextStyle(&Theme.TextFont)
+									]
+								]
+							]
+					*/
 
 				// Bottom box
 				+ SVerticalBox::Slot()
@@ -266,8 +346,31 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 						.Toggle(true)
 						.Width(6.5)
 					]
-
-					// Start
+				// Story
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					.HAlign(HAlign_Right)
+					[
+						SAssignNew(StoryButton, SFlareButton)
+						.Text(LOCTEXT("Story", "Pendulum contract"))
+					.HelpText(LOCTEXT("StoryInfo", "Disable the storyline Pendulum quest"))
+					.Toggle(true)
+					.Width(6.5)
+					]
+				// Random Station Positions
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					.HAlign(HAlign_Right)
+					[
+						SAssignNew(RandomizeStationButton, SFlareButton)
+						.Text(LOCTEXT("Randomize", "Randomize Station Positions"))
+					.HelpText(LOCTEXT("RandomizeInfo", "Randomizes the sectors that the starting stations starts in"))
+					.Toggle(true)
+					.Width(6.5)
+					]
+				// Start
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.Padding(Theme.ContentPadding)
@@ -296,7 +399,12 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 	];
 
 	TutorialButton->SetActive(true);
+	StoryButton->SetActive(true);
+	RandomizeStationButton->SetActive(false);
 	//ScenarioSelector->SetSelectedIndex(0);
+
+	DifficultySelector->RefreshOptions();
+	DifficultySelector->SetSelectedIndex(1);
 }
 
 
@@ -352,6 +460,7 @@ void SFlareNewGameMenu::Enter()
 	{
 		EmblemPicker->AddItem(SNew(SImage).Image(CustomizationCatalog->GetEmblemBrush(i)));
 	}
+
 	EmblemPicker->SetSelectedIndex(0);
 }
 
@@ -360,6 +469,7 @@ void SFlareNewGameMenu::Exit()
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
 	EmblemPicker->ClearItems();
+//	DifficultyPicker->ClearItems();
 }
 
 
@@ -397,7 +507,8 @@ void SFlareNewGameMenu::OnLaunch()
 		// Get data
 		FText CompanyNameData = FText::FromString(CompanyName->GetText().ToString().Left(25)); // FString needed here
 		FName CompanyIdentifierData = FName(*CompanyIdentifier->GetText().ToString().ToUpper().Left(3)); // FString needed here
-		int32 ScenarioIndex = 0;// ScenarioList.Find(ScenarioSelector->GetSelectedItem());
+		int32 ScenarioIndex = 0;//ScenarioList.Find(ScenarioSelector->GetSelectedItem());
+		int32 DifficultyIndex = DifficultyList.Find(DifficultySelector->GetSelectedItem());
 		int32 EmblemIndex = EmblemPicker->GetSelectedIndex();
 
 		FLOGV("SFlareNewGameMenu::OnLaunch '%s', ID '%s', ScenarioIndex %d", *CompanyNameData.ToString(), *CompanyIdentifierData.ToString(), ScenarioIndex);
@@ -416,8 +527,11 @@ void SFlareNewGameMenu::OnLaunch()
 		FFlareMenuParameterData Data;
 		Data.CompanyDescription = &CompanyData;
 		Data.ScenarioIndex = ScenarioIndex;
+		Data.DifficultyIndex = DifficultyIndex;
 		Data.PlayerEmblemIndex = EmblemIndex;
 		Data.PlayTutorial = TutorialButton->IsActive();
+		Data.PlayStory = StoryButton->IsActive();
+		Data.RandomizeStations = RandomizeStationButton->IsActive();
 		MenuManager->OpenMenu(EFlareMenu::MENU_CreateGame, Data);
 	}
 }
@@ -448,7 +562,6 @@ void SFlareNewGameMenu::OnComboLineSelectionChanged(TSharedPtr<FString> StringIt
 void SFlareNewGameMenu::OnEmblemPicked(int32 Index)
 {
 }
-
 
 #undef LOCTEXT_NAMESPACE
 

@@ -396,6 +396,9 @@ public:
 	UFlareSimulatedSpacecraft* CreateSpacecraft(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetLocation, FRotator TargetRotation = FRotator::ZeroRotator,
 		FFlareSpacecraftSave* CapturedSpacecraft = NULL, bool SafeSpawnAtLocation = false, bool UnderConstruction = false, FName AttachComplexStationName = NAME_None);
 
+//	/* Checks if station has a shipyard factory, if so add to shipyard array*/
+//	UFlareSimulatedSpacecraft* CheckIsShipyard(UFlareSimulatedSpacecraft* Spacecraft)
+
 	/** Create an asteroid */
 	void CreateAsteroid(int32 ID, FName Name, FVector Location);
 

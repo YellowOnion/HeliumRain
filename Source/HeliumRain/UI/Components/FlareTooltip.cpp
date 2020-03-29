@@ -7,6 +7,9 @@
 #include "Runtime/Engine/Classes/Engine/UserInterfaceSettings.h"
 #include "SBackgroundBlur.h"
 
+#include "Application/SlateApplicationBase.h" 
+#include "Engine/Engine.h"
+
 #define LOCTEXT_NAMESPACE "FlareTooltip"
 
 
@@ -95,7 +98,30 @@ void SFlareTooltip::Tick(const FGeometry& AllottedGeometry, const double InCurre
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 
-	CurrentMousePos = AllottedGeometry.AbsoluteToLocal(FSlateApplication::Get().GetCursorPos());
+	AFlarePlayerController* PC = MenuManager->GetPC();
+	if(PC)
+	{
+//		auto localSize = AllottedGeometry.GetLocalSize();
+//		auto screenPosition = AllottedGeometry.LocalToAbsolute(FVector2D(0, 0)); //TopLeft
+//		ViewPortSize = AllottedGeometry.LocalToAbsolute(localSize) - screenPosition; // BotRight-TopLeft = real resolution
+
+		auto screenPosition = AllottedGeometry.LocalToAbsolute(FVector2D(0, 0)); //TopLeft
+		ViewPortSize = AllottedGeometry.AbsoluteToLocal(PC->GetNavHUD()->GetViewportSize() + screenPosition);
+		CurrentMousePos = AllottedGeometry.AbsoluteToLocal(FSlateApplication::Get().GetCursorPos());
+
+/*
+		PC->Notify(
+			LOCTEXT("TestInfo", "Test Notification"),
+			FText::Format(
+				LOCTEXT("TestInfoFormat", "Viewport Size {0}/{1} Mouse {2}/{3}"),
+				ViewPortSize.X,
+				ViewPortSize.Y,
+				CurrentMousePos.X,
+				CurrentMousePos.Y),
+			"discover-sector",
+			EFlareNotification::NT_Info);
+*/
+	}
 
 	// Hide
 	if (MenuManager->GetPC()->IsGameBusy())
@@ -167,7 +193,39 @@ float SFlareTooltip::GetToolTipBlurStrength() const
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	return Theme.BlurStrength * TooltipCurrentAlpha;
 }
+/*
+void USlateBlueprintLibrary::ScreenToWidgetLocal(UObject* WorldContextObject, const FGeometry& Geometry, FVector2D ScreenPosition, FVector2D& LocalCoordinate)
+{
+	FVector2D AbsoluteCoordinate;
+	ScreenToWidgetAbsolute(WorldContextObject, ScreenPosition, AbsoluteCoordinate);
 
+	LocalCoordinate = Geometry.AbsoluteToLocal(AbsoluteCoordinate);
+}
+
+void USlateBlueprintLibrary::ScreenToWidgetAbsolute(UObject* WorldContextObject, FVector2D ScreenPosition, FVector2D& AbsoluteCoordinate)
+{
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject);
+	if (World && World->IsGameWorld())
+	{
+		if (UGameViewportClient* ViewportClient = World->GetGameViewport())
+		{
+			if (FViewport* Viewport = ViewportClient->Viewport)
+			{
+				FVector2D ViewportSize;
+				ViewportClient->GetViewportSize(ViewportSize);
+
+				const FVector2D NormalizedViewportCoordinates = ScreenPosition / ViewportSize;
+
+				const FIntPoint VirtualDesktopPoint = Viewport->ViewportToVirtualDesktopPixel(NormalizedViewportCoordinates);
+				AbsoluteCoordinate = FVector2D(VirtualDesktopPoint);
+				return;
+			}
+		}
+	}
+
+	AbsoluteCoordinate = FVector2D(0, 0);
+}
+*/
 FMargin SFlareTooltip::GetTooltipPosition() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
@@ -176,14 +234,32 @@ FMargin SFlareTooltip::GetTooltipPosition() const
 	{
 		FVector2D MousePos = CurrentMousePos;
 		FVector2D WidgetSize = ContentBox->GetDesiredSize();
-		FVector2D ScreenSize = PC->GetNavHUD()->GetViewportSize();
-		
-		MousePos.X = (MousePos.X > ScreenSize.X - WidgetSize.X) ? MousePos.X - WidgetSize.X : MousePos.X;
-		MousePos.Y = (MousePos.Y > ScreenSize.Y - WidgetSize.Y) ? MousePos.Y - WidgetSize.Y : MousePos.Y;
 
-		return FMargin(MousePos.X + 30, MousePos.Y + 40, 0, 0);
+//		ORIGINAL
+//		MousePos.X = (MousePos.X > ScreenSize.X - WidgetSize.X) ? MousePos.X - WidgetSize.X : MousePos.X;
+//		MousePos.Y = (MousePos.Y > ScreenSize.Y - WidgetSize.Y) ? MousePos.Y - WidgetSize.Y : MousePos.Y;
+
+		MousePos.X = FMath::Min(MousePos.X + 30, ViewPortSize.X - WidgetSize.X);
+		MousePos.Y = FMath::Min(MousePos.Y + 40, ViewPortSize.Y - WidgetSize.Y);
+
+/*
+		PC->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoFormat", "Mouse {0}/{1} Widget {2}/{3} Size {4}/{5}, Finalized Location {6}/{7}"),
+			CurrentMousePos.X,
+			CurrentMousePos.Y,
+			WidgetSize.X,
+			WidgetSize.Y,
+			ViewPortSize.X,
+			ViewPortSize.Y,
+			MousePos.X,
+			MousePos.Y),
+		"discover-sector",
+		EFlareNotification::NT_Info);
+*/
+		return FMargin(MousePos.X, MousePos.Y, 0, 0);
 	}
-
 	return FMargin(0);
 }
 

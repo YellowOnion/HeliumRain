@@ -6,6 +6,7 @@
 #include "../../Game/FlareGameTools.h"
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
+#include "../../UI/Menus/FlareFleetMenu.h"
 
 #include "../../Spacecrafts/Subsystems/FlareSimulatedSpacecraftWeaponsSystem.h"
 
@@ -25,7 +26,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	OnItemSelected = InArgs._OnItemSelected;
 	HasShips = false;
-	
+	HasFleets = false;
 	// Build structure
 	ChildSlot
 	.VAlign(VAlign_Fill)
@@ -106,6 +107,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 					.Transparent(true)
 					.Toggle(true)
 					.Width(2)
+
 				]
 			]
 	
@@ -152,11 +154,36 @@ void SFlareList::Construct(const FArguments& InArgs)
 
 void SFlareList::AddFleet(UFlareFleet* Fleet)
 {
+	HasFleets = true;
 	ObjectList.AddUnique(FInterfaceContainer::New(Fleet));
+
+	ShowStationsButton->SetText(LOCTEXT("ShowMilitary", "Military"));
+	ShowStationsButton->SetHelpText(LOCTEXT("ShowMilitaryInfo", "Show fleets with military firepower in the list"));
+
+	ShowMilitaryButton->SetText(LOCTEXT("ShowCargo", "Cargo"));
+	ShowMilitaryButton->SetHelpText(LOCTEXT("ShowCargoInfo", "Show fleets with cargo in the list"));
+
+	ShowFreightersButton->SetText(LOCTEXT("ShowAutoTrader", "Autotrader"));
+	ShowFreightersButton->SetHelpText(LOCTEXT("ShowFreightersInfo", "Show fleets that are set to auto trader in the list"));
+
+	GroupFleetsButton->SetText(LOCTEXT("TogleSector", "Sector"));
+	GroupFleetsButton->SetHelpText(LOCTEXT("ToggleSectorInfo", "Show fleets in the same sector as selected fleet in this list"));
 }
 
 void SFlareList::AddShip(UFlareSimulatedSpacecraft* Ship)
 {
+	ShowStationsButton->SetText(LOCTEXT("ShowStations", "Stations"));
+	ShowStationsButton->SetHelpText(LOCTEXT("ShowStationsInfo", "Show stations in the list"));
+
+	ShowMilitaryButton->SetText(LOCTEXT("ShowMilitary", "Military"));
+	ShowMilitaryButton->SetHelpText(LOCTEXT("ShowMilitaryInfo", "Show military ships in the list"));
+
+	ShowFreightersButton->SetText(LOCTEXT("ShowFreighters", "Freighters"));
+	ShowFreightersButton->SetHelpText(LOCTEXT("ShowFreightersInfo", "Show freighters in the list"));
+
+	GroupFleetsButton->SetText(LOCTEXT("GroupFleets", "Fleets"));
+	GroupFleetsButton->SetHelpText(LOCTEXT("GroupFleetsInfo", "Group vessels by fleet"));
+
 	HasShips = true;
 	ObjectList.AddUnique(FInterfaceContainer::New(Ship));
 }
@@ -312,9 +339,116 @@ void SFlareList::RefreshList()
 		}
 
 		// Fleets have no filters
-		else
+		else if(Object->FleetPtr)
 		{
-			FilteredObjectList.Add(Object);
+			UFlareFleet* ObjectFleet = Object->FleetPtr;
+			UFlareFleet* FleetToEdit = nullptr;
+
+			if (ObjectFleet && ObjectFleet->GetShips().Num())
+			{
+//					|| (FleetToEdit&&FilterSector && FleetToEdit->GetCurrentSector() == Fleet->GetCurrentSector())
+
+//
+				if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Fleet)
+				{
+					FleetToEdit = MenuManager->GetFleetMenu()->GetFleetEditing();
+//						TSharedPtr<SFlareFleetMenu> GetFleetMenu()
+//						GetFleetEditing
+				}
+
+				//todo: lot of redundancy here, gotta clean this trash up!
+				if (GroupFleetsButton->IsActive() && FleetToEdit)
+				{
+					if(FleetToEdit->GetCurrentSector() == ObjectFleet->GetCurrentSector())
+					{
+						if ((ObjectFleet->GetCombatPoints(false) > 0 && ShowStationsButton->IsActive())
+							|| (ObjectFleet->IsAutoTrading() && ShowFreightersButton->IsActive()))
+						{
+							FilteredObjectList.Add(Object);
+						}
+						else if (ShowMilitaryButton->IsActive())
+						{
+							//todo: the fleet itself should know its cargo capacity
+							bool FoundFreighter = false;
+							for (UFlareSimulatedSpacecraft* Ship : ObjectFleet->GetShips())
+							{
+								if (Ship->GetActiveCargoBay()->GetCapacity() > 0)
+								{
+									FoundFreighter = true;
+									break;
+								}
+							}
+							if (FoundFreighter)
+							{
+								FilteredObjectList.Add(Object);
+							}
+						}
+					}
+				}
+
+				else if ((ObjectFleet->GetCombatPoints(false) > 0 && ShowStationsButton->IsActive())
+					|| (ObjectFleet->IsAutoTrading() && ShowFreightersButton->IsActive()))
+				{
+					FilteredObjectList.Add(Object);
+				}
+				else if (ShowMilitaryButton->IsActive())
+				{
+					//todo: the fleet itself should know its cargo capacity
+					bool FoundFreighter = false;
+					for (UFlareSimulatedSpacecraft* Ship : ObjectFleet->GetShips())
+					{
+						if (Ship->GetActiveCargoBay()->GetCapacity() > 0)
+						{
+							FoundFreighter = true;
+							break;
+						}
+					}
+					if (FoundFreighter)
+					{
+						FilteredObjectList.Add(Object);
+					}
+				}
+			}
+
+/*
+	bool FilterMilitary = 
+	bool FilterCargo = ShowCargoButton->IsActive();
+	bool FilterAutoTrade = ;
+	bool FilterSector = SectorToggle->IsActive();
+
+		for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
+		{
+			UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
+
+			if (Fleet && Fleet->GetShips().Num() && FleetToEdit != Fleet)
+			{
+				if((Fleet->GetCombatPoints(false) > 0 && FilterMilitary)
+				|| (FleetToEdit&&FilterSector && FleetToEdit->GetCurrentSector() == Fleet->GetCurrentSector())
+				|| (Fleet->IsAutoTrading() && FilterAutoTrade))
+				{
+					List->AddFleet(Fleet);
+				}
+
+				//TODO make fleets aware of total cargo capacity of ships within as a simple var
+				else if (FilterCargo)
+				{
+					bool FoundFreighter = false;
+					for (UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
+					{
+						if (Ship->GetActiveCargoBay()->GetCapacity() > 0)
+						{
+							FoundFreighter = true;
+							break;
+						}
+					}
+					if (FoundFreighter)
+					{
+						List->AddFleet(Fleet);
+					}
+				}
+*/
+
+
 		}
 	}
 
@@ -359,6 +493,7 @@ void SFlareList::SetUseCompactDisplay(bool Status)
 void SFlareList::Reset()
 {
 	HasShips = false;
+	HasFleets = false;
 
 	ObjectList.Empty();
 	FilteredObjectList.Empty();
@@ -381,12 +516,28 @@ EVisibility SFlareList::GetNoObjectsVisibility() const
 
 EVisibility SFlareList::GetShipFiltersVisibility() const
 {
-	return (HasShips ? EVisibility::Visible : EVisibility::Hidden);
+	return ((HasShips||HasFleets) ? EVisibility::Visible : EVisibility::Hidden);
 }
+
+EVisibility SFlareList::GetFleetFiltersVisibility() const
+{
+	return (HasFleets ? EVisibility::Visible : EVisibility::Hidden);
+}
+
+
+
 
 EVisibility SFlareList::GetFleetFilterVisibility() const
 {
-	return (HasShips && MenuManager->GetCurrentMenu() != EFlareMenu::MENU_Fleet ? EVisibility::Visible : EVisibility::Hidden);
+	if (MenuManager->GetCurrentMenu() != EFlareMenu::MENU_Fleet)
+	{
+		return (HasShips ? EVisibility::Visible : EVisibility::Hidden);
+	}
+	else
+	{
+		UFlareFleet* FleetToEdit = MenuManager->GetFleetMenu()->GetFleetEditing();
+		return ((HasFleets&&FleetToEdit) ? EVisibility::Visible : EVisibility::Hidden);
+	}
 }
 
 TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable)

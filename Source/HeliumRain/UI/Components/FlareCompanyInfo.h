@@ -2,10 +2,8 @@
 
 #include "../../Flare.h"
 
-
 class UFlareCompany;
 class AFlarePlayerController;
-
 
 class SFlareCompanyInfo : public SCompoundWidget
 {
@@ -135,6 +133,4 @@ protected:
 	// Game data
 	AFlarePlayerController*                    Player;
 	UFlareCompany*                             Company;
-
-
 };

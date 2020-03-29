@@ -325,6 +325,12 @@ public:
 	/** Get the spacecraft menu */
 	TSharedPtr<SFlareShipMenu> GetShipMenu() const;
 
+	/** Get the Trade menu */
+	TSharedPtr<SFlareTradeMenu> GetTradeMenu() const;
+
+	/** Get the Leaderboard/Diplomacy menu */
+	TSharedPtr<SFlareLeaderboardMenu> GetLeaderboardMenu() const;
+	
 	/** Get the fading duration */
 	inline float GetFadeDuration() const
 	{
@@ -347,6 +353,12 @@ public:
 	TSharedPtr<SFlareTechnologyMenu> GetTechnologyMenu()
 	{
 		return TechnologyMenu;
+	}
+
+	/** Get fleet menu */
+	TSharedPtr<SFlareFleetMenu> GetFleetMenu()
+	{
+		return FleetMenu;
 	}
 
 	/** Get notifier */

@@ -48,6 +48,8 @@ struct FFlareSaveSlotInfo
 	FSlateBrush                EmblemBrush;
 
 	int32                      CompanyShipCount;
+	int32                      CompanyStationCount;
+	int32                      DifficultyID;
 	int64                      CompanyValue;
 	FText                      CompanyName;
 	FName                      UUID;
@@ -124,7 +126,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Create a new sandbox game */
-	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 PlayerEmblemIndex, bool PlayTutorial);
+	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations);
 
 	/** Create a new skirmish game */
 	void CreateSkirmishGame(UFlareSkirmishManager* Skirmish);
@@ -233,6 +235,8 @@ protected:
 	// Post process volume
 	UPROPERTY()
 	APostProcessVolume*                        PostProcessVolume;
+
+	FFlarePlayerSave*                          PlayerData;
 
 	/*----------------------------------------------------
 		Catalogs
@@ -368,6 +372,8 @@ public:
 	
 	const int32 GetCompanyCatalogCount() const;
 
+//	const int32 GetDifficulty() const;
+	
 	bool IsSkirmish() const;
 
 	inline UFlareSpacecraftCatalog* GetSpacecraftCatalog() const
@@ -435,6 +441,11 @@ public:
 		return SkirmishManager;
 	}
 
+	FFlarePlayerSave* GetPlayerData() const
+	{
+		return PlayerData;
+	}
+		
 	inline bool IsLoadedOrCreated() const
 	{
 		return LoadedOrCreated;

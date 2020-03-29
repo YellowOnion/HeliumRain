@@ -44,6 +44,7 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	float EmptyRatioBonus = 0;
 	bool  NeedInput = false;
 	bool  NeedOutput = false;
+	bool  Donation = false;
 
 	switch(Request.Operation)
 	{
@@ -76,6 +77,18 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 		case EFlareTradeRouteOperation::UnloadOrSell:
 			UnloadQuantityScoreMultiplier = 10.f;
 			SellQuantityScoreMultiplier = 1.f;
+			EmptyRatioBonus = 0.1;
+			NeedInput = true;
+		case EFlareTradeRouteOperation::Donate:
+			SellQuantityScoreMultiplier = 10.f;
+			EmptyRatioBonus = 0.1;
+			Donation = true;
+			NeedInput = true;
+			break;
+		case EFlareTradeRouteOperation::UnloadOrDonate:
+			UnloadQuantityScoreMultiplier = 10.f;
+			SellQuantityScoreMultiplier = 1.f;
+			Donation = true;
 			EmptyRatioBonus = 0.1;
 			NeedInput = true;
 		break;
@@ -199,13 +212,14 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 				ResourcePrice = Sector->GetTransfertResourcePrice(Station, NULL, Request.Resource);
 			}
 
+			if (!Donation)
+			{
+				uint32 MaxBuyableQuantity = Request.Client->GetCompany()->GetMoney() / SectorHelper::GetBuyResourcePrice(Sector, Request.Resource, ResourceUsage);
+				LoadMaxQuantity = FMath::Min(LoadMaxQuantity, MaxBuyableQuantity);
 
-
-			uint32 MaxBuyableQuantity = Request.Client->GetCompany()->GetMoney() / SectorHelper::GetBuyResourcePrice(Sector, Request.Resource, ResourceUsage);
-			LoadMaxQuantity = FMath::Min(LoadMaxQuantity , MaxBuyableQuantity);
-
-			uint32 MaxSellableQuantity = Station->GetCompany()->GetMoney() / SectorHelper::GetSellResourcePrice(Sector, Request.Resource, ResourceUsage);
-			UnloadMaxQuantity = FMath::Min(UnloadMaxQuantity , MaxSellableQuantity);
+				uint32 MaxSellableQuantity = Station->GetCompany()->GetMoney() / SectorHelper::GetSellResourcePrice(Sector, Request.Resource, ResourceUsage);
+				UnloadMaxQuantity = FMath::Min(UnloadMaxQuantity, MaxSellableQuantity);
+			}
 
 			Score += UnloadMaxQuantity * SellQuantityScoreMultiplier;
 			Score += LoadMaxQuantity * BuyQuantityScoreMultiplier;
@@ -221,6 +235,8 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 				  Score,
 				  BestScore)*/
 		}
+		else if(Station->IsShipyard())
+			Score *= 2;
 		else if(Station->HasCapability(EFlareSpacecraftCapability::Storage))
 		{
 			Score *= 0.01;
@@ -298,12 +314,11 @@ int64 SectorHelper::GetBuyResourcePrice(UFlareSimulatedSector* Sector, FFlareRes
 }
 
 
-int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice, UFlareTradeRoute* TradeRoute)
+int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice, UFlareTradeRoute* TradeRoute, bool IsDonation)
 {
 	FText Unused;
 
 	//FLOGV("Trade for %s", *Resource->Acronym.ToString());
-
 
 	if(TransactionPrice )
 	{
@@ -339,24 +354,89 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 	if (GivenResources > 0 && SourceSpacecraft->GetCompany() != DestinationSpacecraft->GetCompany())
 	{
 		int64 Price = ResourcePrice * GivenResources;
-		DestinationSpacecraft->GetCompany()->TakeMoney(Price, AllowDepts, FFlareTransactionLogEntry::LogBuyResource(SourceSpacecraft, DestinationSpacecraft, Resource, GivenResources, TradeRoute));
-		SourceSpacecraft->GetCompany()->GiveMoney(Price, FFlareTransactionLogEntry::LogSellResource(SourceSpacecraft, DestinationSpacecraft, Resource, GivenResources, TradeRoute));
 
-		if(TransactionPrice )
+		if (!IsDonation)
+
 		{
-			*TransactionPrice = Price;
+			DestinationSpacecraft->GetCompany()->TakeMoney(Price, AllowDepts, FFlareTransactionLogEntry::LogBuyResource(SourceSpacecraft, DestinationSpacecraft, Resource, GivenResources, TradeRoute));
+			SourceSpacecraft->GetCompany()->GiveMoney(Price, FFlareTransactionLogEntry::LogSellResource(SourceSpacecraft, DestinationSpacecraft, Resource, GivenResources, TradeRoute));
+			if (TransactionPrice)
+			{
+				*TransactionPrice = Price;
+			}
 		}
 
 		UFlareCompany* PlayerCompany = SourceSpacecraft->GetGame()->GetPC()->GetCompany();
 
 		if(SourceSpacecraft->GetCompany() == PlayerCompany && DestinationSpacecraft->GetCompany() != PlayerCompany)
 		{
-			DestinationSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * 0.01f, 100);
+			int32 GameDifficulty = -2;
+			GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+			float ReputationGain = 0.01f;
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				ReputationGain = 0.01f;
+				break;
+			case 0: // Normal
+				ReputationGain = 0.01f;
+				break;
+			case 1: // Hard
+				ReputationGain = 0.0075f;
+				break;
+			case 2: // Very Hard
+				ReputationGain = 0.0050f;
+				break;
+			case 3: // Expert
+				ReputationGain = 0.0125f;
+				break;
+			case 4: // Unfair
+				ReputationGain = 0.003125;
+				break;
+			}
+
+			if (IsDonation)
+			{
+				ReputationGain = ReputationGain * 1.50f;
+			}
+
+			DestinationSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * ReputationGain, 100);
 		}
 
 		if(DestinationSpacecraft->GetCompany() == PlayerCompany && SourceSpacecraft->GetCompany() != PlayerCompany)
 		{
-			SourceSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * 0.01f, 100);
+			int32 GameDifficulty = -2;
+			GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+			float ReputationGain = 0.01f;
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				ReputationGain = 0.01f;
+				break;
+			case 0: // Normal
+				ReputationGain = 0.01f;
+				break;
+			case 1: // Hard
+				ReputationGain = 0.0075f;
+				break;
+			case 2: // Very Hard
+				ReputationGain = 0.0050f;
+				break;
+			case 3: // Expert
+				ReputationGain = 0.0125f;
+				break;
+			case 4: // Unfair
+				ReputationGain = 0.003125;
+				break;
+
+			}
+
+			if (IsDonation)
+			{
+				ReputationGain = ReputationGain * 1.50f;
+			}
+
+			SourceSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * ReputationGain, 100);
 		}
 	}
 	
@@ -386,7 +466,6 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 	SourceSpacecraft->GetGame()->GetQuestManager()->OnTradeDone(SourceSpacecraft, DestinationSpacecraft, Resource, GivenResources);
 
 	//FLOGV("Trade GivenResources %d", GivenResources);
-
 	return GivenResources;
 
 }
@@ -466,6 +545,39 @@ bool SectorHelper::HasShipRefilling(UFlareSimulatedSector* TargetSector, UFlareC
 bool SectorHelper::HasShipRepairing(UFlareSimulatedSector* TargetSector, UFlareCompany* Company)
 {
 	for (UFlareSimulatedSpacecraft* Spacecraft : TargetSector->GetSectorSpacecrafts())
+	{
+		if (Company != Spacecraft->GetCompany()) {
+			continue;
+		}
+
+		if (Spacecraft->GetRepairStock() > 0 && Spacecraft->GetDamageSystem()->GetGlobalDamageRatio() < 1.f)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool SectorHelper::HasShipRefilling(TArray<UFlareSimulatedSpacecraft*>& Ships, UFlareCompany* Company)
+{
+	for (UFlareSimulatedSpacecraft* Spacecraft : Ships)
+	{
+		if (Company != Spacecraft->GetCompany()) {
+			continue;
+		}
+
+		if (Spacecraft->GetRefillStock() > 0 && Spacecraft->NeedRefill())
+		{
+			return true;
+		}
+
+	}
+	return false;
+}
+
+bool SectorHelper::HasShipRepairing(TArray<UFlareSimulatedSpacecraft*>& Ships, UFlareCompany* Company)
+{
+	for (UFlareSimulatedSpacecraft* Spacecraft : Ships)
 	{
 		if (Company != Spacecraft->GetCompany()) {
 			continue;
@@ -656,7 +768,7 @@ void SectorHelper::GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArr
 }
 
 
-void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company)
+void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSectorHelper_RepairFleets);
 	int32 CurrentNeededFleetSupply;
@@ -665,16 +777,23 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	int32 AvailableFS;
 	int32 AffordableFS;
 	int64 MaxDuration;
+	TArray<UFlareSimulatedSpacecraft *> ShipsLookingAt;
 
-
-	GetRepairFleetSupplyNeeds(Sector, Company, CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
-	GetAvailableFleetSupplyCount(Sector, Company, OwnedFS, AvailableFS, AffordableFS);
-
+	if(Fleet == nullptr)
+	{
+		GetRepairFleetSupplyNeeds(Sector, Company, CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
+		GetAvailableFleetSupplyCount(Sector, Company, OwnedFS, AvailableFS, AffordableFS);
+		ShipsLookingAt = Sector->GetSectorSpacecrafts();
+	}
+	else
+	{
+		SectorHelper::GetRepairFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
+		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		ShipsLookingAt = Fleet->GetShips();
+	}
 
 	// Note not available fleet supply as consumed
 	Sector->OnFleetSupplyConsumed(FMath::Max(0, TotalNeededFleetSupply - AvailableFS));
-
-
 
 	if(Sector->IsInDangerousBattle(Company) || AffordableFS == 0 || TotalNeededFleetSupply == 0)
 	{
@@ -687,10 +806,9 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	float RemainingFS = (float) AffordableFS;
 	UFlareSpacecraftComponentsCatalog* Catalog = Company->GetGame()->GetShipPartsCatalog();
 
-
-	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ShipsLookingAt.Num(); SpacecraftIndex++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
+		UFlareSimulatedSpacecraft* Spacecraft = ShipsLookingAt[SpacecraftIndex];
 
 		if (Company != Spacecraft->GetCompany() || !Spacecraft->GetDamageSystem()->IsAlive()) {
 			continue;
@@ -734,7 +852,7 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	}
 }
 
-void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company)
+void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSectorHelper_RefillFleets);
 
@@ -745,9 +863,20 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	int32 AffordableFS;
 	int64 MaxDuration;
 
-	GetRefillFleetSupplyNeeds(Sector, Company, CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
-	GetAvailableFleetSupplyCount(Sector, Company, OwnedFS, AvailableFS, AffordableFS);
+	TArray<UFlareSimulatedSpacecraft *> ShipsLookingAt;
 
+	if (Fleet == nullptr)
+	{
+		GetRefillFleetSupplyNeeds(Sector, Company, CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
+		GetAvailableFleetSupplyCount(Sector, Company, OwnedFS, AvailableFS, AffordableFS);
+		ShipsLookingAt = Sector->GetSectorSpacecrafts();
+	}
+	else
+	{
+		SectorHelper::GetRefillFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
+		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		ShipsLookingAt = Fleet->GetShips();
+	}
 
 	// Note not available fleet supply as consumed
 	Sector->OnFleetSupplyConsumed(FMath::Max(0, TotalNeededFleetSupply - AvailableFS));
@@ -762,9 +891,9 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	float RemainingFS = (float) AffordableFS;
 	UFlareSpacecraftComponentsCatalog* Catalog = Company->GetGame()->GetShipPartsCatalog();
 
-	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ShipsLookingAt.Num(); SpacecraftIndex++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
+		UFlareSimulatedSpacecraft* Spacecraft = ShipsLookingAt[SpacecraftIndex];
 
 		if (Company != Spacecraft->GetCompany() || !Spacecraft->GetDamageSystem()->IsAlive()) {
 			continue;

@@ -13,6 +13,7 @@
 
 #include "../Player/FlarePlayerController.h"
 
+
 #include "FlareQuestManager.h"
 #include "FlareQuestCondition.h"
 #include "FlareQuest.h"
@@ -625,6 +626,46 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 
 	int32 ClientResearch = Client->GetResearchValue();
 	int32 PlayerResearch = Client->GetGame()->GetPC()->GetCompany()->GetResearchValue();
+	FFlarePlayerSave* PlayerData = Client->GetGame()->GetPC()->GetPlayerData();
+	int32 GameDifficulty = -1;
+	if (PlayerData) 
+	{
+		GameDifficulty = PlayerData->DifficultyId;
+	}
+
+	float DifficultyModifier = 1.0f;
+	float PenaltyModifier = 1.0f;
+	
+	switch (GameDifficulty)
+	{
+		case -1: // Easy
+			DifficultyModifier = 1.10f;
+			PenaltyModifier = 1.00f;
+			break;
+		case 0: // Normal
+			DifficultyModifier = 1.0f;
+			PenaltyModifier = 1.0f;
+			break;
+		case 1: // Hard
+			DifficultyModifier = 0.80f;
+			PenaltyModifier = 0.70f;
+			break;
+		case 2: // Very Hard
+			DifficultyModifier = 0.70f;
+			PenaltyModifier = 0.55f;
+			break;
+		case 3: // Expert
+			DifficultyModifier = 0.50f;
+			PenaltyModifier = 0.30f;
+			break;
+		case 4: // Unfair
+			DifficultyModifier = 0.30f;
+			PenaltyModifier = 0.10f;
+			break;
+
+	}
+
+	QuestValue = QuestValue * DifficultyModifier;
 
 	if(ClientResearch > PlayerResearch)
 	{
@@ -652,8 +693,9 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 	}
 
 	// Reputation reward and penalty
+//	Data.PutInt32("reward-reputation", GameDifficulty);
 	Data.PutInt32("reward-reputation", FMath::Sqrt(QuestValue / 10000));
-	Data.PutInt32("penalty-reputation", -FMath::Sqrt(QuestValue / 1000));
+	Data.PutInt32("penalty-reputation", -FMath::Sqrt(QuestValue / (1000 * PenaltyModifier)));
 }
 
 void UFlareQuestGenerated::AddGlobalFailCondition(UFlareQuestCondition* Condition)

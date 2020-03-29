@@ -182,7 +182,7 @@ protected:
 
 	/** Sectors */
 	UPROPERTY()
-	TArray<UFlareSimulatedSector*>                 Sectors;
+	TArray<UFlareSimulatedSector*>        Sectors;
 
 	/** Companies */
 	UPROPERTY()
@@ -192,13 +192,17 @@ protected:
 	UPROPERTY()
 	TArray<UFlareFactory*>                Factories;
 
+	/** Shipyards */
+	UPROPERTY()
+	TArray<UFlareSimulatedSpacecraft*>    Shipyards;
+
 	UPROPERTY()
 	TArray<UFlareTravel*>                Travels;
 
 	UPROPERTY()
-	UFlareSimulatedPlanetarium*			Planetarium;
+	UFlareSimulatedPlanetarium*			 Planetarium;
 
-	AFlareGame*                             Game;
+	AFlareGame*                          Game;
 
 	bool WorldMoneyReferenceInit;
 
@@ -233,6 +237,11 @@ public:
 	inline TArray<UFlareSimulatedSector*>& GetSectors()
 	{
 		return Sectors;
+	}
+
+	inline TArray<UFlareSimulatedSpacecraft*>& GetShipyards()
+	{
+		return Shipyards;
 	}
 
 	inline TArray<UFlareTravel*>& GetTravels()

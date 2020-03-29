@@ -174,7 +174,7 @@ void SFlareMainMenu::Construct(const FArguments& InArgs)
 							.Padding(Theme.ContentPadding)
 							[
 								SNew(STextBlock)
-								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.3 / {0} / \u00A9 DEIMOS GAMES 2018"),
+								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.3.7 / {0} / \u00A9 DEIMOS GAMES 2018"),
 									MenuManager->GetGame()->GetBuildDate())) // FString neded here
 								.TextStyle(&Theme.TextFont)
 							]
@@ -340,8 +340,11 @@ const FSlateBrush* SFlareMainMenu::GetBackgroundBrush() const
 FText SFlareMainMenu::GetText(int32 Index) const
 {
 	FText CompanyText;
+	FText DifficultyText;
 	FText MoneyText;
 	FText ShipText;
+	FText StationText;
+	bool ShowDifficulty = 0;
 
 	if (Game->DoesSaveSlotExist(Index))
 	{
@@ -351,10 +354,56 @@ FText SFlareMainMenu::GetText(int32 Index) const
 		CompanyText = SaveSlotInfo.CompanyName;
 		ShipText = FText::Format(LOCTEXT("ShipInfoFormat", "{0} {1}"),
 			FText::AsNumber(SaveSlotInfo.CompanyShipCount), (SaveSlotInfo.CompanyShipCount == 1 ? LOCTEXT("Ship", "ship") : LOCTEXT("Ships", "ships")));
+
+		if (SaveSlotInfo.CompanyStationCount >= 1)
+		{
+			StationText = FText::Format(LOCTEXT("StationInfoFormat", "{0} {1}"),
+				FText::AsNumber(SaveSlotInfo.CompanyStationCount), (SaveSlotInfo.CompanyStationCount == 1 ? LOCTEXT("Stations", "station") : LOCTEXT("Stations", "stations")));
+		}
+		else
+		{
+			StationText = LOCTEXT("StationNoneFormat", "No stations");
+		}
+
+		switch (SaveSlotInfo.DifficultyID)
+		{
+			case -1: // Easy
+				DifficultyText = LOCTEXT("Easy", "Easy");
+				ShowDifficulty = 1;
+				break;
+			case 0: // Normal
+				DifficultyText = LOCTEXT("Normal", "Normal");
+				ShowDifficulty = 1;
+				break;
+			case 1: // Hard
+				DifficultyText = LOCTEXT("Hard", "Hard");
+				ShowDifficulty = 1;
+				break;
+			case 2: // Very Hard
+				DifficultyText = LOCTEXT("VeryHard", "Very Hard");
+				ShowDifficulty = 1;
+				break;
+			case 3: // Expert
+				DifficultyText = LOCTEXT("Expert", "Expert");
+				ShowDifficulty = 1;
+				break;
+			case 4: // Unfair
+				DifficultyText = LOCTEXT("Unfair", "Unfair");
+				ShowDifficulty = 1;
+				break;
+		}
+
 		MoneyText = FText::Format(LOCTEXT("Valuation", "Valued at {0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(SaveSlotInfo.CompanyValue)));
 	}
 
-	return FText::Format(LOCTEXT("SaveInfoFormat", "{0}\n{1}\n{2}\n"), CompanyText, MoneyText, ShipText);
+	if (ShowDifficulty)
+	{
+		return FText::Format(LOCTEXT("SaveInfoFormat", "{0}\nDifficulty: {1}\n{2}\n{3}, {4}\n"), CompanyText, DifficultyText, MoneyText, StationText, ShipText);
+	}
+	else
+	{
+		return FText::Format(LOCTEXT("SaveInfoFormat", "{0}\n{1}\n{2}\n\n"), CompanyText, MoneyText, ShipText);
+	}
 }
 
 const FSlateBrush* SFlareMainMenu::GetSaveIcon(int32 Index) const

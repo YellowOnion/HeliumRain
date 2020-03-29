@@ -44,6 +44,23 @@ public:
 	/** Update the ship list */
 	void UpdateShipList(UFlareFleet* Fleet);
 
+	/** Get the refill text */
+	FText GetRefillText() const;
+
+	/** Visibility setting for the refill button */
+	bool IsRefillDisabled() const;
+
+	/** Refill all fleets */
+	void OnRefillClicked();
+
+	/** Get the repair text */
+	FText GetRepairText() const;
+
+	/** Visibility setting for the repair button */
+	bool IsRepairDisabled() const;
+
+	/** Repair all fleets */
+	void OnRepairClicked();
 
 protected:
 
@@ -75,6 +92,17 @@ protected:
 	/** Get hue value */
 	float GetColorSpinBoxValue() const;
 
+	/** Get the trade route hint text */
+	FText GetInspectTradeRouteHintText() const;
+
+	/** Can we inspect the trade route */
+	bool IsInspectTradeRouteDisabled() const;
+
+	/** Get the auto-trade hint text */
+	FText GetAutoTradeHintText() const;
+
+	/** Can we toggle auto trade */
+	bool IsAutoTradeDisabled() const;
 
 	/*----------------------------------------------------
 		Action callbacks
@@ -101,6 +129,14 @@ protected:
 	/** Hue value changed */
 	void OnColorSpinBoxValueChanged(float NewValue);
 
+	/** Filters toggled on/off */
+	void OnToggleShowFlags();
+
+	/** Open the trade route menu */
+	void OnOpenTradeRoute();
+
+	/** Toggle auto-trading */
+	void OnToggleAutoTrade();
 
 protected:
 
@@ -120,8 +156,17 @@ protected:
 	// Menu components
 	TSharedPtr<SFlareList>                          ShipList;
 	TSharedPtr<SFlareList>                          FleetList;
-	TSharedPtr<SFlareList>                          OtherFleetList;
+//	TSharedPtr<SFlareList>                          OtherFleetList;
 	TSharedPtr<SEditableText>                       EditFleetName;
-	
 
+	TSharedPtr<SFlareButton>						TradeRouteButton;
+	TSharedPtr<SFlareButton>				        AutoTradeButton;
+	TSharedPtr<SFlareButton>					    RefillButton;
+	TSharedPtr<SFlareButton>					    RepairButton;
+
+public:
+	UFlareFleet* GetFleetEditing() const
+	{
+		return FleetToEdit;
+	}
 };

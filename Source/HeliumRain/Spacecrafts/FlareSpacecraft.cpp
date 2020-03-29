@@ -28,6 +28,8 @@
 
 #include "../UI/Menus/FlareShipMenu.h"
 
+#include "../UI/Menus/FlareTradeMenu.h"
+
 #include "Components/DecalComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/CanvasRenderTarget2D.h"
@@ -35,6 +37,7 @@
 #include "EngineUtils.h"
 #include "Engine.h"
 
+#include "../Game/FlareSectorHelper.h"
 
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Systems"), STAT_FlareSpacecraft_Systems, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Player"), STAT_FlareSpacecraft_PlayerShip, STATGROUP_Flare);
@@ -1483,13 +1486,103 @@ void AFlareSpacecraft::OnRefilled()
 	}
 }
 
-void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser)
+void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation)
 {
 	// Signal the PC
 	AFlarePlayerController* PC = GetPC();
-	if (IsFlownByPlayer() && PC)
+	bool FlewByPlayer = false;
+	if (PC && IsFlownByPlayer())
 	{
+		FlewByPlayer = true;
 		PC->NotifyDockingComplete(DockStation, TellUser);
+	}
+
+	if (TransactionResource&&TransactionQuantity&&SourceSpacecraft&&DestinationSpacecraft)
+		// this ship was told to do a manual insector trade
+	{
+
+		UFlareSimulatedSpacecraft* ShipSimmed = GetParent();
+		UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
+
+		int32 Quantity = SectorHelper::Trade(
+			SourceSpacecraft,
+			DestinationSpacecraft,
+			TransactionResource,
+			TransactionQuantity,
+			NULL, NULL, TransactionDonation);
+
+		FText TradeStatus = FText();
+
+		if (PC->GetCompany() == StationSimmed->GetCompany())
+		{
+			TradeStatus = FText(LOCTEXT("TradeInfoTransfer", "Traded"));
+		}
+
+		else if (DestinationSpacecraft == StationSimmed)
+		{
+			if (TransactionDonation)
+			{
+				TradeStatus = FText(LOCTEXT("TradeInfoSell", "Donated"));
+			}
+			else
+			{
+				TradeStatus = FText(LOCTEXT("TradeInfoSell", "Sold"));
+			}
+		}
+		else
+		{
+			TradeStatus = FText(LOCTEXT("TradeInfoSell", "Bought"));
+		}
+
+		FText FirstHalf;
+
+		if (!FlewByPlayer)
+		{
+			FirstHalf = FText::Format(LOCTEXT("LocalTradeFormat", "{0} is now docked at {1}\n"),
+				UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
+				UFlareGameTools::DisplaySpacecraftName(StationSimmed)
+				);
+		}
+
+	FText Formatted = FText::Format(LOCTEXT("LocalTradeSuccess", "{0}{1} {2} {3}"),
+		FirstHalf,
+		TradeStatus,
+		FText::AsNumber(Quantity),
+		TransactionResource->Name);
+
+		PC->Notify(
+			LOCTEXT("RemoteTradeSuccess", "Remote Trade Info"),
+			Formatted,
+//			"docking-success",
+			"trade-success",
+			EFlareNotification::NT_Info);
+
+//		PlayerMenu->ExitMenu();
+
+		AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
+		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)
+		{
+			UFlareSimulatedSpacecraft* LeftShip = PlayerMenu->GetTradeMenu()->GetTargetLeftShip();
+			UFlareSimulatedSpacecraft* RightShip = PlayerMenu->GetTradeMenu()->GetTargetRightShip();
+
+			if (LeftShip == ShipSimmed)
+			{
+				bool Successfulrefresh = PlayerMenu->GetTradeMenu()->GetRefreshTradeBlocks();
+				/*
+							PC->Notify(
+								LOCTEXT("RemoteTradeSuccess", "Trade Menu exists, all criteria is met"),
+								Formatted,
+								"docking-success",
+								EFlareNotification::NT_Info);
+				*/
+			}
+
+			TransactionResource = NULL;
+			TransactionQuantity = NULL;
+			SourceSpacecraft = NULL;
+			DestinationSpacecraft = NULL;
+			TransactionDonation = 0;
+		}
 	}
 }
 

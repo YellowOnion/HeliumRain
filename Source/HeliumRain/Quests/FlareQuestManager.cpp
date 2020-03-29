@@ -117,6 +117,14 @@ void UFlareQuestManager::AddQuest(UFlareQuest* Quest)
 		OldQuests.Add(Quest);
 		Quest->SetStatus(EFlareQuestStatus::SUCCESSFUL);
 	}
+
+	else if (Quest->GetQuestCategory() == EFlareQuestCategory::HISTORY && !QuestData.PlayStory)
+	{
+		FLOGV("Found skipped story quest %s", *Quest->GetIdentifier().ToString());
+		OldQuests.Add(Quest);
+		Quest->SetStatus(EFlareQuestStatus::SUCCESSFUL);
+	}
+
 	else if (QuestProgressIndex != INDEX_NONE)
 	{
 		// Active quests

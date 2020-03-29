@@ -15,7 +15,7 @@ class HELIUMRAIN_API UFlareSaveReaderV1: public UObject
 	GENERATED_UCLASS_BODY()
 
 public:
-	UFlareSaveGame* LoadGame(TSharedPtr< FJsonObject > GameObject);
+	UFlareSaveGame* LoadGame(TSharedPtr< FJsonObject > GameObject, AFlareGame* Game_);
 
 protected:
 	/*----------------------------------------------------
@@ -66,6 +66,7 @@ protected:
 	void LoadResourcePrice(const TSharedPtr<FJsonObject> Object, FFFlareResourcePrice* Data);
 	void LoadTravel(const TSharedPtr<FJsonObject> Object, FFlareTravelSave* Data);
 
+	AFlareGame*                              FlareGame;
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/

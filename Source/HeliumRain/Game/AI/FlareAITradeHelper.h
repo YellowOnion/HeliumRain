@@ -62,7 +62,8 @@ struct AITradeNeed
 	UFlareSimulatedSpacecraft* Station;
 	size_t SourceFunctionIndex;
 	bool Maintenance;
-	bool HighPriority;
+//	bool HighPriority;
+	int32 HighPriority;
 
 	void Consume(int UsedQuantity);
 };

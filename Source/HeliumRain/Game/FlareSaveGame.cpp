@@ -11,4 +11,3 @@ UFlareSaveGame::UFlareSaveGame(const class FObjectInitializer& PCIP)
 	: Super(PCIP)
 {
 }
-

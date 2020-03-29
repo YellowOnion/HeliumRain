@@ -414,165 +414,6 @@ struct FFlareFactorySave
 	FName TargetShipCompany;
 };
 
-/** Spacecraft save data */
-USTRUCT()
-struct FFlareSpacecraftSave
-{
-	GENERATED_USTRUCT_BODY()
-
-	/** Destroyed state */
-	UPROPERTY(EditAnywhere, Category = Save)
-	bool IsDestroyed;
-
-	/** Destroyed state */
-	UPROPERTY(EditAnywhere, Category = Save)
-	bool IsUnderConstruction;
-
-	/** Ship location */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FVector Location;
-
-	/** Ship rotation */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FRotator Rotation;
-
-	/** The spawn mode of the ship. */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TEnumAsByte<EFlareSpawnMode::Type> SpawnMode;
-
-	/** Ship linear velocity */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FVector LinearVelocity;
-
-	/** Ship angular velocity */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FVector AngularVelocity;
-
-	/** Ship immatriculation. Readable for the player */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName Immatriculation;
-
-	/** Ship nickname. Readable for the player */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FText NickName;
-
-	/** Ship catalog identifier */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName Identifier;
-
-	/** Ship company identifier */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName CompanyIdentifier;
-
-	/** Components list */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TArray<FFlareSpacecraftComponentSave> Components;
-
-	/** We are docked at this station */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName DockedTo;
-
-	/** We are docked at this specific dock */
-	UPROPERTY(EditAnywhere, Category = Save)
-	int32 DockedAt;
-
-	/** We are docked at this specific dock */
-	UPROPERTY(EditAnywhere, Category = Save)
-	float DockedAngle;
-
-	/** Accululated heat in KJ */
-	UPROPERTY(EditAnywhere, Category = Save)
-	float Heat;
-
-	/** Duration until the end of the power outage, in seconds */
-	UPROPERTY(EditAnywhere, Category = Save)
-	float PowerOutageDelay;
-
-	/** Pending power outage downtime, in seconds */
-	UPROPERTY(EditAnywhere, Category = Save)
-	float PowerOutageAcculumator;
-	
-	/** Pilot */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FFlareShipPilotSave Pilot;
-
-	/** Production Cargo bay content */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TArray<FFlareCargoSave> ProductionCargoBay;
-
-	/** Construction Cargo bay content */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TArray<FFlareCargoSave> ConstructionCargoBay;
-
-	/** Factory states */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TArray<FFlareFactorySave> FactoryStates;
-	
-	/** Asteroid we're stuck to */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FFlareAsteroidSave AsteroidData;
-
-	/** Factory states */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TArray<FName> SalesExcludedResources;
-
-	/** Current state identifier */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName DynamicComponentStateIdentifier;
-
-	/** Current state progress */
-	UPROPERTY(EditAnywhere, Category = Save)
-	float DynamicComponentStateProgress;
-
-	/** Station current level */
-	int32 Level;
-
-	/** Is a trade in progress */
-	bool IsTrading;
-
-	/** Is ship intercepted */
-	bool IsIntercepted;
-
-	/** Resource refill stock */
-	float RepairStock;
-
-	/** Resource refill stock */
-	float RefillStock;
-
-
-	/** Company that harpooned us */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName HarpoonCompany;
-
-	/** Current capture points */
-	UPROPERTY(EditAnywhere, Category = Save)
-	TMap<FName, int32> CapturePoints;
-
-	/** Actor to attach to */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName AttachActorName;
-
-	/** Station complex to attach to */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName AttachComplexStationName;
-
-	/** Station complex dock to attach to */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName AttachComplexConnectorName;
-	
-	/** Is a in sector reserve */
-	bool IsReserve;
-
-	/** Allow other company to order ships */
-	bool AllowExternalOrder;
-
-	/** List of ship order */
-	TArray<FFlareShipyardOrderSave> ShipyardOrderQueue;
-
-	/** List of connected stations */
-	TArray<FFlareConnectionSave> ConnectedStations;
-};
-
 /** Catalog binding between FFlareSpacecraftDescription and FFlareSpacecraftComponentDescription structure */
 USTRUCT()
 struct FFlareSpacecraftSlotGroupDescription
@@ -782,7 +623,6 @@ struct FFlareFactoryDescription
 		}
 		return false;
 	}
-
 };
 
 /** Catalog data structure for a spacecraft */
@@ -909,11 +749,175 @@ struct FFlareSpacecraftDescription
 
 	bool IsStation() const;
 
+	bool IsShipyard() const;
+
 	bool IsMilitary() const;
 
 	bool IsResearch() const;
 
 	static const FSlateBrush* GetIcon(FFlareSpacecraftDescription* Characteristic);
+};
+
+/** Spacecraft save data */
+USTRUCT()
+struct FFlareSpacecraftSave
+{
+	GENERATED_USTRUCT_BODY()
+
+		/** Destroyed state */
+		UPROPERTY(EditAnywhere, Category = Save)
+		bool IsDestroyed;
+
+	/** Destroyed state */
+	UPROPERTY(EditAnywhere, Category = Save)
+		bool IsUnderConstruction;
+
+	/** Ship location */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FVector Location;
+
+	/** Ship rotation */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FRotator Rotation;
+
+	/** The spawn mode of the ship. */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TEnumAsByte<EFlareSpawnMode::Type> SpawnMode;
+
+	/** Ship linear velocity */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FVector LinearVelocity;
+
+	/** Ship angular velocity */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FVector AngularVelocity;
+
+	/** Ship immatriculation. Readable for the player */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName Immatriculation;
+
+	/** Ship nickname. Readable for the player */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FText NickName;
+
+	/** Ship catalog identifier */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName Identifier;
+
+	/** Ship company identifier */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName CompanyIdentifier;
+
+	/** Components list */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TArray<FFlareSpacecraftComponentSave> Components;
+
+	/** We are docked at this station */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName DockedTo;
+
+	/** We are docked at this specific dock */
+	UPROPERTY(EditAnywhere, Category = Save)
+		int32 DockedAt;
+
+	/** We are docked at this specific dock */
+	UPROPERTY(EditAnywhere, Category = Save)
+		float DockedAngle;
+
+	/** Accululated heat in KJ */
+	UPROPERTY(EditAnywhere, Category = Save)
+		float Heat;
+
+	/** Duration until the end of the power outage, in seconds */
+	UPROPERTY(EditAnywhere, Category = Save)
+		float PowerOutageDelay;
+
+	/** Pending power outage downtime, in seconds */
+	UPROPERTY(EditAnywhere, Category = Save)
+		float PowerOutageAcculumator;
+
+	/** Pilot */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FFlareShipPilotSave Pilot;
+
+	/** Production Cargo bay content */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TArray<FFlareCargoSave> ProductionCargoBay;
+
+	/** Construction Cargo bay content */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TArray<FFlareCargoSave> ConstructionCargoBay;
+
+	/** Factory states */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TArray<FFlareFactorySave> FactoryStates;
+
+	/** Asteroid we're stuck to */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FFlareAsteroidSave AsteroidData;
+
+	/** Factory states */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TArray<FName> SalesExcludedResources;
+
+	/** Current state identifier */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName DynamicComponentStateIdentifier;
+
+	/** Current state progress */
+	UPROPERTY(EditAnywhere, Category = Save)
+		float DynamicComponentStateProgress;
+
+	/** Station current level */
+	int32 Level;
+
+	/** Is a trade in progress */
+	bool IsTrading;
+
+	/** Is ship intercepted */
+	bool IsIntercepted;
+
+	/** Resource refill stock */
+	float RepairStock;
+
+	/** Resource refill stock */
+	float RefillStock;
+
+	/** Company that harpooned us */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName HarpoonCompany;
+
+	/** Current capture points */
+	UPROPERTY(EditAnywhere, Category = Save)
+		TMap<FName, int32> CapturePoints;
+
+	/** Actor to attach to */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName AttachActorName;
+
+	/** Station complex to attach to */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName AttachComplexStationName;
+
+	/** Station complex dock to attach to */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName AttachComplexConnectorName;
+
+	/** Is a in sector reserve */
+	bool IsReserve;
+
+	/** Allow other company to order ships */
+	bool AllowExternalOrder;
+
+	/** List of ship order */
+	TArray<FFlareShipyardOrderSave> ShipyardOrderQueue;
+
+	/** List of connected stations */
+	TArray<FFlareConnectionSave> ConnectedStations;
+
+	//	/** List of ship order */
+	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FName> ShipyardOrderExternalConfig;
 };
 
 struct SpacecraftHelper

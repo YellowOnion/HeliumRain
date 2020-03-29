@@ -140,7 +140,6 @@ protected:
 
 	EVisibility GetWaitLimitVisibility() const;
 
-
 	/*----------------------------------------------------
 		Actions callbacks
 	----------------------------------------------------*/
@@ -191,7 +190,6 @@ protected:
 	void OnInventoryLimitEntered(const FText& TextValue);
 	void OnWaitLimitChanged(float Value);
 
-	
 	/** Load the current resource */
 	void OnAddOperationClicked(UFlareSimulatedSector* Sector);
 	
@@ -244,6 +242,8 @@ protected:
 	TSharedPtr<SSlider>                                WaitLimitSlider;
 	TSharedPtr<SEditableText>                          QuantityLimitText;
 	TSharedPtr<SEditableText>                          InventoryLimitText;
+
+	TSharedPtr<SFlareButton>                           DonateButton;
 
 	// Deals
 	TSharedPtr<SHorizontalBox>                         EditSuggestedPurchasesBox;

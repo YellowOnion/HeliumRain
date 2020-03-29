@@ -96,5 +96,6 @@ protected:
 	float                                   TooltipCurrentAlpha;
 	FVector2D                               CurrentMousePos;
 
-
+public:
+	FVector2D								ViewPortSize;
 };

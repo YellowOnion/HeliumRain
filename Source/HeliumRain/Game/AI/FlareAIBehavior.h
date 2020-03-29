@@ -25,7 +25,7 @@ public:
 
 	virtual void Simulate();
 
-	void UpdateDiplomacy();
+	void UpdateDiplomacy(bool GlobalWar);
 
 protected:
 
@@ -106,8 +106,33 @@ public:
 	float PacifismIncrementRate;
 	float PacifismDecrementRate;
 
-	bool ProposeTributeToPlayer = false;
+	float DailyProductionCostSensitivityMilitary;
+	float DailyProductionCostSensitivityEconomic;
 
+	float CostSafetyMarginMilitaryShip;
+	float CostSafetyMarginTradeShip;
+	float CostSafetyMarginStation;
+
+	//once past this level of ships switch to only building L sized
+	int32 BuildLTradeOnlyTreshhold;
+	int32 BuildLMilitaryOnlyTreshhold;
+
+	int32 BuildMilitaryDiversity;
+	int32 BuildTradeDiversity;
+
+	int32 BuildMilitaryDiversitySize;
+	int32 BuildTradeDiversitySize;
+	int32 BuildMilitaryDiversitySizeBase;
+	int32 BuildTradeDiversitySizeBase;
+
+	float BuildEfficientMilitaryChance;
+	float BuildEfficientTradeChance;
+	float BuildEfficientMilitaryChanceSmall;
+	float BuildEfficientTradeChanceSmall;
+
+	bool ProposeTributeToPlayer = false;
+	bool FinishedResearch = false;
+	TArray<FName> ResearchOrder;
 
 	/*----------------------------------------------------
 		Getters

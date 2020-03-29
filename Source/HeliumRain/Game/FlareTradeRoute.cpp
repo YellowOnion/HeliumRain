@@ -79,7 +79,6 @@ void UFlareTradeRoute::Simulate()
 	// Not travelling, check if the fleet is in a trade route sector
 	UFlareSimulatedSector* CurrentSector = TradeRouteFleet->GetCurrentSector();
 
-
 	if (TargetSector == CurrentSector)
 	{
 		// In the target sector
@@ -202,20 +201,24 @@ bool UFlareTradeRoute::ProcessCurrentOperation(FFlareTradeRouteSectorOperationSa
 
 	// Return true if : limit reach or all ship full/empty or buy and no money or sell and nobody has money
 
-	switch (Operation->Type) {
-	case EFlareTradeRouteOperation::Buy:
-	case EFlareTradeRouteOperation::Load:
-	case EFlareTradeRouteOperation::LoadOrBuy:
+	switch (Operation->Type)
+	{
+		case EFlareTradeRouteOperation::Buy:
+		case EFlareTradeRouteOperation::Load:
+		case EFlareTradeRouteOperation::LoadOrBuy:
 			return ProcessLoadOperation(Operation);
-		break;
-	case EFlareTradeRouteOperation::Sell:
-	case EFlareTradeRouteOperation::Unload:
-	case EFlareTradeRouteOperation::UnloadOrSell:
+			break;
+		case EFlareTradeRouteOperation::Donate:
+		case EFlareTradeRouteOperation::UnloadOrDonate:
+		case EFlareTradeRouteOperation::Sell:
+		case EFlareTradeRouteOperation::Unload:
+		case EFlareTradeRouteOperation::UnloadOrSell:
 			return ProcessUnloadOperation(Operation);
-		break;
-	default:
-		FLOGV("ERROR: Unknown trade route operation (%d)", (Operation->Type + 0));
-		break;
+			break;
+
+		default:
+			FLOGV("ERROR: Unknown trade route operation (%d)", (Operation->Type + 0));
+			break;
 	}
 	return true;
 }
@@ -383,12 +386,20 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 		return true;
 	}
 
+
 	SectorHelper::FlareTradeRequest Request;
 	Request.Resource = Resource;
 	Request.Operation = Operation->Type;
 	Request.CargoLimit = -1;
 	Request.MaxQuantity = Operation->MaxQuantity;
 	Request.AllowStorage = Operation->CanTradeWithStorages;
+
+	bool IsDonation = false;
+
+	if (Operation->Type == EFlareTradeRouteOperation::Donate || Operation->Type == EFlareTradeRouteOperation::UnloadOrDonate)
+	{
+		IsDonation = true;
+	}
 
 	for (UFlareSimulatedSpacecraft* Ship : UsefullShips)
 	{
@@ -398,7 +409,7 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 			// Skip trading ships
 			continue;
 		}
-
+		
 		Request.Client = Ship;
 		Request.MaxQuantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
 		if (Operation->MaxQuantity !=-1)
@@ -416,15 +427,19 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 		if (StationCandidate)
 		{
 			int64 TransactionPrice;
-			int32 Quantity = SectorHelper::Trade(Ship, StationCandidate, Resource, Request.MaxQuantity, &TransactionPrice, this);
+			int32 Quantity = SectorHelper::Trade(Ship, StationCandidate, Resource, Request.MaxQuantity, &TransactionPrice, this, IsDonation);
 			TradeRouteData.CurrentOperationProgress += Quantity;
+
+			if(!IsDonation)
+			{
+				TradeRouteData.StatsMoneySell += TransactionPrice;
+			}
 
 			if (TradeRouteCompany == GetGame()->GetPC()->GetCompany())
 			{
 				Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("trade-route-transaction").PutInt32("money-variation", TransactionPrice));
 			}
 
-			TradeRouteData.StatsMoneySell += TransactionPrice;
 			TradeRouteData.StatsUnloadResources += Quantity;
 
 			if(Quantity == 0)
@@ -861,7 +876,7 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 
 	auto IsUseful = [](FFlareResourceUsage Usage, EFlareTradeRouteOperation::Type OperationType, bool Owned)
 	{
-		if(Owned && (OperationType == EFlareTradeRouteOperation::Buy || OperationType == EFlareTradeRouteOperation::Sell))
+		if(Owned && (OperationType == EFlareTradeRouteOperation::Buy || OperationType == EFlareTradeRouteOperation::Sell || OperationType == EFlareTradeRouteOperation::Donate))
 		{
 			return false;
 		}
@@ -898,7 +913,9 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 
 		bool UnloadOperation = (Operation.Type == EFlareTradeRouteOperation::Unload
 							  || Operation.Type == EFlareTradeRouteOperation::Sell
-							  || Operation.Type == EFlareTradeRouteOperation::UnloadOrSell);
+							  || Operation.Type == EFlareTradeRouteOperation::UnloadOrSell
+							  || Operation.Type == EFlareTradeRouteOperation::Donate
+							  || Operation.Type == EFlareTradeRouteOperation::UnloadOrDonate);
 
 
 		int32 ResourceCount = TradeRouteFleet->GetFleetResourceQuantity(Resource);

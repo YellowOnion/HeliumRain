@@ -72,6 +72,7 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(CompanyInfo, SFlareCompanyInfo)
 						.Player(PC)
+//						.Company(PC->GetCompany())
 					]
 				]
 
@@ -584,6 +585,7 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 		{
 			EmblemPicker->AddItem(SNew(SImage).Image(CustomizationCatalog->GetEmblemBrush(i)));
 		}
+
 		EmblemPicker->SetSelectedIndex(PC->GetPlayerData()->PlayerEmblemIndex);
 
 		// Menu
@@ -639,6 +641,7 @@ void SFlareCompanyMenu::Exit()
 	ShipList->SetVisibility(EVisibility::Collapsed);
 
 	EmblemPicker->ClearItems();
+//	DifficultyPicker->ClearItems();
 	TradeRouteInfo->Clear();
 	CompanyLog->ClearChildren();
 	CompanyAccounting->ClearChildren();

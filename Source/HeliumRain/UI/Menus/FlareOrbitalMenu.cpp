@@ -284,7 +284,11 @@ void SFlareOrbitalMenu::Enter()
 	
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
-	DisplayMode = EFlareOrbitalMode::Fleets;
+
+	if (!DisplayMode)
+	{
+		DisplayMode = EFlareOrbitalMode::Fleets;
+	}
 
 	// Update stuff
 	StopFastForward();
@@ -451,6 +455,16 @@ EFlareOrbitalMode::Type SFlareOrbitalMenu::GetDisplayMode() const
 	return DisplayMode;
 }
 
+float SFlareOrbitalMenu::GetTimeSinceFFWD() const
+{
+	return TimeSinceFastForward;
+}
+
+bool SFlareOrbitalMenu::GetFastForwardActive() const
+{
+	return FastForwardActive;
+}
+
 bool SFlareOrbitalMenu::IsCurrentDisplayMode(EFlareOrbitalMode::Type Mode) const
 {
 	return (Mode == GetDisplayMode());
@@ -593,11 +607,13 @@ FText SFlareOrbitalMenu::GetTravelText() const
 
 	return FText();
 }
-
+/*
+//not used anymore??
 FVector2D SFlareOrbitalMenu::GetWidgetPosition(int32 Index) const
 {
 	return FVector2D(1920, 1080) / 2;
 }
+*/
 
 FVector2D SFlareOrbitalMenu::GetWidgetSize(int32 Index) const
 {

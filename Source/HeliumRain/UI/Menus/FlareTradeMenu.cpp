@@ -8,6 +8,7 @@
 #include "../../Game/FlareGame.h"
 #include "../../Game/FlareSectorHelper.h"
 #include "../../Game/FlareGameTools.h"
+#include "../../Player/FlareHUD.h"
 
 #include "../../Economy/FlareCargoBay.h"
 
@@ -75,6 +76,7 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							.Text(this, &SFlareTradeMenu::GetLeftSpacecraftName)
 						]
 
+
 						// Current ship's cargo 1
 						+ SVerticalBox::Slot()
 						.AutoHeight()
@@ -93,6 +95,21 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							SAssignNew(LeftCargoBay2, SHorizontalBox)
 						]
 
+						// Undock button
+						+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(Theme.SmallContentPadding)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("Undock", "UNDOCK"))
+							.HelpText(LOCTEXT("ShipUndockInfo", "Undock the ship and leave the station"))
+							.HotkeyText(LOCTEXT("SpacecraftKey5", "M5"))
+							.OnClicked(this, &SFlareTradeMenu::OnUndock)
+							.Visibility(this, &SFlareTradeMenu::GetUndockVisibility)
+							.Width(4)
+							]
+
 						// Help text
 						+ SVerticalBox::Slot()
 						.AutoHeight()
@@ -100,7 +117,7 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 						[
 							SNew(STextBlock)
 							.TextStyle(&Theme.TextFont)
-							.Text(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."))
+							.Text(this, &SFlareTradeMenu::GetShipTradeDetails)
 							.WrapTextAt(TextWidth)
 						]
 					]
@@ -143,16 +160,45 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							.Visibility(this, &SFlareTradeMenu::GetTradingVisibility)
 							.WrapTextAt(TextWidth)
 						]
-				
+
+						// Company line
+						+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(Theme.SmallContentPadding)
+							[
+								SNew(SHorizontalBox)
+
+								// Company flag
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SAssignNew(CompanyFlag, SFlareCompanyFlag)
+								.Player(MenuManager->GetPC())
+								.Visibility(this, &SFlareTradeMenu::GetCompanyFlagVisibility)
+							]
+						// Spacecraft info
+						+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(Theme.SmallContentPadding)
+							[
+								SNew(STextBlock)
+								.Text(this, &SFlareTradeMenu::GetRightcraftInfo)
+							.TextStyle(&Theme.TextFont)
+							.Visibility(this, &SFlareTradeMenu::GetCompanyFlagVisibility)
+							]
+						]
+
+
 						// Ship's cargo
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.HAlign(HAlign_Fill)
 						[
-							SNew(SHorizontalBox)
 
+							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
+
 							[
 								SNew(SVerticalBox)
 
@@ -189,6 +235,7 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 								.Visibility(this, &SFlareTradeMenu::GetBackToSelectionVisibility)
 								.Width(4)
 							]
+
 						]
 
 						// Construction text
@@ -237,7 +284,21 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 									.Visibility(this, &SFlareTradeMenu::GetTransactionDetailsVisibility)
 									.WrapTextAt(TextWidth)
 								]
-
+								// Donation Toggle
+								+ SVerticalBox::Slot()
+									.AutoHeight()
+									.Padding(Theme.ContentPadding)
+									.HAlign(HAlign_Left)
+									.VAlign(VAlign_Center)
+									[
+										SAssignNew(DonationButton, SFlareButton)
+										.Text(LOCTEXT("Donation", "Donate"))
+									.HelpText(LOCTEXT("DonationInfo", "Donate Resources"))
+									.Toggle(true)
+									.OnClicked(this, &SFlareTradeMenu::OnDonationToggle)
+									.Visibility(this, &SFlareTradeMenu::GetDonationButtonVisibility)
+									.Width(4)
+									]
 								// Invalid transaction
 								+ SVerticalBox::Slot()
 								.AutoHeight()
@@ -293,7 +354,6 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 									.Visibility(this, &SFlareTradeMenu::GetTransactionDetailsVisibility)
 									.WrapTextAt(TextWidth)
 								]
-
 								// Price
 								+ SVerticalBox::Slot()
 								.AutoHeight()
@@ -349,6 +409,10 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 		{
 			TargetRightSpacecraft = PhysicalSpacecraft->GetNavigationSystem()->GetDockStation()->GetParent();
 		}
+		else
+		{
+			TargetRightSpacecraft = RightSpacecraft;
+		}
 	}
 	else
 	{
@@ -356,8 +420,8 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	}
 
 	// Not first person - list spacecrafts
-	if (TargetLeftSpacecraft->GetCurrentFleet() != MenuManager->GetPC()->GetPlayerFleet())
-	{
+	//	if (TargetLeftSpacecraft->GetCurrentFleet() != MenuManager->GetPC()->GetPlayerFleet())
+//	if (TargetLeftSpacecraft != MenuManager->GetPC()->GetPlayerShip())
 		// Add stations
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < ParentSector->GetSectorStations().Num(); SpacecraftIndex++)
 		{
@@ -368,7 +432,6 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 			{
 				ShipList->AddShip(StationCandidate);
 			}
-		}
 
 		// #1208 : don't trade between ships
 		// Add ships
@@ -388,6 +451,8 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 
 	// Setup widgets
 	AFlarePlayerController* PC = MenuManager->GetPC();
+
+	PreviousTradeDirection = 0;
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	ShipList->RefreshList();
@@ -396,51 +461,57 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	if (TargetRightSpacecraft)
 	{
 		ShipList->SetVisibility(EVisibility::Collapsed);
+		CompanyFlag->SetCompany(TargetRightSpacecraft->GetCompany());
 	}
 	else
 	{
 		ShipList->SetVisibility(EVisibility::Visible);
 	}
+	DonationButton->SetActive(false);
 }
+
 
 void SFlareTradeMenu::FillTradeBlock(UFlareSimulatedSpacecraft* TargetSpacecraft, UFlareSimulatedSpacecraft* OtherSpacecraft,
 	TSharedPtr<SHorizontalBox> CargoBay1, TSharedPtr<SHorizontalBox> CargoBay2)
 {
-	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-	
-	// Prepare cargo bay
-	CargoBay1->ClearChildren();
-	CargoBay2->ClearChildren();
-	TArray<FSortableCargoInfo> SortedCargoBay;
 
-	// Both spacecrafts are set
-	if (TargetSpacecraft)
+	if (CargoBay1 && CargoBay2)
 	{
-		// Get slots
-		for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraft->GetActiveCargoBay()->GetSlotCount(); CargoIndex++)
-		{
-			FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
-			FSortableCargoInfo CargoInfo;
-			CargoInfo.Cargo = Cargo;
-			CargoInfo.CargoInitialIndex = CargoIndex;
-			SortedCargoBay.Add(CargoInfo);
-		}
+		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		// Prepare cargo bay
+		CargoBay1->ClearChildren();
+		CargoBay2->ClearChildren();
+		TArray<FSortableCargoInfo> SortedCargoBay;
 
-		// Sort and fill
-		SortedCargoBay.Sort(UFlareCargoBay::SortBySlotType);
-		for (int32 CargoIndex = 0; CargoIndex < SortedCargoBay.Num(); CargoIndex++)
+		// Both spacecrafts are set
+		if (TargetSpacecraft)
 		{
-			TSharedPtr<SHorizontalBox> Bay = (CargoIndex < 8) ? CargoBay1 : CargoBay2;
-			Bay->AddSlot()
-			[
-				SNew(SFlareCargoInfo)
-				.Spacecraft(TargetSpacecraft)
-				.CargoIndex(SortedCargoBay[CargoIndex].CargoInitialIndex)
-				.OnClicked(this, &SFlareTradeMenu::OnTransferResources,
-					TargetSpacecraft,
-					OtherSpacecraft,
-					SortedCargoBay[CargoIndex].Cargo->Resource)
-			];
+			// Get slots
+			for (int32 CargoIndex = 0; CargoIndex < TargetSpacecraft->GetActiveCargoBay()->GetSlotCount(); CargoIndex++)
+			{
+				FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+				FSortableCargoInfo CargoInfo;
+				CargoInfo.Cargo = Cargo;
+				CargoInfo.CargoInitialIndex = CargoIndex;
+				SortedCargoBay.Add(CargoInfo);
+			}
+
+			// Sort and fill
+			SortedCargoBay.Sort(UFlareCargoBay::SortBySlotType);
+			for (int32 CargoIndex = 0; CargoIndex < SortedCargoBay.Num(); CargoIndex++)
+			{
+				TSharedPtr<SHorizontalBox> Bay = (CargoIndex < 8) ? CargoBay1 : CargoBay2;
+				Bay->AddSlot()
+					[
+						SNew(SFlareCargoInfo)
+						.Spacecraft(TargetSpacecraft)
+					.CargoIndex(SortedCargoBay[CargoIndex].CargoInitialIndex)
+					.OnClicked(this, &SFlareTradeMenu::OnTransferResources,
+						TargetSpacecraft,
+						OtherSpacecraft,
+						SortedCargoBay[CargoIndex].Cargo->Resource)
+					];
+			}
 		}
 	}
 }
@@ -450,6 +521,7 @@ void SFlareTradeMenu::Exit()
 	SetEnabled(false);
 
 	// Reset cargo
+	PreviousTradeDirection = -1;
 	TargetLeftSpacecraft = NULL;
 	TargetRightSpacecraft = NULL;
 	LeftCargoBay1->ClearChildren();
@@ -486,6 +558,33 @@ void SFlareTradeMenu::Tick(const FGeometry& AllottedGeometry, const double InCur
 	Callbacks
 ----------------------------------------------------*/
 
+EVisibility SFlareTradeMenu::GetCompanyFlagVisibility() const
+{
+
+	// Crash mitigation - If parent is hidden, so are we, don't try to use the target (#178)
+//	if ((OwnerWidget.IsValid() && OwnerWidget->GetVisibility() != EVisibility::Visible)
+	if (MenuManager->GetPC() && !MenuManager->GetPC()->GetMenuManager()->IsUIOpen())
+	{
+		return EVisibility::Collapsed;
+	}
+
+// Check the target
+	if (TargetRightSpacecraft && TargetRightSpacecraft->IsValidLowLevel())
+	{
+		UFlareCompany* TargetCompany = TargetRightSpacecraft->GetCompany();
+		if (TargetCompany && MenuManager->GetPC() && TargetCompany == MenuManager->GetPC()->GetCompany())
+		{
+			return EVisibility::Collapsed;
+		}
+	}
+	else
+	{
+		return EVisibility::Collapsed;
+	}
+
+	return EVisibility::Visible;
+}
+
 EVisibility SFlareTradeMenu::GetTradingVisibility() const
 {
 	return (TargetLeftSpacecraft && TargetRightSpacecraft) ? EVisibility::Visible : EVisibility::Collapsed;
@@ -496,6 +595,35 @@ EVisibility SFlareTradeMenu::GetConstructionInfosVisibility() const
 	return (TargetRightSpacecraft && TargetRightSpacecraft->IsStation() && TargetRightSpacecraft->IsUnderConstruction()) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
+EVisibility SFlareTradeMenu::GetUndockVisibility() const
+{
+	if (TargetLeftSpacecraft&&TargetLeftSpacecraft->IsActive()&& TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked() && MenuManager->GetPC()->GetPlayerShip() == TargetLeftSpacecraft)
+		//MenuManager->GetPC()->GetCompany() == TargetLeftSpacecraft->GetCompany())
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+void SFlareTradeMenu::OnUndock()
+{
+	if (TargetLeftSpacecraft)
+	{
+		if (TargetLeftSpacecraft->IsActive())
+		{
+			if (TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
+			{
+				TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->Undock();
+				MenuManager->CloseMenu();
+			}
+			else if (TargetLeftSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
+			{
+				MenuManager->GetPC()->GetShipPawn()->GetNavigationSystem()->Undock();
+				MenuManager->CloseMenu();
+			}
+		}
+	}
+}
 
 EVisibility SFlareTradeMenu::GetBackToSelectionVisibility() const
 {
@@ -504,21 +632,66 @@ EVisibility SFlareTradeMenu::GetBackToSelectionVisibility() const
 		return EVisibility::Collapsed;
 	}
 
-	// First-person trading override
-	AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
-	if (PhysicalSpacecraft && PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+	if (!TargetLeftSpacecraft)
 	{
 		return EVisibility::Collapsed;
 	}
 
+	FText Reason;
+	if (TargetRightSpacecraft && !TargetLeftSpacecraft->CanTradeWith(TargetRightSpacecraft, Reason))
+	{
+		return EVisibility::Collapsed;
+	}
+
+	// First-person trading override
+	AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+	if (PhysicalSpacecraft && PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+	{
+		bool IsAutoDocking = MenuManager->GetPC()->GetCompany()->IsTechnologyUnlocked("auto-docking");
+		if (IsAutoDocking)
+		{
+			return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
+		}
+		else
+		{
+			return EVisibility::Collapsed;
+		}
+/*
+		if (PhysicalSpacecraft->IsPlayerShip())
+		{
+			return EVisibility::Collapsed;
+		}
+*/
+//		else
+//		{
+			return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
+//		}
+	}
 	else
 	{
 		return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
 	}
 }
 
+EVisibility SFlareTradeMenu::GetDonationButtonVisibility() const
+{
+	FText Unused;
+	if (IsEnabled() && IsTransactionValid(Unused) && TransactionSourceSpacecraft)
+	{
+		if (TransactionDestinationSpacecraft && TransactionSourceSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
+		{
+			if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
+			{
+				return EVisibility::Visible;
+			}
+		}
+	}
+	return EVisibility::Collapsed;
+}
+
 EVisibility SFlareTradeMenu::GetTransactionDetailsVisibility() const
 {
+
 	FText Unused;
 	return IsEnabled() && IsTransactionValid(Unused) ? EVisibility::Visible : EVisibility::Collapsed;
 }
@@ -541,10 +714,96 @@ FText SFlareTradeMenu::GetLeftSpacecraftName() const
 	}
 }
 
+FText SFlareTradeMenu::GetRightcraftInfo() const
+{
+	// Crash mitigation - If parent is hidden, so are we, don't try to use the target (#178)
+
+	AFlarePlayerController* PC = MenuManager->GetPC();
+
+	if (PC && !MenuManager->IsUIOpen())
+	{
+		return FText();
+	}
+
+	/*
+	if ((OwnerWidget.IsValid() && OwnerWidget->GetVisibility() != EVisibility::Visible)
+		|| (PC && !PC->GetMenuManager()->IsUIOpen()))
+	{
+		return FText();
+	}
+*/
+	if (IsValid(TargetRightSpacecraft))
+	{
+		// Get the object's distance
+//		return LOCTEXT("Crash", "Is Valid");
+
+		FText DistanceText;
+		bool TradeMenu = 0;
+
+		if (PC->GetPlayerShip() && PC->GetPlayerShip() != TargetRightSpacecraft)
+		{
+			AFlareSpacecraft* PlayerShipPawn = TargetLeftSpacecraft->GetActive();
+			AFlareSpacecraft* TargetSpacecraftPawn = TargetRightSpacecraft->GetActive();
+
+			if (PlayerShipPawn && TargetSpacecraftPawn)
+			{
+				if (PlayerShipPawn->GetNavigationSystem()->GetDockStation() == TargetSpacecraftPawn)
+				{
+					DistanceText = LOCTEXT("DockedHereStation", "Docked - ");
+				}
+				else
+				{
+					float Distance = (PlayerShipPawn->GetActorLocation() - TargetSpacecraftPawn->GetActorLocation()).Size();
+					DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
+				}
+			}
+		}
+		else
+		{
+			DistanceText = LOCTEXT("PlayerShipText", "Your ship - ");
+		}
+
+		// Class text
+		FText ClassText;
+		if (TargetRightSpacecraft->IsStation())
+		{
+			ClassText = FText::FromString(TargetRightSpacecraft->GetDescription()->Name.ToString() + " - ");
+		}
+
+		// Our company
+		UFlareCompany* TargetCompany = TargetRightSpacecraft->GetCompany();
+
+		// Other company
+		if (TargetCompany && PC && TargetCompany != PC->GetCompany())
+		{
+			return FText::Format(LOCTEXT("OwnedByFormat", "{0}{1}{2}"),
+				DistanceText,
+				ClassText,
+				TargetCompany->GetCompanyName());
+		}
+	}
+	return FText();
+}
+
 FText SFlareTradeMenu::GetRightSpacecraftName() const
 {
 	if (TargetRightSpacecraft)
 	{
+/*
+		FText DistanceText;
+		if (TargetLeftSpacecraft)
+		{
+			AFlareSpacecraft* LeftSpacecraftPawn = TargetLeftSpacecraft->GetActive();
+			AFlareSpacecraft* RightSpacecraftPawn = TargetRightSpacecraft->GetActive();
+			if (LeftSpacecraftPawn && RightSpacecraftPawn)
+			{
+				float Distance = (LeftSpacecraftPawn->GetActorLocation() - RightSpacecraftPawn->GetActorLocation()).Size();
+				DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
+			}
+		}
+		FText ConstructedText = FText::Format(LOCTEXT("RightSpaceCraftName", "{0}{1}"), DistanceText, UFlareGameTools::DisplaySpacecraftName(TargetRightSpacecraft));
+		return ConstructedText;
+*/
 		return UFlareGameTools::DisplaySpacecraftName(TargetRightSpacecraft);
 	}
 	else
@@ -557,39 +816,47 @@ FText SFlareTradeMenu::GetTransactionDetails() const
 {
 	if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionResource)
 	{
-		FText MainInfo = FText::Format(LOCTEXT("TradeInfoFormat", "Trading {0}x {1} from {2} to {3}."),
-			FText::AsNumber(TransactionQuantity),
-			TransactionResource->Name,
-			UFlareGameTools::DisplaySpacecraftName(TransactionSourceSpacecraft),
-			UFlareGameTools::DisplaySpacecraftName(TransactionDestinationSpacecraft));
+		FText TradeStatus = FText();
 
 		FText UnitPrice;
 		FText AffordableInfo;
 
-		if (TransactionSourceSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany()
-				|| TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
+		if (TransactionSourceSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() || TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
 		{
 			int64 BaseResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetResourcePrice(TransactionResource, EFlareResourcePriceContext::Default);
 			int64 TransactionResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
 
 			int64 Fee = TransactionResourcePrice - BaseResourcePrice;
-
 			if(TransactionDestinationSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
 			{
-				UnitPrice = FText::Format(LOCTEXT("PurchaseUnitPriceFormat", "\nPurchase price: {0} credits/unit ({1} {2} {3} transport fee)"),
-					UFlareGameTools::DisplayMoney(TransactionResourcePrice),
-					UFlareGameTools::DisplayMoney(BaseResourcePrice),
-					(Fee < 0 ? LOCTEXT("Minus", "-"): LOCTEXT("Plus", "+")),
-					UFlareGameTools::DisplayMoney(FMath::Abs(Fee)));
+				TradeStatus = FText(LOCTEXT("TradeInfo", "Buying"));
+					UnitPrice = FText::Format(LOCTEXT("PurchaseUnitPriceFormat", "\nPurchase price: {0} credits/unit ({1} {2} {3} transport fee)"),
+						UFlareGameTools::DisplayMoney(TransactionResourcePrice),
+						UFlareGameTools::DisplayMoney(BaseResourcePrice),
+						(Fee < 0 ? LOCTEXT("Minus", "-") : LOCTEXT("Plus", "+")),
+						UFlareGameTools::DisplayMoney(FMath::Abs(Fee)));
 			}
 			else
 			{
+				if (DonationButton->IsActive())
+				{
+					TradeStatus = FText(LOCTEXT("TradeInfo", "Donating"));
+				}
+				else
+				{
+					TradeStatus = FText(LOCTEXT("TradeInfo", "Selling"));
+				}
+
 				UnitPrice = FText::Format(LOCTEXT("SellUnitPriceFormat", "\nSell price: {0} credits/unit ({1} {2} {3} transport fee)"),
 					UFlareGameTools::DisplayMoney(TransactionResourcePrice),
 					UFlareGameTools::DisplayMoney(BaseResourcePrice),
 					(Fee < 0 ? LOCTEXT("Minus", "-"): LOCTEXT("Plus", "+")),
 					UFlareGameTools::DisplayMoney(FMath::Abs(Fee)));
 			}
+		}
+		else
+		{
+			TradeStatus = FText(LOCTEXT("TradeInfo", "Trading"));
 		}
 
 		// Add buyer capability if it's not the player
@@ -599,12 +866,94 @@ FText SFlareTradeMenu::GetTransactionDetails() const
 				UFlareGameTools::DisplayMoney(TransactionDestinationSpacecraft->GetCompany()->GetMoney()));
 		}
 
+		FText MainInfo = FText::Format(LOCTEXT("TradeInfoFormat", "{0} {1}x {2} from {3} to {4}."),
+			TradeStatus,
+			FText::AsNumber(TransactionQuantity),
+			TransactionResource->Name,
+			UFlareGameTools::DisplaySpacecraftName(TransactionSourceSpacecraft),
+			UFlareGameTools::DisplaySpacecraftName(TransactionDestinationSpacecraft));
+
 		return FText::Format(LOCTEXT("TradeInfoMergeFormat", "{0}{1}{2}"), MainInfo, UnitPrice, AffordableInfo);
 	}
 	else
 	{
 		return FText();
 	}
+}
+
+FText SFlareTradeMenu::GetShipTradeDetails() const
+{
+		if(!TargetLeftSpacecraft)
+		{
+			return FText(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."));
+		}
+
+		AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+
+		if (PhysicalSpacecraft)
+		{
+			UFlareSpacecraftNavigationSystem* Spacecraftnavigation = PhysicalSpacecraft->GetNavigationSystem();
+			if (Spacecraftnavigation)
+			{
+				UFlareSimulatedSpacecraft* TransactionDestination = Spacecraftnavigation->GetTransactionDestination();
+				UFlareSimulatedSpacecraft* TransactionDestinationDock = Spacecraftnavigation->GetTransactionDestinationDock();
+				UFlareSimulatedSpacecraft* TransactionSourceShip = Spacecraftnavigation->GetTransactionSourceShip();
+				FFlareResourceDescription* TransactionResource = Spacecraftnavigation->GetTransactionResource();
+				uint32 TransactionQuantity = Spacecraftnavigation->GetTransactionQuantity();
+
+				if (TransactionDestination && TransactionSourceShip && TransactionResource && Spacecraftnavigation && TransactionDestinationDock)
+				{
+					FText Formatted;
+					FText DistanceText;
+					FText TradeStatus = FText();
+
+					AFlareSpacecraft* TargetSpacecraftPawn = TransactionDestinationDock->GetActive();
+					float Distance = (PhysicalSpacecraft->GetActorLocation() - TargetSpacecraftPawn->GetActorLocation()).Size();
+					DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
+
+					if (MenuManager->GetPC()->GetCompany() == TransactionDestinationDock->GetCompany())
+					{
+						TradeStatus = FText(LOCTEXT("TradeInfoTransfer", "trade"));
+					}
+
+					else if (TransactionDestination == TransactionDestinationDock)
+					{
+						if (Spacecraftnavigation->GetTransactionDonation())
+						{
+							TradeStatus = FText(LOCTEXT("TradeInfoSell", "donate"));
+						}
+						else
+						{
+							TradeStatus = FText(LOCTEXT("TradeInfoSell", "sell"));
+						}
+					}
+					else
+					{
+						TradeStatus = FText(LOCTEXT("TradeInfoSell", "buy"));
+					}
+
+					Formatted = FText::Format(LOCTEXT("SpacecraftInfoFormat", "{0}docking at {1} to {2} {3} {4}"),
+						DistanceText,
+						UFlareGameTools::DisplaySpacecraftName(TransactionDestinationDock),
+						TradeStatus,
+						FText::AsNumber(TransactionQuantity),
+						TransactionResource->Name);
+					return Formatted;
+				}
+				else
+				{
+					return FText(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."));
+				}
+			}
+			else
+			{
+				return FText(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."));
+			}
+		}
+		else
+		{
+			return FText(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."));
+		}
 }
 
 FText SFlareTradeMenu::GetTransactionInvalidDetails() const
@@ -637,7 +986,6 @@ FText SFlareTradeMenu::GetResourcePriceInfo(FFlareResourceDescription* Resource)
 	{
 		FNumberFormattingOptions MoneyFormat;
 		MoneyFormat.MaximumFractionalDigits = 2;
-
 
 		int32 MeanDuration = 50;
 		int64 ResourcePrice = TargetSector->GetResourcePrice(Resource, EFlareResourcePriceContext::Default);
@@ -676,6 +1024,7 @@ void SFlareTradeMenu::OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> Space
 		if (TargetLeftSpacecraft)
 		{
 			TargetRightSpacecraft = Spacecraft;
+			CompanyFlag->SetCompany(TargetRightSpacecraft->GetCompany());
 		}
 		else
 		{
@@ -684,18 +1033,37 @@ void SFlareTradeMenu::OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> Space
 
 		// Reset menus
 		PriceBox->Hide();
+		PreviousTradeDirection = 1;
 		FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 		FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 		ShipList->SetVisibility(EVisibility::Collapsed);
 	}
 }
 
+
+void SFlareTradeMenu::OnDonationToggle()
+{
+	if (DonationButton->IsActive())
+	{
+	}
+
+	else
+	{
+	}
+
+	TransactionQuantity = GetMaxTransactionAmount();
+	QuantitySlider->SetValue(1.0f);
+	QuantityText->SetText(FText::AsNumber(TransactionQuantity));
+	UpdatePrice();
+}
+
 void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource)
 {
 	FLOGV("OnTransferResources %p %p", SourceSpacecraft, DestinationSpacecraft);
-	if (DestinationSpacecraft)
+	if (DestinationSpacecraft && DestinationSpacecraft && Resource)
 	{
-		// Store transaction data
+		// Store transaction dataQuantityText
+		DonationButton->SetActive(false);
 		TransactionSourceSpacecraft = SourceSpacecraft;
 		TransactionDestinationSpacecraft = DestinationSpacecraft;
 		TransactionResource = Resource;
@@ -705,8 +1073,6 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 		QuantityText->SetText(FText::AsNumber(TransactionQuantity));
 
 		UpdatePrice();
-
-
 		UFlareQuest* SelectedQuest = MenuManager->GetGame()->GetQuestManager()->GetSelectedQuest();
 
 		if (SelectedQuest && SelectedQuest->GetCurrentStep())
@@ -746,10 +1112,6 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 					QuantityText->SetText(FText::AsNumber(AssignedQuantity));
 					break;
 				}
-
-
-
-
 			}
 		}
 	}
@@ -795,23 +1157,85 @@ void SFlareTradeMenu::OnResourceQuantityEntered(const FText& TextValue)
 
 void SFlareTradeMenu::OnConfirmTransaction()
 {
-	// Actual transaction
-	if (TransactionSourceSpacecraft && TransactionSourceSpacecraft->GetCurrentSector() && TransactionDestinationSpacecraft && TransactionResource)
+	bool ResetVariables = 1;
+	bool Donation = 0;
+
+	if(TransactionSourceSpacecraft && TransactionDestinationSpacecraft)
 	{
-		SectorHelper::Trade(TransactionSourceSpacecraft,
-			TransactionDestinationSpacecraft,
-			TransactionResource,
-			TransactionQuantity);
+		if (DonationButton->IsActive())
+		{
+			if (TransactionDestinationSpacecraft->GetCompany() != TransactionSourceSpacecraft->GetCompany())
+			{
+				if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
+				{
+					Donation = 1;
+				}
+			}
+		}
+
+	// Actual transaction
+	if (TransactionSourceSpacecraft->GetCurrentSector() && TransactionResource)
+	{
+		if (TargetLeftSpacecraft->IsActive())
+		{
+
+			AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+			AFlareSpacecraft* PhysicalSpacecraftDock = TargetRightSpacecraft->GetActive();
+			WasActiveSector = true;
+
+
+			if (PhysicalSpacecraftDock->GetDockingSystem()->IsDockedShip(PhysicalSpacecraft))
+			{
+				SectorHelper::Trade(TransactionSourceSpacecraft,
+					TransactionDestinationSpacecraft,
+					TransactionResource,
+					TransactionQuantity,
+					NULL, NULL, Donation);
+			}
+			else
+			{
+/*
+				bool WasDocked = false;
+				if (PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+				{
+					WasDocked = true;
+				}
+*/
+				bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAtAndTrade(PhysicalSpacecraftDock, TransactionResource, TransactionQuantity, TransactionSourceSpacecraft, TransactionDestinationSpacecraft, Donation);
+				if (!DockingConfirmed)
+				{
+					ResetVariables = 0;
+				}
+				else if (PhysicalSpacecraft->IsPlayerShip())
+		
+				{
+					MenuManager->CloseMenu();
+				}
+			}
+		}
+		else
+		{
+			SectorHelper::Trade(TransactionSourceSpacecraft,
+				TransactionDestinationSpacecraft,
+				TransactionResource,
+				TransactionQuantity,
+				NULL, NULL, Donation);
+		}
+	}
 	}
 
 	// Reset transaction data
-	TransactionDestinationSpacecraft = NULL;
-	TransactionSourceSpacecraft = NULL;
-	TransactionResource = NULL;
-	TransactionQuantity = 0;
+	if (ResetVariables)
+	{
+		TransactionDestinationSpacecraft = NULL;
+		TransactionSourceSpacecraft = NULL;
+		TransactionResource = NULL;
+		TransactionQuantity = 0;
+		PriceBox->Hide();
+	}
 
 	// Reset menus
-	PriceBox->Hide();
+	PreviousTradeDirection = 1;
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->InfoSound);
@@ -827,6 +1251,7 @@ void SFlareTradeMenu::OnCancelTransaction()
 
 	// Reset menus
 	PriceBox->Hide();
+	PreviousTradeDirection = 1;
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->NegativeClickSound);
@@ -835,8 +1260,7 @@ void SFlareTradeMenu::OnCancelTransaction()
 void SFlareTradeMenu::OnBackToSelection()
 {
 	TargetRightSpacecraft = NULL;
-
-	// Reset transaction data
+		// Reset transaction data
 	TransactionDestinationSpacecraft = NULL;
 	TransactionSourceSpacecraft = NULL;
 	TransactionResource = NULL;
@@ -866,13 +1290,19 @@ void SFlareTradeMenu::UpdatePrice()
 	FText Unused;
 	if (IsTransactionValid(Unused))
 	{
-		if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft->GetCompany() != TransactionSourceSpacecraft->GetCompany() && ResourceUnitPrice > 0)
+		if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionDestinationSpacecraft->GetCompany() != TransactionSourceSpacecraft->GetCompany() && ResourceUnitPrice > 0)
 		{
-			int64 TransactionPrice = TransactionQuantity * ResourceUnitPrice;
+			if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany()&& DonationButton->IsActive())
+			{
+					PriceBox->Show(0, MenuManager->GetPC()->GetCompany());
+			}
+			else
+			{
+				int64 TransactionPrice = TransactionQuantity * ResourceUnitPrice;
+				bool AllowDepts = TransactionDestinationSpacecraft->GetResourceUseType(TransactionResource).HasUsage(EFlareResourcePriceContext::ConsumerConsumption) || MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false);
+				PriceBox->Show(TransactionPrice, TransactionDestinationSpacecraft->GetCompany(), AllowDepts);
+			}
 
-			bool AllowDepts = TransactionDestinationSpacecraft->GetResourceUseType(TransactionResource).HasUsage(EFlareResourcePriceContext::ConsumerConsumption) || MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false);
-
-			PriceBox->Show(TransactionPrice, TransactionDestinationSpacecraft->GetCompany(), AllowDepts);
 		}
 		else
 		{
@@ -884,6 +1314,25 @@ void SFlareTradeMenu::UpdatePrice()
 		PriceBox->Hide();
 	}
 }
+/*
+		if (TransactionSourceSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() || TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
+		{
+			int64 BaseResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetResourcePrice(TransactionResource, EFlareResourcePriceContext::Default);
+			int64 TransactionResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
+
+			int64 Fee = TransactionResourcePrice - BaseResourcePrice;
+
+			if(TransactionDestinationSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
+			{
+					UnitPrice = FText::Format(LOCTEXT("PurchaseUnitPriceFormat", "\nPurchase price: {0} credits/unit ({1} {2} {3} transport fee)"),
+						UFlareGameTools::DisplayMoney(TransactionResourcePrice),
+						UFlareGameTools::DisplayMoney(BaseResourcePrice),
+						(Fee < 0 ? LOCTEXT("Minus", "-") : LOCTEXT("Plus", "+")),
+						UFlareGameTools::DisplayMoney(FMath::Abs(Fee)));
+			}
+			else
+			{
+*/
 
 int32 SFlareTradeMenu::SetSliderQuantity(int32 Quantity)
 {
@@ -906,9 +1355,38 @@ int32 SFlareTradeMenu::SetSliderQuantity(int32 Quantity)
 	return TransactionQuantity;
 }
 
+bool SFlareTradeMenu::RefreshTradeBlocks() const
+{
+	//USED to refresh tradeblocks when a ship with a local trade order (which goes to dock at a station) is finished, to stop any possible updates not having values not set properly afterwards
+	//TODO: Wanabe: not sure how to use from public scope to private scope properly
+
+	PriceBox->Hide();
+
+	MenuManager->GetTradeMenu()->TransactionSourceSpacecraft = NULL;
+	MenuManager->GetTradeMenu()->TransactionDestinationSpacecraft = NULL;
+	MenuManager->GetTradeMenu()->TransactionResource = NULL;
+	MenuManager->GetTradeMenu()->TransactionQuantity = 0;
+	
+	if(PreviousTradeDirection == 1)
+		{
+		MenuManager->GetTradeMenu()->FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
+		MenuManager->GetTradeMenu()->FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
+		return true;
+	}
+	else if (PreviousTradeDirection == 0)
+	{
+		MenuManager->GetTradeMenu()->FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
+		MenuManager->GetTradeMenu()->FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
+		return true;
+	}
+
+	return false;
+}
+
 bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 {
 	// Possible transaction
+
 	if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionResource)
 	{
 		int32 ResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
@@ -916,17 +1394,18 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 		int32 ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
 			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
 
+		// Cases of failure + reason
+		if (!TransactionSourceSpacecraft->CanTradeWith(TransactionDestinationSpacecraft, Reason))
+		{
+			return false;
+		}
+		 
 		// Special exception for same company
-		if (TransactionSourceSpacecraft->GetCompany() == TransactionDestinationSpacecraft->GetCompany())
+		else if (TransactionSourceSpacecraft->GetCompany() == TransactionDestinationSpacecraft->GetCompany())
 		{
 			return true;
 		}
 
-		// Cases of failure + reason
-		else if (!TransactionSourceSpacecraft->CanTradeWith(TransactionDestinationSpacecraft, Reason))
-		{
-			return false;
-		}
 		else if (!TransactionSourceSpacecraft->GetActiveCargoBay()->WantSell(TransactionResource, MenuManager->GetPC()->GetCompany()))
 		{
 			Reason = LOCTEXT("CantTradeSell", "This resource isn't sold by the seller. Input resources are never sold.");
@@ -937,6 +1416,7 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 			Reason = LOCTEXT("CantTradeBuy", "This resource isn't bought by the buyer. Output resources are never bought. The buyer needs an empty slot, or one with the matching resource.");
 			return false;
 		}
+
 		else if (MaxAffordableQuantity == 0 && !MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false))
 		{
 
@@ -976,11 +1456,24 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 
 int32 SFlareTradeMenu::GetMaxTransactionAmount() const
 {
+	if (!TransactionSourceSpacecraft || !TransactionDestinationSpacecraft)
+	{
+		return FMath::Min(0, 0);
+	}
+
 	int32 ResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
-	int32 MaxAffordableQuantity = FMath::Max(int64(0), TransactionDestinationSpacecraft->GetCompany()->GetMoney()) / ResourcePrice;
-	if(TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany() || MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false))
+	int32 MaxAffordableQuantity = 0;
+
+	if(TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany() || MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false)
+	|| (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() && DonationButton->IsActive())
+	)
+
 	{
 		MaxAffordableQuantity = INT_MAX;
+	}
+	else
+	{
+		MaxAffordableQuantity = FMath::Max(int64(0), TransactionDestinationSpacecraft->GetCompany()->GetMoney()) / ResourcePrice;
 	}
 
 	int32 ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
@@ -990,4 +1483,3 @@ int32 SFlareTradeMenu::GetMaxTransactionAmount() const
 }
 
 #undef LOCTEXT_NAMESPACE
-

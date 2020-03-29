@@ -1183,6 +1183,7 @@ FText SFlareSectorMenu::GetOwnCombatValue() const
 	if (IsEnabled() && TargetSector)
 	{
 		UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
+		//TODO: Optimize/somehow cache GetCompanyValue, constantly recalcing for fresh combat points data
 		CompanyValue Value = PlayerCompany->GetCompanyValue(TargetSector, false);
 
 		if (Value.ArmyCurrentCombatPoints > 0 || Value.ArmyTotalCombatPoints > 0)
@@ -1303,7 +1304,6 @@ void SFlareSectorMenu::OnTravelHereClicked()
 			FText SingleShip = LOCTEXT("ShipIsSingle", "ship is");
 			FText MultipleShips = LOCTEXT("ShipArePlural", "ships are");
 
-
 			int32 TradingShips = 0;
 			int32 InterceptedShips = 0;
 			int32 StrandedShips = 0;
@@ -1325,9 +1325,6 @@ void SFlareSectorMenu::OnTravelHereClicked()
 					InterceptedShips++;
 				}
 			}
-
-
-
 
 			FText TooDamagedTravelText;
 			FText TradingTravelText;

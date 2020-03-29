@@ -394,22 +394,26 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 		return;
 	}
 
-	DeactivateSector();
-
+	bool IsActiveSector = GetActiveSector() != nullptr;
+	if (IsActiveSector)
+	{
+		DeactivateSector();
+	}
 
 	UFlareSimulatedSector* CurrentSector = StationToScrap->GetCurrentSector();
 	TMap<FFlareResourceDescription*, int32> ScrapResources = StationToScrap->ComputeScrapResources();
-
 	CurrentSector->DistributeResources(ScrapResources, StationToScrap, StationToScrap->GetCompany(), false);
-
-
+	
 	FLOG("Station scrap success");
 
+	if (StationToScrap->GetCompany()->IsPlayerCompany())
+	{
+		GetPC()->Notify(LOCTEXT("StationOwnScrap", "Station scrap complete"),
+			FText::Format(LOCTEXT("StationOwnScrapFormat", "Your station {0} has been scrapped !"), UFlareGameTools::DisplaySpacecraftName(StationToScrap)),
+			FName("station-own-scraped"),
+			EFlareNotification::NT_Economy);
+	}
 
-	GetPC()->Notify(LOCTEXT("StationOwnScrap", "Station scrap complete"),
-		FText::Format(LOCTEXT("StationOwnScrapFormat", "Your station {0} has been scrapped !"), UFlareGameTools::DisplaySpacecraftName(StationToScrap)),
-		FName("station-own-scraped"),
-		EFlareNotification::NT_Economy);
 
 	if(StationToScrap->IsComplexElement())
 	{
@@ -419,7 +423,10 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 
 	StationToScrap->GetCompany()->DestroySpacecraft(StationToScrap);
 
-	ActivateCurrentSector();
+	if (IsActiveSector)
+	{
+		ActivateCurrentSector();
+	}
 }
 
 void AFlareGame::Tick(float DeltaSeconds)
@@ -475,6 +482,7 @@ void AFlareGame::ReadAllSaveSlots()
 
 			// Count player ships
 			SaveSlotInfo.CompanyShipCount = 0;
+			SaveSlotInfo.CompanyStationCount = 0;
 
 			// Find player company and count ships
 			FFlareCompanySave* PlayerCompany = NULL;
@@ -485,6 +493,8 @@ void AFlareGame::ReadAllSaveSlots()
 				{
                     PlayerCompany = &(Save->WorldData.CompanyData[CompanyIndex]);
 					SaveSlotInfo.CompanyShipCount = Save->WorldData.CompanyData[CompanyIndex].ShipData.Num();
+					SaveSlotInfo.CompanyStationCount = Save->WorldData.CompanyData[CompanyIndex].StationData.Num();
+					break;
 				}
 			}
 
@@ -496,6 +506,7 @@ void AFlareGame::ReadAllSaveSlots()
 				// Money and general infos
 				SaveSlotInfo.CompanyValue = PlayerCompany->CompanyValue;
 				SaveSlotInfo.CompanyName = Desc->Name;
+				SaveSlotInfo.DifficultyID = Save->PlayerData.DifficultyId;
 
 				// Emblem material
 				SaveSlotInfo.Emblem = UMaterialInstanceDynamic::Create(BaseEmblemMaterial, GetWorld());
@@ -515,6 +526,7 @@ void AFlareGame::ReadAllSaveSlots()
 			SaveSlotInfo.Emblem = NULL;
 			SaveSlotInfo.EmblemBrush = FSlateNoResource();
 			SaveSlotInfo.CompanyShipCount = 0;
+			SaveSlotInfo.CompanyStationCount = 0;
 			SaveSlotInfo.CompanyValue = 0;
 			SaveSlotInfo.CompanyName = FText();
 		}
@@ -567,7 +579,7 @@ UFlareSaveGame* AFlareGame::ReadSaveSlot(int32 Index)
 	if (SaveGameSystem->DoesSaveGameExist(SaveFile))
 	{
 		FLOG("AFlareGame::ReadSaveSlot : using JSON");
-		Save = SaveGameSystem->LoadGame(SaveFile);
+		Save = SaveGameSystem->LoadGame(SaveFile, this);
 	}
 	
 	if (Save == NULL && UGameplayStatics::DoesSaveGameExist(SaveFile, 0))
@@ -617,7 +629,7 @@ bool AFlareGame::DeleteSaveSlot(int32 Index)
 	Save
 ----------------------------------------------------*/
 
-void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 PlayerEmblemIndex, bool PlayTutorial)
+void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations)
 {
 	// Clean up
 	PlayerController = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
@@ -643,8 +655,11 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 	PlayerData.CompanyIdentifier = PlayerCompany->GetIdentifier();
 	PlayerData.UUID = FName(*FGuid::NewGuid().ToString());
 	PlayerData.ScenarioId = ScenarioIndex;
+	PlayerData.DifficultyId = DifficultyIndex - 1;
+	// -1 difficulty index so old games without it saved will read as "normal"
 	PlayerData.PlayerEmblemIndex = PlayerEmblemIndex;
 	PlayerData.QuestData.PlayTutorial = PlayTutorial;
+	PlayerData.QuestData.PlayStory = PlayStory;
 	PlayerData.QuestData.NextGeneratedQuestIndex = 0;
 	PlayerController->SetCompany(PlayerCompany);
 	
@@ -668,16 +683,16 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 	switch (ScenarioIndex)
 	{
 		case -1: // Empty
-			ScenarioTools->GenerateEmptyScenario();
+			ScenarioTools->GenerateEmptyScenario(RandomizeStationLocations);
 		break;
 		case 0: // Freighter
-			ScenarioTools->GenerateFreighterScenario();
+			ScenarioTools->GenerateFreighterScenario(RandomizeStationLocations);
 		break;
 		case 1: // Fighter
-			ScenarioTools->GenerateFighterScenario();
+			ScenarioTools->GenerateFighterScenario(RandomizeStationLocations);
 		break;
 		case 2: // Debug
-			ScenarioTools->GenerateDebugScenario();
+			ScenarioTools->GenerateDebugScenario(RandomizeStationLocations);
 		break;
 	}
 
@@ -720,8 +735,11 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 	PlayerData.CompanyIdentifier = PlayerCompany->GetIdentifier();
 	PlayerData.UUID = FName(*FGuid::NewGuid().ToString());
 	PlayerData.ScenarioId = -1;
+	PlayerData.DifficultyId = -2;
 	PlayerData.PlayerEmblemIndex = 0;
 	PlayerData.QuestData.PlayTutorial = false;
+	PlayerData.QuestData.PlayStory = false;
+//	PlayerData.QuestData.RandomizeStations = false;
 	PlayerData.QuestData.NextGeneratedQuestIndex = 0;
 	PlayerController->SetCompany(PlayerCompany);
 
@@ -1581,7 +1599,7 @@ void AFlareGame::InitSpacecraftNameDatabase()
 const FFlareCompanyDescription*  AFlareGame::GetCompanyDescription(int32 Index) const
 {
 	return (CompanyCatalog ? &CompanyCatalog->Companies[Index] : NULL);
-}
+}FFlarePlayerSave* Player;
 
 const FFlareCompanyDescription* AFlareGame::GetPlayerCompanyDescription() const
 {
@@ -1603,5 +1621,4 @@ bool AFlareGame::IsSkirmish() const
 {
 	return SkirmishManager->IsPlaying();
 }
-
 #undef LOCTEXT_NAMESPACE

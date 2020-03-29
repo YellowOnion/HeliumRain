@@ -62,7 +62,6 @@ public:
 		return ObjectList.Num();
 	}
 
-
 protected:
 
 	/*----------------------------------------------------
@@ -78,6 +77,9 @@ protected:
 	/** Show fleet filters when ships are present and not in fleet menu */
 	EVisibility GetFleetFilterVisibility() const;
 
+	/** Show fleet filters when fleets are present */
+	EVisibility GetFleetFiltersVisibility() const;
+	
 	/** Target item generator */
 	TSharedRef<ITableRow> GenerateTargetInfo(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable);
 
@@ -119,5 +121,5 @@ protected:
 	FFlareListItemSelected                                       OnItemSelected;
 	bool                                                         UseCompactDisplay;
 	bool                                                         HasShips;
-
+	bool                                                         HasFleets;
 };

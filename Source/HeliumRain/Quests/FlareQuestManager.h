@@ -127,6 +127,7 @@ struct FFlareQuestSave
 
 	UPROPERTY(VisibleAnywhere, Category = Save)
 	bool PlayTutorial;
+	bool PlayStory;
 
 	UPROPERTY(VisibleAnywhere, Category = Save)
 	TArray<FFlareGeneratedQuestSave> GeneratedQuests;

@@ -275,6 +275,16 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.DynamicComponentStateIdentifier = FName("idle");
 	ShipData.AttachComplexStationName = AttachComplexStationName;
 
+	if (ShipDescription->IsShipyard())
+	{
+		ShipData.ShipyardOrderExternalConfig.Reserve(Game->GetSpacecraftCatalog()->ShipCatalog.Num());
+		for (auto& CatalogEntry : Game->GetSpacecraftCatalog()->ShipCatalog)
+		{
+			const FFlareSpacecraftDescription* Description = &CatalogEntry->Data;
+			ShipData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+		}
+	}
+
 	FName RCSIdentifier;
 	FName OrbitalEngineIdentifier;
 
@@ -403,6 +413,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 
 	// Create the ship
 	Spacecraft = Company->LoadSpacecraft(ShipData);
+
 	if (Spacecraft->IsStation())
 	{
 		if(Spacecraft->IsComplexElement())
@@ -414,10 +425,12 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 			SectorStations.Add(Spacecraft);
 		}
 	}
+
 	else
 	{
 		SectorShips.Add(Spacecraft);
 	}
+
 	if(!Spacecraft->IsComplexElement())
 	{
 		SectorSpacecrafts.Add(Spacecraft);
@@ -654,7 +667,6 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::BuildStation(FFlareSpacecraftD
 	TArray<FText> Reasons;
 	bool IsChildStation = (SpawnParameters.AttachComplexStationName != NAME_None);
 	bool IsComplexSlotSpecial = (IsChildStation) && UFlareSimulatedSpacecraft::IsSpecialComplexSlot(SpawnParameters.AttachComplexConnectorName);
-
 
 	if (!CanBuildStation(StationDescription, Company, Reasons, true, IsChildStation, IsComplexSlotSpecial))
 	{
@@ -2057,7 +2069,7 @@ int64 UFlareSimulatedSector::GetResourcePrice(FFlareResourceDescription* Resourc
 			return DefaultPrice;
 		break;
 		case EFlareResourcePriceContext::FactoryOutput:
-			return DefaultPrice - Resource->TransportFee;
+			return DefaultPrice - Resource->TransportFee * 0.5f;
 		break;
 		case EFlareResourcePriceContext::FactoryInput:
 			return DefaultPrice + Resource->TransportFee;

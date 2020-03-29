@@ -25,13 +25,13 @@ public:
 
 	void Init(UFlareCompany* Company, FFlarePlayerSave* Player);
 
-	void PostLoad();
+	void PostLoad();//(bool RandomizeStationLocations);
 	
 	// Game scnarios
-	void GenerateEmptyScenario();
-	void GenerateFighterScenario();
-	void GenerateFreighterScenario();
-	void GenerateDebugScenario();
+	void GenerateEmptyScenario(bool RandomizeStationLocations = false);
+	void GenerateFighterScenario(bool RandomizeStationLocations = false);
+	void GenerateFreighterScenario(bool RandomizeStationLocations = false);
+	void GenerateDebugScenario(bool RandomizeStationLocations = false);
 	
 	/** Add a new player ship */
 	UFlareSimulatedSpacecraft* CreateRecoveryPlayerShip();
@@ -44,7 +44,7 @@ protected:
 	----------------------------------------------------*/
 
 	/** Setup the common world */
-	void SetupWorld();
+	void SetupWorld(bool RandomizeStationLocations = false);
 
 	/** Setup asteroids */
 	void SetupAsteroids();
@@ -69,19 +69,19 @@ public:
 	void CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count);
 
 	/** Create a station and fill its input */
-	void CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level = 1, FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters());
+	void CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level = 1, FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), bool RandomLocation = false);
 
 	/** Setup the Blue Heart capital station */
-	void CreateBlueHeart();
+	void CreateBlueHeart(bool RandomizeStationLocations = false, double StationLevelBonus = 0);
 
 	/** Setup the Boneyard capital station */
-	void CreateBoneyard();
+	void CreateBoneyard(bool RandomizeStationLocations = false, double StationLevelBonus = 0);
 
 	/** Setup the Night's Home capital station */
-	void CreateNightsHome();
+	void CreateNightsHome(bool RandomizeStationLocations = false, double StationLevelBonus = 0);
 
 	/** Setup the Farm capital station */
-	void CreateTheFarm();
+	void CreateTheFarm(bool RandomizeStationLocations = false, double StationLevelBonus = 0);
 
 
 protected:
@@ -180,8 +180,16 @@ public:
 	FName                                      ShipOmen;
 	FName                                      ShipGhoul;
 	FName                                      ShipOrca;
+	FName                                      ShipPhalanx;
+
+	FName                                      ShipSphinx;
+	FName                                      ShipThemis;
+	FName                                      ShipAtlas;
 	FName                                      ShipDragon;
+	FName                                      ShipKami;
 	FName                                      ShipInvader;
+	FName                                      ShipLeviathan;
+	FName                                      ShipAnubis;
 
 	// Stations
 	FName                                      StationFarm;
@@ -202,5 +210,8 @@ public:
 	FName                                      StationHub;
 	FName                                      StationOutpost;
 	FName									   StationResearch;
+
+	/** Used for finding random sector for a station to go to*/
+	TArray<UFlareSimulatedSector*> GetRandomAllowedSectors(FName StationClass, UFlareCompany* Company) const;
 
 };

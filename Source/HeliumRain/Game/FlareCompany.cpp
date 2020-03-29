@@ -102,7 +102,6 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 
 	// Load emblem
 	SetupEmblem();
-
 	InvalidateCompanyValueCache();
 }
 
@@ -214,7 +213,6 @@ FFlareCompanySave* UFlareCompany::Save()
 	}
 
 	CompanyData.CompanyValue = GetCompanyValue().TotalValue;
-
 	CompanyData.AI = *CompanyAI->Save();
 
 	return &CompanyData;
@@ -225,9 +223,9 @@ FFlareCompanySave* UFlareCompany::Save()
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareCompany::SimulateAI()
+void UFlareCompany::SimulateAI(bool GlobalWar)
 {
-	CompanyAI->Simulate();
+	CompanyAI->Simulate(GlobalWar);
 }
 
 void UFlareCompany::TickAI()
@@ -682,11 +680,17 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	CompanyDestroyedSpacecrafts.Add(Spacecraft);
 }
 
-void UFlareCompany::DiscoverSector(UFlareSimulatedSector* Sector)
+void UFlareCompany::DiscoverSector(UFlareSimulatedSector* Sector, bool VisitedSector)
+
 {
 	if (Sector)
 	{
 		KnownSectors.AddUnique(Sector);
+		if (VisitedSector)
+			//visited sector bool for randomize station location game option
+		{
+			VisitedSectors.AddUnique(Sector);
+		}
 	}
 }
 
@@ -769,13 +773,47 @@ void UFlareCompany::GiveResearch(int64 Amount)
 		return;
 	}
 
-	CompanyData.ResearchAmount += Amount;
 
-
-	if (this == Game->GetPC()->GetCompany() && GetGame()->GetQuestManager())
+	if (this == Game->GetPC()->GetCompany())
 	{
-		GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("gain-research").PutInt32("amount", Amount));
+		CompanyData.ResearchAmount += Amount;
+		if (GetGame()->GetQuestManager())
+		{
+			GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("gain-research").PutInt32("amount", Amount));
+		}
 	}
+	else
+	{
+		// non-player company gains a research bonus
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		float Multiplier = 1.00f;
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			Multiplier = 1.00f;
+			break;
+		case 0: // Normal
+			Multiplier = 1.00f;
+			break;
+		case 1: // Hard
+			Multiplier = 1.25f;
+			break;
+		case 2: // Very Hard
+			Multiplier = 1.50f;
+			break;
+		case 3: // Expert
+			Multiplier = 2.00f;
+			break;
+		case 4: // Unfair
+			Multiplier = 2.50f;
+			break;
+		}
+
+		CompanyData.ResearchAmount += Amount * Multiplier;
+
+	}
+
 }
 
 void UFlareCompany::GivePlayerReputation(float Amount, float Max)
@@ -811,7 +849,6 @@ void UFlareCompany::GivePlayerReputationToOthers(float Amount)
 float UFlareCompany::ComputeCompanyDiplomaticWeight()
 {
 	CompanyValue Value = GetCompanyValue();
-
 	return (Value.TotalValue + Value.ArmyCurrentCombatPoints * 10);
 }
 
@@ -870,7 +907,7 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 		{
 			Allies.Add(CompanyCandidate);
 		}
-		else if (CompanyCandidate != PlayerCompany && CompanyCandidate->GetAI()->GetData()->Pacifism == 0 && CompanyCandidate->GetWarCount(PlayerCompany) == 0)
+		else if (CompanyCandidate != PlayerCompany && CompanyCandidate->GetAI()->GetData()->Pacifism == 0 && CompanyCandidate->GetWarCount(PlayerCompany) == 0 )
 		{
 			// Open to war
 #ifdef DEBUG_CONFIDENCE
@@ -900,7 +937,6 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 			continue;
 		}
 
-
 		bool IsEnemy = false;
 
 		if (IsAtWar(OtherCompany))
@@ -914,7 +950,7 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 #endif
 			IsEnemy = true;
 		}
-		else if (OtherCompany != PlayerCompany && OtherCompany->GetAI()->GetData()->Pacifism == 0 && OtherCompany->GetWarCount(PlayerCompany) == 0)
+		else if (OtherCompany != PlayerCompany && OtherCompany->GetAI()->GetData()->Pacifism == 0 && OtherCompany->GetWarCount(PlayerCompany) == 0 )
 		{
 #ifdef DEBUG_CONFIDENCE
 			FLOGV("GetConfidenceLevel enemy %s to %s : %s want war ? %d",
@@ -1036,30 +1072,103 @@ int32 UFlareCompany::GetTransportCapacity()
 
 TArray<UFlareCompany*> UFlareCompany::GetOtherCompanies(bool Shuffle)
 {
+
 	// TODO Cache
-	TArray<UFlareCompany*> OtherCompanies;
-	for(UFlareCompany* Company : GetGame()->GetGameWorld()->GetCompanies())
+	if (!OtherCompaniesCache.Num())
 	{
-		if(Company !=  this)
+		TArray<UFlareCompany*> GameCompanies = GetGame()->GetGameWorld()->GetCompanies();
+		OtherCompaniesCache.Reserve(GameCompanies.Num() - 1);
+
+		for (UFlareCompany* Company : GameCompanies)
+		{
+			if (Company != this)
+			{
+				OtherCompaniesCache.Add(Company);
+			}
+		}
+		/*
+		Game->GetPC()->Notify(
+			LOCTEXT("NewCache", "Company info cached"),
+			LOCTEXT("NewCache", "Company info cached"),
+			"companyfirstcache",
+			EFlareNotification::NT_Info);
+
+*/
+	}
+/*
+	else
+	{
+
+		Game->GetPC()->Notify(
+			LOCTEXT("CacheExists", "Company cached exists"),
+			LOCTEXT("CacheExists", "Company cached exists"),
+			"companysecondcache",
+			EFlareNotification::NT_Info);
+	}
+*/
+	if(Shuffle)
+	{
+
+		TArray<UFlareCompany*> ShuffleCompanies;
+		ShuffleCompanies.Reserve(OtherCompaniesCache.Num());
+
+		for (UFlareCompany* Company : OtherCompaniesCache)
+		{
+			ShuffleCompanies.Add(Company);
+		}
+
+		int32 LastIndex = ShuffleCompanies.Num() -1;
+
+		for (int32 i = 0; i < LastIndex; ++i)
+		{
+			int32 Index = FMath::RandRange(0, LastIndex);
+			if (i != Index)
+			{
+				ShuffleCompanies.Swap(i, Index);
+			}
+		}
+
+/*
+		TArray<UFlareCompany*> OtherCompanies;
+		TArray<UFlareCompany*> ShuffleCompanies;
+
+		OtherCompanies.Reserve(OtherCompaniesCache.Num());
+		ShuffleCompanies.Reserve(OtherCompaniesCache.Num());
+
+		for (UFlareCompany* Company : OtherCompaniesCache)
 		{
 			OtherCompanies.Add(Company);
 		}
-	}
 
-	if(Shuffle)
-	{
-		TArray<UFlareCompany*> ShuffleCompanies;
 		while(OtherCompanies.Num())
 		{
 			int32 Index = FMath::RandRange(0, OtherCompanies.Num() - 1);
 			ShuffleCompanies.Add(OtherCompanies[Index]);
-			OtherCompanies.RemoveAt(Index);
+//			OtherCompanies.RemoveAt(Index);
+			OtherCompanies.RemoveAtSwap(Index);
 		}
+*/
+/*
+		Game->GetPC()->Notify(
+			LOCTEXT("Shuffled", "Returned Shuffled Cache"),
+			FText::Format(LOCTEXT("Shuffled", "Shuffle returned {0}"),
+			ShuffleCompanies.Num()),
+			"shuffle",
+			EFlareNotification::NT_Info);
+			*/
 		return ShuffleCompanies;
 	}
 	else
 	{
-		return OtherCompanies;
+/*
+		Game->GetPC()->Notify(
+			LOCTEXT("Existing", "Returned Existing Cache"),
+			FText::Format(LOCTEXT("Existing", "Returned Existing Cache {0}"),
+			OtherCompaniesCache.Num()),
+			"Existing",
+			EFlareNotification::NT_Info);
+*/
+		return OtherCompaniesCache;
 	}
 }
 
@@ -1114,28 +1223,87 @@ bool UFlareCompany::HasKnowResourceOutput(FFlareResourceDescription* Resource)
 }
 
 int32 UFlareCompany::GetWarCount(UFlareCompany* ExcludeCompany) const
+//replaced
 {
-	int32 WarCount = 0;
-
-	for(UFlareCompany* OtherCompany : Game->GetGameWorld()->GetCompanies())
 	{
-		if(OtherCompany == this || OtherCompany == ExcludeCompany)
+		int32 WarCount = 0;
+
+		for (UFlareCompany* OtherCompany : Game->GetGameWorld()->GetCompanies())
 		{
-			continue;
+			if (OtherCompany == this)// || OtherCompany == ExcludeCompany)
+			{
+				continue;
+			}
+
+			if (IsAtWar(OtherCompany))
+			{
+				++WarCount;
+			}
 		}
 
-		if (IsAtWar(OtherCompany))
-		{
-			++WarCount;
-		}
+		return WarCount;
 	}
 
-	return WarCount;
+	//	int32 WarCount = CompanyData.HostileCompanies.Num();
+//	return WarCount;
 }
 
 int64 UFlareCompany::GetTributeCost(UFlareCompany* Company)
 {
-	return 0.01 * GetCompanyValue().TotalValue + 0.1 * GetCompanyValue().MoneyValue;
+	int32 GameDifficulty = -1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+	double Multiplier = 0.01;
+
+	if (Company == Game->GetPC()->GetCompany())
+	{
+		//tributing TOWARDS the player
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			Multiplier = 0.015;
+			break;
+		case 0: // Normal
+			Multiplier = 0.01;
+			break;
+		case 1: // Hard
+			Multiplier = 0.0075;
+			break;
+		case 2: // Very Hard
+			Multiplier = 0.0050;
+			break;
+		case 3: // Expert
+			Multiplier = 0.0025;
+			break;
+		case 4: // Unfair
+			Multiplier = 0.00125;
+			break;
+		}
+	}
+	else if (this == Game->GetPC()->GetCompany())
+	{
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			Multiplier = 0.01;
+			break;
+		case 0: // Normal
+			Multiplier = 0.01;
+			break;
+		case 1: // Hard
+			Multiplier = 0.015;
+			break;
+		case 2: // Very Hard
+			Multiplier = 0.02;
+			break;
+		case 3: // Expert
+			Multiplier = 0.04;
+			break;
+		case 4: // Unfair
+			Multiplier = 0.06;
+			break;
+		}
+	}
+	return Multiplier * GetCompanyValue().TotalValue + 0.1 * GetCompanyValue().MoneyValue;
 }
 
 void UFlareCompany::PayTribute(UFlareCompany* Company, bool AllowDepts)
@@ -1503,19 +1671,17 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 {
 	bool globalRequest = SectorFilter == nullptr;
 
-
 	if(CompanyValueCacheValid && globalRequest)
 	{
 		return CompanyValueCache;
 	}
-
-
 
 	// Company value is the sum of :
 	// - money
 	// - value of its spacecraft
 	// - value of the stock in these spacecraft
 	// - value of the resources used in factory
+	// - daily money requirements to keep stations running
 	CompanyValue CompanyValue;
 	CompanyValue.MoneyValue = GetMoney();
 	CompanyValue.StockValue = 0;
@@ -1524,6 +1690,12 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	CompanyValue.ArmyCurrentCombatPoints = 0;
 	CompanyValue.ArmyTotalCombatPoints = 0;
 	CompanyValue.StationsValue = 0;
+	CompanyValue.TotalDailyProductionCost = 0;
+	CompanyValue.TotalShipCount = 0;
+	CompanyValue.TotalShipCountMilitaryS = 0;
+	CompanyValue.TotalShipCountMilitaryL = 0;
+	CompanyValue.TotalShipCountTradeS = 0;
+	CompanyValue.TotalShipCountTradeL = 0;
 
 	for (int SpacecraftIndex = 0; SpacecraftIndex < CompanySpacecrafts.Num(); SpacecraftIndex++)
 	{
@@ -1569,12 +1741,31 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			CompanyValue.ShipsValue += SpacecraftPrice;
 		}
 
+		CompanyValue.TotalShipCount++;
+
 		if(Spacecraft->IsMilitary())
 		{
 			CompanyValue.ArmyValue += SpacecraftPrice;
 			CompanyValue.ArmyTotalCombatPoints += Spacecraft->GetCombatPoints(false);
 			CompanyValue.ArmyCurrentCombatPoints += Spacecraft->GetCombatPoints(true);
+			if (Spacecraft->GetSize() == EFlarePartSize::S)
+			{
+				CompanyValue.TotalShipCountMilitaryS++;
+			}
+			else
+			{
+				CompanyValue.TotalShipCountMilitaryL++;
+			}
 		}
+		else if (Spacecraft->GetSize() == EFlarePartSize::S)
+		{
+			CompanyValue.TotalShipCountTradeS++;
+		}
+		else
+		{
+			CompanyValue.TotalShipCountTradeL++;
+		}
+
 
 		// Value of the stock
 		{
@@ -1611,7 +1802,36 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 		for (int32 FactoryIndex = 0; FactoryIndex < Spacecraft->GetFactories().Num(); FactoryIndex++)
 		{
 			UFlareFactory* Factory = Spacecraft->GetFactories()[FactoryIndex];
-			
+
+			int64 FactoryDuration = Factory->GetProductionDuration();
+			if (FactoryDuration > 0)
+			{
+
+
+//				if (Game->GetPC()->GetCompany() == this)
+					FText ProductionCostText;
+					uint32 CycleProductionCost = Factory->GetProductionCost();
+					if (CycleProductionCost > 0)
+					{
+
+						if (Factory->HasCostReserved())
+						{
+							CompanyValue.TotalDailyProductionCost += CycleProductionCost / FactoryDuration;
+						}
+
+						ProductionCostText = FText::Format(LOCTEXT("ProductionCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(CycleProductionCost)));
+					}
+					/*
+					Game->GetPC()->Notify(
+						LOCTEXT("Prodcost", "Fact duration"),
+						FText::Format(LOCTEXT("Prodcost", "Factory Duration {0}, money {1}"),
+							FactoryDuration,
+							ProductionCostText),
+						"Prodcost",
+						EFlareNotification::NT_Info);
+					*/
+			}
+
 			for (int32 ReservedResourceIndex = 0 ; ReservedResourceIndex < Factory->GetReservedResources().Num(); ReservedResourceIndex++)
 			{
 				FName ResourceIdentifier = Factory->GetReservedResources()[ReservedResourceIndex].ResourceIdentifier;
@@ -1629,8 +1849,16 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			}
 		}
 	}
-
-	CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
+/*
+//	if (Game->GetPC()->GetCompany() == this)
+		Game->GetPC()->Notify(
+			LOCTEXT("Prodcost1", "Returned Existing Cache"),
+			FText::Format(LOCTEXT("Prodcost1", "Daily Production Cost {0}"),
+				CompanyValue.TotalDailyProductionCost),
+			"Prodcost1",
+			EFlareNotification::NT_Info);
+		*/
+		CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
 	CompanyValue.TotalValue = CompanyValue.MoneyValue + CompanyValue.StockValue + CompanyValue.SpacecraftsValue;
 
 	if(globalRequest)

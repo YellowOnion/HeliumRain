@@ -56,14 +56,23 @@ protected:
 	/** Is the trading part visible or not */
 	EVisibility GetTradingVisibility() const;
 
+	/** Is the right side company flag visible or not */
+	EVisibility GetCompanyFlagVisibility() const;
+
 	/** Is the trading part visible or not */
 	EVisibility GetConstructionInfosVisibility() const;
 
 	/** Is the "back to selection" visible or not */
 	EVisibility GetBackToSelectionVisibility() const;
 
+	/** Is the undock button visible or not */
+	EVisibility GetUndockVisibility() const;
+
 	/** Are the transaction details visible ? */
 	EVisibility GetTransactionDetailsVisibility() const;
+
+	/** Should the donation button be visible ? */
+	EVisibility GetDonationButtonVisibility() const;
 
 	/** Are the transaction details visible ? */
 	EVisibility GetTransactionInvalidVisibility() const;
@@ -77,6 +86,12 @@ protected:
 	/** Get the transaction details */
 	FText GetTransactionDetails() const;
 
+	/** Get the trade ship details/dynamic information */
+	FText GetShipTradeDetails() const;
+
+	/** Get the company name or the current fleet's name*/
+	FText GetRightcraftInfo() const;
+
 	/** Get the transaction invalid details */
 	FText GetTransactionInvalidDetails() const;
 
@@ -86,9 +101,14 @@ protected:
 	/** A spacecraft has been selected, hide the list and show the cargo */
 	void OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
 
+	void OnUndock();
+
 	/** Start transferring a resource */
 	void OnTransferResources(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource);
 
+	/** Toggle button pushed */
+	void OnDonationToggle();
+		
 	/** Changed resource quantity, recompute price **/
 	void OnResourceQuantityChanged(float Value);
 
@@ -109,6 +129,9 @@ protected:
 
 	/** Return true if the transaction is valid*/
 	bool IsTransactionValid(FText& Reason) const;
+
+	/** Refresh Previously done tradeblocks using the previous set of settings*/
+	bool RefreshTradeBlocks() const;
 
 	/** How much of this can we afford */
 	int32 GetMaxTransactionAmount() const;
@@ -138,6 +161,8 @@ protected:
 	TSharedPtr<SSlider>                             QuantitySlider;
 	TSharedPtr<SEditableText>                       QuantityText;
 	TSharedPtr<SFlareConfirmationBox>               PriceBox;
+	TSharedPtr<SFlareButton>						DonationButton;
+	TSharedPtr<SFlareCompanyFlag>				    CompanyFlag;
 
 	// Data
 	UFlareSimulatedSector*                          TargetSector;
@@ -149,6 +174,47 @@ protected:
 	UFlareSimulatedSpacecraft*                      TransactionDestinationSpacecraft;
 	FFlareResourceDescription*                      TransactionResource;
 	uint32                                          TransactionQuantity;
+	uint32											PreviousTradeDirection;
 
 	bool											WasActiveSector;
+
+public:
+
+	/*----------------------------------------------------
+		Getter
+	----------------------------------------------------*/
+
+	UFlareSimulatedSpacecraft* GetTargetLeftShip()
+	{
+		return TargetLeftSpacecraft;
+	}
+
+	UFlareSimulatedSpacecraft* GetTargetRightShip()
+	{
+		return TargetLeftSpacecraft;
+	}
+
+	UFlareSimulatedSpacecraft* GetTransactionSourceSpacecraft()
+	{
+		return TransactionSourceSpacecraft;
+	}
+	UFlareSimulatedSpacecraft* GetTransactionDestinationSpacecraft()
+	{
+		return TransactionDestinationSpacecraft;
+	}
+
+	FFlareResourceDescription* GetTransactionResource()
+	{
+		return TransactionResource;
+	}
+
+	uint32 GetTransactionTransactionQuantity()
+	{
+		return TransactionQuantity;
+	}
+
+	bool GetRefreshTradeBlocks()
+	{
+		return RefreshTradeBlocks();
+	}
 };

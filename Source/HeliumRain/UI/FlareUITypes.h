@@ -76,10 +76,14 @@ struct FFlareMenuParameterData
 		, Resource(NULL)
 		, CompanyDescription(NULL)
 		, ScenarioIndex(0)
+		, DifficultyIndex(0)
 		, PlayerEmblemIndex(0)
 		, PlayTutorial(false)
+		, RandomizeStations(false)
+		, PlayStory(false)
 		, OrderForPlayer(false)
 		, SpacecraftOrderHeavy(false)
+		, SpacecraftOrderConfig(false)
 		, ComplexConnectorName(NAME_None)
 	{}
 
@@ -96,10 +100,14 @@ struct FFlareMenuParameterData
 	struct FFlareCompanyDescription*            CompanyDescription;
 
 	int32                                       ScenarioIndex;
+	int32                                       DifficultyIndex;
 	int32                                       PlayerEmblemIndex;
+	bool										RandomizeStations;
 	bool                                        PlayTutorial;
+	bool										PlayStory;
 	bool                                        OrderForPlayer;
 	bool                                        SpacecraftOrderHeavy;
+	bool                                        SpacecraftOrderConfig;
 	FName                                       ComplexConnectorName;
 };
 

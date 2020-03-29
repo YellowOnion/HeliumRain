@@ -498,15 +498,24 @@ void UFlareWorld::Simulate()
 	AITradeSources MaintenanceSources(this);
 	AITradeIdleShips IdleShips(this);
 
-
 	AITradeHelper::GenerateTradingNeeds(Needs, MaintenanceNeeds, StorageNeeds, this);
 	AITradeHelper::GenerateTradingSources(Sources, MaintenanceSources, this);
 	AITradeHelper::GenerateIdleShips(IdleShips, this);
+
+	int32 MaxCombatPoint = 0;
+	UFlareCompany* MaxCombatPointCompany = NULL;
 
 	AICompaniesMoney CompaniesMoney;
 	for(UFlareCompany* Company: GetCompanies())
 	{
 		CompaniesMoney.CompaniesMoney.Add(Company, Company->GetMoney())	;
+
+		struct CompanyValue Value = Company->GetCompanyValue();
+		if (MaxCombatPoint < Value.ArmyCurrentCombatPoints)
+		{
+			MaxCombatPoint = Value.ArmyCurrentCombatPoints;
+			MaxCombatPointCompany = Company;
+		}
 	}
 
 #if DEBUG_NEW_AI_TRADING
@@ -544,11 +553,135 @@ void UFlareWorld::Simulate()
 #endif
 
 	// AI. Play them in random order
+
+	bool GlobalWar = false;
+
+	float MaxCombatPointRatio = float(MaxCombatPoint) / GetGame()->GetGameWorld()->GetTotalWorldCombatPoint();
+
+	//FLOGV("MaxCombatPointRatio %f", MaxCombatPointRatio);
+	//FLOGV("MaxCombatPoint %d", MaxCombatPoint);
+	//FLOGV("TotalWorldCombatPoint %d", TotalWorldCombatPoint);
+
+	// If a company is not far from half world power, a global alliance is formed
+
+	int32 GameDifficulty = -1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+
+	/*
+	GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check 1"),
+		FText::Format(LOCTEXT("AIStartGlobalWarInfo", "Ratio {0} Maxcombatpoint {1} High company {2}"),
+			MaxCombatPointRatio,
+			MaxCombatPoint,
+			MaxCombatPointCompany->GetCompanyName()),
+		FName("global-war"),
+		EFlareNotification::NT_Military,
+		false,
+		EFlareMenu::MENU_Leaderboard);
+	*/
+
+	if (MaxCombatPointRatio > 0.3 && MaxCombatPoint > 500)
+	{
+		float Chance = 1.00f;
+
+		if (MaxCombatPointCompany == PlayerCompany)
+		{
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				Chance = 0.00f;
+				break;
+			case 0: // Normal
+				Chance = 0.00f;
+				break;
+			case 1: // Hard
+				Chance = 0.01f;
+				break;
+			case 2: // Very Hard
+				Chance = 0.02f;
+				break;
+			case 3: // Expert
+				Chance = 0.05f;
+				break;
+			case 4: // Unfair
+				Chance = 0.10f;
+				break;
+			}
+		}
+		else
+		{
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				Chance = 1.00f;
+				break;
+			case 0: // Normal
+				Chance = 1.00f;
+				break;
+			case 1: // Hard
+				Chance = 0.70f;
+				break;
+			case 2: // Very Hard
+				Chance = 0.40f;
+				break;
+			case 3: // Expert
+				Chance = 0.10f;
+				break;
+			case 4: // Unfair
+				Chance = 0.00f;
+				break;
+			}
+		}
+
+		bool HasChance = FMath::FRand() < Chance;
+/*
+		GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check"),
+		FText::Format(LOCTEXT("AIStartGlobalWarInfo", "chance {0}, haschance {1}."),
+		Chance,
+		HasChance),
+		FName("global-war"),
+		EFlareNotification::NT_Military,
+		false,
+		EFlareMenu::MENU_Leaderboard);
+*/
+		if (HasChance)
+		{
+			for (UFlareCompany* OtherCompany : GetCompanies())
+			{
+				if (MaxCombatPointCompany != OtherCompany && OtherCompany->GetCompanyValue().ArmyCurrentCombatPoints > 0)
+				{
+					if (OtherCompany->GetWarState(MaxCombatPointCompany) != EFlareHostility::Hostile)
+					{
+						GlobalWar = true;
+					}
+
+					OtherCompany->GetAI()->GetData()->Pacifism = 0;
+					OtherCompany->SetHostilityTo(MaxCombatPointCompany, true);
+				}
+				else
+				{
+					OtherCompany->SetHostilityTo(MaxCombatPointCompany, false);
+				}
+			}
+
+			// Notify the player that this is happening
+			if (GlobalWar)
+			{
+				GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War"),
+					FText::Format(LOCTEXT("AIStartGlobalWarInfo", "All companies are now allied to stop the militarization of {0}."),
+						MaxCombatPointCompany->GetCompanyName()),
+					FName("global-war"),
+					EFlareNotification::NT_Military,
+					false,
+					EFlareMenu::MENU_Leaderboard);
+			}
+		}
+	}
+
 	TArray<UFlareCompany*> CompaniesToSimulateAI = Companies;
 	while(CompaniesToSimulateAI.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
-		CompaniesToSimulateAI[Index]->SimulateAI();
+		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar);
 		CompaniesToSimulateAI.RemoveAt(Index);
 	}
 
@@ -734,6 +867,7 @@ void UFlareWorld::Simulate()
 			TradeRoutes[RouteIndex]->Simulate();
 		}
 	}
+
 	FLOG("* Simulate > Travels");
 
 	// Undock and make move AI ships
@@ -827,7 +961,6 @@ void UFlareWorld::Simulate()
 	// Check player position in leaderboard
 	bool IsFirst = true;
 	bool IsLast = true;
-
 
 	int64 PlayerValue = PlayerCompany->GetCompanyValue().TotalValue;
 
@@ -949,6 +1082,10 @@ void UFlareWorld::ProcessShipCapture()
 	// - Kill rotation and velocity
 	// - respawn the ship at near location
 	// - change its owner
+
+	int32 GameDifficulty = -1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ShipToCapture.Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = ShipToCapture[SpacecraftIndex];
@@ -967,35 +1104,57 @@ void UFlareWorld::ProcessShipCapture()
 
 		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
 
-
-
 		if (GetGame()->GetPC()->GetCompany() == HarpoonOwner)
 		{
-			Owner->GivePlayerReputation(-20);
+			int32 ReputationDrop = -20;
+			int32 NonPirateDrop = -5;
 
-			if (Owner != GetGame()->GetScenarioTools()->Pirates)
-			{
-				HarpoonOwner->GivePlayerReputationToOthers(-5);
+			switch (GameDifficulty)
+				{
+				case -1: // Easy
+					break;
+				case 0: // Normal
+					break;
+				case 1: // Hard
+					ReputationDrop = -25;
+					NonPirateDrop = -6.25;
+					break;
+				case 2: // Very Hard
+					ReputationDrop = -30;
+					NonPirateDrop = -7.50;
+					break;
+				case 3: // Expert
+					ReputationDrop = -35;
+					NonPirateDrop = -8.75;
+					break;
+				case 4: // Unfair
+					ReputationDrop = -40;
+					NonPirateDrop = -10;
+					break;
+				}
+
+				Owner->GivePlayerReputation(ReputationDrop);
+				if (Owner != GetGame()->GetScenarioTools()->Pirates)
+				{
+					HarpoonOwner->GivePlayerReputationToOthers(NonPirateDrop);
+				}
+
+				FFlareMenuParameterData MenuData;
+				MenuData.Sector = Sector;
+
+				GetGame()->GetPC()->Notify(LOCTEXT("ShipCaptured", "Ship captured"),
+					FText::Format(LOCTEXT("ShipCapturedFormat", "You have captured a {0}-class ship in {1}. Its new name is {2}."),
+						NewShip->GetDescription()->Name,
+						FText::FromString(Sector->GetSectorName().ToString()),
+						UFlareGameTools::DisplaySpacecraftName(NewShip)),
+					FName("ship-captured"),
+					EFlareNotification::NT_Military,
+					false,
+					EFlareMenu::MENU_Sector,
+					MenuData);
+
+				GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_CAPTURE", 1);
 			}
-
-
-
-			FFlareMenuParameterData MenuData;
-			MenuData.Sector = Sector;
-
-			GetGame()->GetPC()->Notify(LOCTEXT("ShipCaptured", "Ship captured"),
-				FText::Format(LOCTEXT("ShipCapturedFormat", "You have captured a {0}-class ship in {1}. Its new name is {2}."),
-							  NewShip->GetDescription()->Name,
-							  FText::FromString(Sector->GetSectorName().ToString()),
-							  UFlareGameTools::DisplaySpacecraftName(NewShip)),
-				FName("ship-captured"),
-				EFlareNotification::NT_Military,
-				false,
-				EFlareMenu::MENU_Sector,
-				MenuData);
-
-			GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_CAPTURE", 1);
-		}
 
 		// Research steal
 		{
@@ -1008,8 +1167,32 @@ void UFlareWorld::ProcessShipCapture()
 			{
 				// There is a Fchance to hava research reward
 
-				int32 ResearchSteal = FMath::Sqrt(float(OwnerResearch - CapturerResearch) / 10.f);
+				float StealDevisor = 10.f;
+				if (GetGame()->GetPC()->GetCompany() == HarpoonOwner)
+				{
+					switch (GameDifficulty)
+					{
+					case -1: // Easy
+						StealDevisor = 9.f;
+						break;
+					case 0: // Normal
+						break;
+					case 1: // Hard
+						StealDevisor = 11.f;
+						break;
+					case 2: // Very Hard
+						StealDevisor = 12.f;
+						break;
+					case 3: // Expert
+						StealDevisor = 14.f;
+						break;
+					case 4: // Unfair
+						StealDevisor = 16.f;
+						break;
+					}
+				}
 
+				int32 ResearchSteal = FMath::Sqrt(float(OwnerResearch - CapturerResearch) / StealDevisor);
 				HarpoonOwner->GiveResearch(ResearchSteal);
 
 				if (ResearchSteal > 0 && GetGame()->GetPC()->GetCompany() == HarpoonOwner)
@@ -1652,6 +1835,10 @@ void UFlareWorld::ClearFactories(UFlareSimulatedSpacecraft *ParentSpacecraft)
 		if (Factory->GetParent() == ParentSpacecraft)
 		{
 			Factories.RemoveAt(FactoryIndex);
+			if (ParentSpacecraft->IsShipyard())
+			{
+				Shipyards.Remove(ParentSpacecraft);
+			}
 		}
 	}
 }
@@ -1659,8 +1846,15 @@ void UFlareWorld::ClearFactories(UFlareSimulatedSpacecraft *ParentSpacecraft)
 void UFlareWorld::AddFactory(UFlareFactory* Factory)
 {
 	Factories.Add(Factory);
-}
 
+	if (Factory->GetParent()->IsShipyard())
+	{
+		if (Shipyards.Find(Factory->GetParent()) == INDEX_NONE)
+		{
+			Shipyards.Add(Factory->GetParent());
+		}
+	}
+}
 
 UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimulatedSector* DestinationSector, bool Force)
 {

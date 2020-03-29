@@ -8,7 +8,7 @@
 #include "../FlareGameTools.h"
 
 #include "../../UI/Style/FlareStyleSet.h"
-
+#include "../../Game/FlareGame.h"
 
 /*----------------------------------------------------
 	Constructor
@@ -19,9 +19,9 @@ UFlareSaveReaderV1::UFlareSaveReaderV1(const FObjectInitializer& ObjectInitializ
 {
 }
 
-UFlareSaveGame* UFlareSaveReaderV1::LoadGame(TSharedPtr< FJsonObject > GameObject)
+UFlareSaveGame* UFlareSaveReaderV1::LoadGame(TSharedPtr< FJsonObject > GameObject, AFlareGame* Game_)
 {
-
+	FlareGame = Game_;
 	FString Game;
 	FString SaveFormat;
 	if(!GameObject->TryGetStringField(TEXT("Game"), Game))
@@ -78,6 +78,7 @@ void UFlareSaveReaderV1::LoadPlayer(const TSharedPtr<FJsonObject> Object, FFlare
 {
 	LoadFName(Object, "UUID", &Data->UUID);
 	LoadInt32(Object, "ScenarioId", &Data->ScenarioId);
+	LoadInt32(Object, "DifficultyId", &Data->DifficultyId);
 	LoadInt32(Object, "PlayerEmblemIndex", &Data->PlayerEmblemIndex);
 	LoadFName(Object, "CompanyIdentifier", &Data->CompanyIdentifier);
 	LoadFName(Object, "PlayerFleetIdentifier", &Data->PlayerFleetIdentifier);
@@ -111,9 +112,8 @@ void UFlareSaveReaderV1::LoadQuest(const TSharedPtr<FJsonObject> Object, FFlareQ
 
 	LoadFName(Object, "SelectedQuest", &Data->SelectedQuest);
 	Object->TryGetBoolField(TEXT("PlayTutorial"), Data->PlayTutorial);
+	Object->TryGetBoolField(TEXT("PlayStory"), Data->PlayStory);
 	LoadInt64(Object, "NextGeneratedQuestIndex", &Data->NextGeneratedQuestIndex);
-
-
 
 	const TArray<TSharedPtr<FJsonValue>>* QuestProgresses;
 	if(Object->TryGetArrayField("QuestProgresses", QuestProgresses))
@@ -421,8 +421,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	LoadFName(Object, "AttachComplexStationName", &Data->AttachComplexStationName);
 	LoadFName(Object, "AttachComplexConnectorName", &Data->AttachComplexConnectorName);
 
-
-	// LEGACY alpha 3
+		// LEGACY alpha 3
 	Data->IsTrading = false;
 	Data->IsIntercepted = false;
 	Data->RefillStock = 0;
@@ -568,6 +567,11 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	LoadFNameArray(Object, "SalesExcludedResources", &Data->SalesExcludedResources);
 
+	const TArray<TSharedPtr<FJsonValue>>* TempArray;
+	if (Object->TryGetArrayField("ShipyardOrderExternalConfig", TempArray))
+	{
+		LoadFNameArray(Object, "ShipyardOrderExternalConfig", &Data->ShipyardOrderExternalConfig);
+	}
 
 	const TArray<TSharedPtr<FJsonValue>>* CapturePoints;
 	if(Object->TryGetArrayField("CapturePoints", CapturePoints))
@@ -584,7 +588,6 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 			Data->CapturePoints.Add(Company, Points);
 		}
 	}
-
 }
 
 

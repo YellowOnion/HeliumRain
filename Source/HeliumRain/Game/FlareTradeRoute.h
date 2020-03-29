@@ -22,6 +22,8 @@ namespace EFlareTradeRouteOperation
 		Sell,
 		LoadOrBuy,
 		UnloadOrSell,
+		Donate,
+		UnloadOrDonate
 	};
 }
 

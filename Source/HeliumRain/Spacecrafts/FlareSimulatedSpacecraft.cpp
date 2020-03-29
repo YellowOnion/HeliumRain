@@ -63,15 +63,15 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	WeaponsSystem->Initialize(this, &SpacecraftData);
 
 	// Initialize complex
-	if(IsComplex())
+	if (IsComplex())
 	{
 		ComplexChildren.Empty();
 		ComplexMaster = this;
 
-		for(FFlareConnectionSave connexion : SpacecraftData.ConnectedStations)
+		for (FFlareConnectionSave connexion : SpacecraftData.ConnectedStations)
 		{
 			UFlareSimulatedSpacecraft* childStation = Company->FindChildStation(connexion.StationIdentifier);
-			if(childStation)
+			if (childStation)
 			{
 				ComplexChildren.Add(childStation);
 				childStation->RegisterComplexMaster(this);
@@ -82,7 +82,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 			}
 		}
 	}
-	else if(!IsComplexElement())
+	else if (!IsComplexElement())
 	{
 		ComplexChildren.Empty();
 		ComplexMaster = nullptr;
@@ -93,13 +93,13 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	Game->GetGameWorld()->ClearFactories(this);
 	Factories.Empty();
 
-	if(IsComplex() && !Data.IsUnderConstruction)
+	if (IsComplex() && !Data.IsUnderConstruction)
 	{
-		if(IsUnderConstruction())
+		if (IsUnderConstruction())
 		{
-			for(UFlareSimulatedSpacecraft* Child:  ComplexChildren)
+			for (UFlareSimulatedSpacecraft* Child : ComplexChildren)
 			{
-				if(Child->IsUnderConstruction(true))
+				if (Child->IsUnderConstruction(true))
 				{
 					Factories.Append(Child->GetFactories());
 				}
@@ -107,7 +107,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		}
 		else
 		{
-			for(UFlareSimulatedSpacecraft* Child:  ComplexChildren)
+			for (UFlareSimulatedSpacecraft* Child : ComplexChildren)
 			{
 				Factories.Append(Child->GetFactories());
 			}
@@ -190,7 +190,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 
 	// Cargo bay init
-	if(SpacecraftData.AttachComplexStationName == NAME_None)
+	if (SpacecraftData.AttachComplexStationName == NAME_None)
 	{
 		int32 ProductionCargoBaySlotCapacity = 0;
 		int32 ProductionCargoBayCount = 0;
@@ -216,7 +216,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	}
 
 
-	if(!IsComplexElement() && IsUnderConstruction())
+	if (!IsComplexElement() && IsUnderConstruction())
 	{
 		AutoFillConstructionCargoBay();
 	}
@@ -249,7 +249,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		StationConnection.DockSize = EFlarePartSize::L;
 		ConnectorSlots.Add(StationConnection);
 	}
-	
+
 	// Load connected stations for use in simulated contexts
 	for (const FFlareConnectionSave& ConnectedStation : Data.ConnectedStations)
 	{
@@ -262,6 +262,20 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		StationConnection->ConnectedStationName = ConnectedStation.StationIdentifier;
 		StationConnection->Occupied = false;
 		StationConnection->Granted = true;
+	}
+
+	if (IsStation() && IsShipyard())
+	{
+		if(SpacecraftData.ShipyardOrderExternalConfig.Num() <= 0)
+			//if num below 0 it's probably from an old savegame
+		{
+			SpacecraftData.ShipyardOrderExternalConfig.Reserve(Game->GetSpacecraftCatalog()->ShipCatalog.Num());
+			for (auto& CatalogEntry : Game->GetSpacecraftCatalog()->ShipCatalog)
+			{
+				const FFlareSpacecraftDescription* Description = &CatalogEntry->Data;
+				SpacecraftData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+			}
+		}
 	}
 
 	// Load active spacecraft if it exists
@@ -1550,7 +1564,6 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 	newOrder.AdvancePayment = ShipPrice;
 
 	SpacecraftData.ShipyardOrderQueue.Add(newOrder);
-
 	UpdateShipyardProduction();
 
 	if (OrderCompany == Game->GetPC()->GetCompany())
@@ -1571,12 +1584,36 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 
 		Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("order-ship").PutInt32("size", Size).PutInt32("military", Military));
 
-		GetCompany()->GivePlayerReputation(ShipPrice / 100000);
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		int32 RepDivisor = 100000;
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			RepDivisor = 100000;
+			break;
+		case 0: // Normal
+			RepDivisor = 100000;
+			break;
+		case 1: // Hard
+			RepDivisor = 125000;
+			break;
+		case 2: // Very Hard
+			RepDivisor = 150000;
+			break;
+		case 3: // Expert
+			RepDivisor = 200000;
+			break;
+		case 4: // Unfair
+			RepDivisor = 250000;
+			break;
+		}
+
+		GetCompany()->GivePlayerReputation(ShipPrice / RepDivisor);
 	}
 
 	return true;
 }
-
 void UFlareSimulatedSpacecraft::CancelShipyardOrder(int32 OrderIndex)
 {
 	if(OrderIndex < 0 || OrderIndex > SpacecraftData.ShipyardOrderQueue.Num())
@@ -1592,7 +1629,31 @@ void UFlareSimulatedSpacecraft::CancelShipyardOrder(int32 OrderIndex)
 
 	if(Order.Company == Game->GetPC()->GetCompany()->GetIdentifier())
 	{
-		GetCompany()->GivePlayerReputation(-Order.AdvancePayment / 100000);
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		int32 RepDivisor = 100000;
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			RepDivisor = 110000;
+			break;
+		case 0: // Normal
+			RepDivisor = 100000;
+			break;
+		case 1: // Hard
+			RepDivisor = 125000;
+			break;
+		case 2: // Very Hard
+			RepDivisor = 150000;
+			break;
+		case 3: // Expert
+			RepDivisor = 200000;
+			break;
+		case 4: // Unfair
+			RepDivisor = 250000;
+			break;
+		}
+		GetCompany()->GivePlayerReputation(-Order.AdvancePayment / RepDivisor);
 	}
 
 	SpacecraftData.ShipyardOrderQueue.RemoveAt(OrderIndex);
@@ -1758,12 +1819,23 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		return false;
 	}
 
-	if(!IsAllowExternalOrder() && OrderCompany != GetCompany())
-	{
-		return false;
-	}
-
 	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
+
+	if (OrderCompany != GetCompany())
+	{
+		FFlareSpacecraftSave SpaceCraftData = GetData();
+		if (!IsAllowExternalOrder())
+		{
+			return false;
+		}
+
+		//TODO: make it apply to the AI if they have logic for disabling/enabling their own ship configuration settings
+		if (GetCompany() == PlayerCompany && SpaceCraftData.ShipyardOrderExternalConfig.Find(ShipDescription->Identifier) == INDEX_NONE)
+		{
+			return false;
+		}
+
+	}
 
 	if(OrderCompany == PlayerCompany)
 	{
@@ -1975,6 +2047,49 @@ void UFlareSimulatedSpacecraft::SetAllowExternalOrder(bool Allow)
 				Index++;
 			}
 		}
+	}
+}
+
+void UFlareSimulatedSpacecraft::AddRemoveExternalOrderArray(const FName ShipDescription)
+{
+
+	if (SpacecraftData.ShipyardOrderExternalConfig.Find(ShipDescription) != INDEX_NONE)
+	{
+		SpacecraftData.ShipyardOrderExternalConfig.RemoveSwap(ShipDescription);
+		// Cancel others companies order
+		bool ok = false;
+		while (!ok)
+		{
+			ok = true;
+			int Index = 0;
+			for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
+			{
+				if (Order.Company != GetCompany()->GetIdentifier())
+				{
+					//TODO TEST THIS IS THE SAME
+					if (ShipDescription == Order.ShipClass)
+					{
+						CancelShipyardOrder(Index);
+						ok = false;
+						break;
+					}
+				}
+				Index++;
+			}
+		}
+	}
+	else
+	{
+		SpacecraftData.ShipyardOrderExternalConfig.Add(ShipDescription);
+
+	
+/*
+		Game->GetPC()->Notify(LOCTEXT("TradingStateEnd", "Trading complete"),
+		FText::Format(LOCTEXT("TravelEndedFormat", "Add space {0} vs {1}"),
+		OldLen,
+		SpacecraftData.ShipyardOrderExternalConfig.Num()),
+		FName("trading-state-end"));
+*/
 	}
 }
 

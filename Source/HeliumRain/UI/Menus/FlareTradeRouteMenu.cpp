@@ -46,6 +46,11 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 	OperationList.Add(EFlareTradeRouteOperation::UnloadOrSell);
 	OperationNameList.Add(MakeShareable(new FText(LOCTEXT("OpUnloadSell", "Unload / Sell"))));
 
+	OperationList.Add(EFlareTradeRouteOperation::Donate);
+	OperationNameList.Add(MakeShareable(new FText(LOCTEXT("OpDonate", "Donate"))));
+	OperationList.Add(EFlareTradeRouteOperation::UnloadOrDonate);
+	OperationNameList.Add(MakeShareable(new FText(LOCTEXT("OpUnloadDonate", "Unload / Donate"))));
+
 	// Build structure
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -802,6 +807,8 @@ void SFlareTradeRouteMenu::GenerateSectorList()
 					case EFlareTradeRouteOperation::Unload:
 					case EFlareTradeRouteOperation::Sell:
 					case EFlareTradeRouteOperation::UnloadOrSell:
+					case EFlareTradeRouteOperation::Donate:
+					case EFlareTradeRouteOperation::UnloadOrDonate:
 						CurrentlySoldResources.AddUnique(Deal);
 						break;
 				}
@@ -1400,7 +1407,7 @@ TArray<TFlareResourceDeal> SFlareTradeRouteMenu::GetBuyableResources(UFlareSimul
 		if (TargetSector->WantSell(Deal.Key, MenuManager->GetPC()->GetCompany()))
 		{
 			int64 NewPrice = TargetSector->GetPreciseResourcePrice(Deal.Key, EFlareResourcePriceContext::Default);
-			int64 DiffPrice = NewPrice - Deal.Key->TransportFee - Deal.Value;
+			int64 DiffPrice = NewPrice - (Deal.Key->TransportFee *0.5f) - Deal.Value;
 			int64 BenefitRatio = FMath::RoundToInt(100.0f * (float)(DiffPrice) / (float)Deal.Value);
 			if (BenefitRatio < 1)
 			{
@@ -1829,14 +1836,10 @@ EVisibility SFlareTradeRouteMenu::GetQuantityLimitVisibility() const
 
 EVisibility SFlareTradeRouteMenu::GetInventoryLimitVisibility() const
 {
-	if (InventoryLimitButton->IsActive())
-	{
-		return EVisibility::Visible;
-	}
+
 
 	return EVisibility::Collapsed;
 }
-
 
 EVisibility SFlareTradeRouteMenu::GetWaitLimitVisibility() const
 {

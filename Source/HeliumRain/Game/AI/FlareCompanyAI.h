@@ -74,7 +74,7 @@ public:
 	virtual void Tick();
 
 	/** Simulate a day */
-	virtual void Simulate();
+	virtual void Simulate(bool GlobalWar);
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
@@ -91,7 +91,7 @@ public:
 	void CargosEvasion();
 
 	/** Update diplomacy changes */
-	void UpdateDiplomacy();
+	void UpdateDiplomacy(bool GlobalWar);
 
 	void UpdateBestScore(float Score,
 						  UFlareSimulatedSector* Sector,
@@ -195,8 +195,8 @@ protected:
 	/** Return if a ship is currently build for the company */
 	bool IsBuildingShip(bool Military);
 
-	/** Get a list of shipyard */
-	TArray<UFlareSimulatedSpacecraft*> FindShipyards();
+//	** Get a list of shipyard */
+//	TArray<UFlareSimulatedSpacecraft*> FindShipyards();
 
 	/** Get a list of wrecked cargos */
 	TArray<UFlareSimulatedSpacecraft*> FindIncapacitatedCargos() const;
@@ -253,6 +253,8 @@ public:
 	{
 		return Game;
 	}
+
+	static void GetCompany();
 
 	UFlareAIBehavior* GetBehavior()
 	{

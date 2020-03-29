@@ -111,6 +111,24 @@ bool FFlareSpacecraftDescription::IsStation() const
 	return OrbitalEngineCount == 0;
 }
 
+bool FFlareSpacecraftDescription::IsShipyard() const
+{
+	if (IsStation())
+	{
+		for (int32 FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
+		{
+			FFlareFactoryDescription* FactoryDescription = &Factories[FactoryIndex]->Data;
+
+			if (FactoryDescription->IsShipyard())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+
 bool FFlareSpacecraftDescription::IsMilitary() const
 {
 	return GunSlots.Num() > 0 || TurretSlots.Num() > 0;

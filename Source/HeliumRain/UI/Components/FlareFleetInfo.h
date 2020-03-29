@@ -37,6 +37,7 @@ public:
 	/*----------------------------------------------------
 		Public methods
 	----------------------------------------------------*/
+	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 	/** Create the widget */
 	void Construct(const FArguments& InArgs);
@@ -47,11 +48,32 @@ public:
 	/** Set the minimized mode */
 	void SetMinimized(bool NewState);
 
+	/** Get the refill text */
+	FText GetRefillText() const;
+
+	/** Visibility setting for the refill button */
+	bool IsRefillDisabled() const;
+
+	/** Refill all fleets */
+	void OnRefillClicked();
+
+	/** Get the repair text */
+	FText GetRepairText() const;
+
+	/** Visibility setting for the repair button */
+	bool IsRepairDisabled() const;
+
+	/** Repair all fleets */
+	void OnRepairClicked();
+
 	/** SHow the menu */
 	void Show();
 
 	/** Hide the menu */
 	void Hide();
+
+	/** Upgrade fleet status icons */
+	void UpdateFleetStatus();
 
 
 	/*----------------------------------------------------
@@ -109,7 +131,6 @@ public:
 
 	/** Hide the company flag if owned */
 	EVisibility GetCompanyFlagVisibility() const;
-	
 
 protected:
 
@@ -120,6 +141,13 @@ protected:
 	// Game data
 	AFlarePlayerController*           PC;
 	bool                              Minimized;
+	bool							  IsStranded;
+	bool							  IsUncontrollable;
+	bool							  IsDisarmed;
+
+	bool							  NeedRefill;
+	bool							  IsRepairing;
+	float							  FleetHealth;
 
 	// Target data	
 	UFlareFleet*                      TargetFleet;
@@ -129,10 +157,19 @@ protected:
 	TSharedPtr<SFlareButton>          InspectButton;
 	TSharedPtr<SFlareButton>          TradeRouteButton;
 	TSharedPtr<SFlareButton>          AutoTradeButton;
+	TSharedPtr<SFlareButton>          RefillButton;
+	TSharedPtr<SFlareButton>          RepairButton;
 
 	// Slate data (various)
 	TSharedPtr<STextBlock>            FleetName;
 	TSharedPtr<SWidget>               OwnerWidget;
 	TSharedPtr<SFlareCompanyFlag>     CompanyFlag;
+
+protected:
+	/** Get the current health */
+	TOptional<float> GetGlobalHealth() const;
+	FSlateColor GetIconColor(EFlareSubsystem::Type Type) const;
+	EVisibility GetRefillingVisibility() const;
+	EVisibility GetRepairingVisibility() const;
 
 };

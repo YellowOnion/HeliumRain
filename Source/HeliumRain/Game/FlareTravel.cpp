@@ -16,9 +16,13 @@
 
 #include "../UI/Components/FlareNotification.h"
 
+//static const double TRAVEL_DURATION_PER_PHASE_KM = 0.4;
+//static const double TRAVEL_DURATION_PER_ALTITUDE_KM = 1.5;
 
-static const double TRAVEL_DURATION_PER_PHASE_KM = 0.4;
-static const double TRAVEL_DURATION_PER_ALTITUDE_KM = 1.5;
+
+static const double TRAVEL_DURATION_PER_PHASE_KM = 0.52;
+static const double TRAVEL_DURATION_PER_ALTITUDE_KM = 2;
+//TRAVEL_DURATION_PER_ALTITUDE_KM * 0.26 = TRAVEL_DURATION_PER_PHASE_KM
 
 #define LOCTEXT_NAMESPACE "FlareTravelInfos"
 
@@ -423,15 +427,14 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 		// Altitude change travel
 		FFlareCelestialBody* OriginCelestialBody = World->GetPlanerarium()->FindCelestialBody(OriginCelestialBodyIdentifier);
 		FFlareCelestialBody* DestinationCelestialBody = World->GetPlanerarium()->FindCelestialBody(DestinationCelestialBodyIdentifier);
-
 		TravelDuration = (UFlareGameTools::SECONDS_IN_DAY/2 + ComputeAltitudeTravelDuration(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody, DestinationAltitude)) / UFlareGameTools::SECONDS_IN_DAY;
 	}
 
+	TravelDuration *= 1.50;
 	if(Company && Company->IsTechnologyUnlocked("fast-travel"))
 	{
 		TravelDuration /= 2;
 	}
-
 	return FMath::Max((int64) 2, TravelDuration+1);
 }
 

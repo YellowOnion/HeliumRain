@@ -705,7 +705,6 @@ FText SFlareWorldEconomyMenu::GetResourceInfo() const
 					FText::AsNumber(Balance, &Format));
 			}
 			
-
 			FText Part1 = FText::Format(LOCTEXT("StockInfoFormatPart1", "\u2022Transport fee: {0} credits\n\u2022 Worldwide stock: {1}\n\u2022 Worldwide needs: {2}\n"),
 										UFlareGameTools::DisplayMoney(TargetResource->TransportFee),
 										FText::AsNumber(WorldStats[TargetResource].Stock),

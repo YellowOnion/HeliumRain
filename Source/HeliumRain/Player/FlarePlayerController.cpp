@@ -706,6 +706,7 @@ void AFlarePlayerController::Clean()
 {
 	PlayerData.UUID = NAME_None;
 	PlayerData.ScenarioId = 0;
+	PlayerData.DifficultyId = 0;
 	PlayerData.CompanyIdentifier = NAME_None;
 	PlayerData.LastFlownShipIdentifier = NAME_None;
 
@@ -745,16 +746,55 @@ void AFlarePlayerController::UnlockScannable(FName Identifier)
 
 	int32 ArtefactCount = PlayerData.UnlockedScannables.Num();
 
-	Company->GiveResearch(SCANNABLES_RESEARCH_GAIN_A * FMath::Pow(ArtefactCount, 4) + SCANNABLES_RESEARCH_GAIN_B);
+	int32 GameDifficulty = -1;
+	GameDifficulty = PlayerData.DifficultyId;
 
+	float DifficultyModifier = 1.0f;
+	
+	switch (GameDifficulty)
+	{
+		case -1: // Easy
+			DifficultyModifier = 1.10f;
+			break;
+		case 0: // Normal
+			DifficultyModifier = 1.0f;
+			break;
+		case 1: // Hard
+			DifficultyModifier = 0.80f;
+			break;
+		case 2: // Very Hard
+			DifficultyModifier = 0.70f;
+			break;
+		case 3: // Expert
+			DifficultyModifier = 0.50f;
+			break;
+		case 4: // Unfair
+			DifficultyModifier = 0.30f;
+			break;
+	}
+
+	int32 ResearchGain = SCANNABLES_RESEARCH_GAIN_A * FMath::Pow(ArtefactCount, 4) + (SCANNABLES_RESEARCH_GAIN_B * DifficultyModifier);
+//	Company->GiveResearch(SCANNABLES_RESEARCH_GAIN_A * FMath::Pow(ArtefactCount, 4) + (SCANNABLES_RESEARCH_GAIN_B));
+	Company->GiveResearch(ResearchGain);
+	//first gives 10 research
+/*
 	Notify(LOCTEXT("ScannableUnlocked", "Artifact found"),
 		LOCTEXT("ScannableUnlockedInfo", "Artifact analyzis revealed valuable data for technology research."),
 		FName("scannable-unlocked"),
 		EFlareNotification::NT_Info,
 		false,
 		EFlareMenu::MENU_Technology);
+*/
 
+	FText Formatted = FText::Format(LOCTEXT("ScannableUnlockedInfo", "Artifact analyzis revealed valuable data for technology research. \n +{0} research."),
+	FText::AsNumber(ResearchGain));
 
+	Notify(LOCTEXT("ScannableUnlocked", "Artifact found"),
+		Formatted,
+		FName("scannable-unlocked"),
+		EFlareNotification::NT_Info,
+		false,
+		EFlareMenu::MENU_Technology);
 }
 
 
@@ -2707,6 +2747,14 @@ void AFlarePlayerController::WheelPressed()
 					Text = FText::Format(LOCTEXT("FlyTargetFormat", "Fly {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
 					MouseMenu->AddWidget("Mouse_Fly", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::FlyTargetSpacecraft));
 				}
+			}
+	
+			// Trade if possible
+			if (ShipPawn->GetParent()->GetDescription()->CargoBayCount > 0
+				&& GetCompany()->IsTechnologyUnlocked("auto-docking"))
+			{
+				MouseMenu->AddWidget("Trade_Button", LOCTEXT("Trade", "Trade"),
+					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::StartTrading));
 			}
 
 			// Fleet controls

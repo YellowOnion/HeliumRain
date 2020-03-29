@@ -491,6 +491,14 @@ struct CompanyValue
 
 	/** Money + Spacecrafts + Stock */
 	int64 TotalValue;
+	int64 TotalDailyProductionCost;
+
+	int32 TotalShipCount;
+	int32 TotalShipCountMilitaryS;
+	int32 TotalShipCountMilitaryL;
+	int32 TotalShipCountTradeS;
+	int32 TotalShipCountTradeL;
+
 };
 
 struct WarTargetIncomingFleet

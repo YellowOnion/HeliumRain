@@ -236,6 +236,7 @@ public:
 
 	bool IsAllowExternalOrder();
 	void SetAllowExternalOrder(bool Allow);
+	void AddRemoveExternalOrderArray(const FName ShipDescription);
 
 	const FFlareProductionData* GetNextOrderShipProductionData(EFlarePartSize::Type Size);
 
@@ -272,15 +273,15 @@ protected:
 	class UFlareSimulatedSpacecraftWeaponsSystem*                 WeaponsSystem;
 
 	UPROPERTY()
-	TArray<UFlareFactory*>                                  Factories;
+	TArray<UFlareFactory*>								          Factories;
 
 	UPROPERTY()
-	UFlareCargoBay*                                         ProductionCargoBay;
+	UFlareCargoBay*												  ProductionCargoBay;
 
 	UPROPERTY()
-	UFlareCargoBay*                                         ConstructionCargoBay;
+	UFlareCargoBay*												  ConstructionCargoBay;
 
-	TArray<FFlareDockingInfo>                               ConnectorSlots;
+	TArray<FFlareDockingInfo>									  ConnectorSlots;
 
 	UFlareSimulatedSpacecraft*								ComplexMaster;
 	TArray<UFlareSimulatedSpacecraft*>						ComplexChildren;

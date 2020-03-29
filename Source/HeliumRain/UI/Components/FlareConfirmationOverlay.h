@@ -78,6 +78,7 @@ protected:
 	// Slate data
 	FText                                        InfoText;
 	FText                                        InfoTitle;
+	FText										 ConfirmText;
 	FSimpleDelegate                              OnConfirmedCB;
 	FSimpleDelegate                              OnCancelCB;
 	FSimpleDelegate                              OnIgnoreCB;
