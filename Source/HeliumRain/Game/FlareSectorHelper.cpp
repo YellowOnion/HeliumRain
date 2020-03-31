@@ -368,74 +368,43 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 
 		UFlareCompany* PlayerCompany = SourceSpacecraft->GetGame()->GetPC()->GetCompany();
 
+		int32 GameDifficulty = -2;
+		GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+		float ReputationGain = 0.01f;
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			ReputationGain = 0.01f;
+			break;
+		case 0: // Normal
+			ReputationGain = 0.01f;
+			break;
+		case 1: // Hard
+			ReputationGain = 0.0075f;
+			break;
+		case 2: // Very Hard
+			ReputationGain = 0.0050f;
+			break;
+		case 3: // Expert
+			ReputationGain = 0.0125f;
+			break;
+		case 4: // Unfair
+			ReputationGain = 0.003125;
+			break;
+		}
+
+		if (IsDonation)
+		{
+			ReputationGain = ReputationGain * 1.50f;
+		}
+
 		if(SourceSpacecraft->GetCompany() == PlayerCompany && DestinationSpacecraft->GetCompany() != PlayerCompany)
 		{
-			int32 GameDifficulty = -2;
-			GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
-			float ReputationGain = 0.01f;
-			switch (GameDifficulty)
-			{
-			case -1: // Easy
-				ReputationGain = 0.01f;
-				break;
-			case 0: // Normal
-				ReputationGain = 0.01f;
-				break;
-			case 1: // Hard
-				ReputationGain = 0.0075f;
-				break;
-			case 2: // Very Hard
-				ReputationGain = 0.0050f;
-				break;
-			case 3: // Expert
-				ReputationGain = 0.0125f;
-				break;
-			case 4: // Unfair
-				ReputationGain = 0.003125;
-				break;
-			}
-
-			if (IsDonation)
-			{
-				ReputationGain = ReputationGain * 1.50f;
-			}
-
 			DestinationSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * ReputationGain, 100);
 		}
 
 		if(DestinationSpacecraft->GetCompany() == PlayerCompany && SourceSpacecraft->GetCompany() != PlayerCompany)
 		{
-			int32 GameDifficulty = -2;
-			GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
-			float ReputationGain = 0.01f;
-			switch (GameDifficulty)
-			{
-			case -1: // Easy
-				ReputationGain = 0.01f;
-				break;
-			case 0: // Normal
-				ReputationGain = 0.01f;
-				break;
-			case 1: // Hard
-				ReputationGain = 0.0075f;
-				break;
-			case 2: // Very Hard
-				ReputationGain = 0.0050f;
-				break;
-			case 3: // Expert
-				ReputationGain = 0.0125f;
-				break;
-			case 4: // Unfair
-				ReputationGain = 0.003125;
-				break;
-
-			}
-
-			if (IsDonation)
-			{
-				ReputationGain = ReputationGain * 1.50f;
-			}
-
 			SourceSpacecraft->GetCompany()->GivePlayerReputation(GivenResources * ReputationGain, 100);
 		}
 	}
@@ -1067,6 +1036,7 @@ int32 SectorHelper::GetCompanyArmyCombatPoints(UFlareSimulatedSector* Sector, UF
 TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> SectorHelper::ComputeSectorResourceStats(UFlareSimulatedSector* Sector, bool IncludeStorage)
 {
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
+	WorldStats.Reserve(Sector->GetGame()->GetResourceCatalog()->Resources.Num());
 
 	// Init
 	for(int32 ResourceIndex = 0; ResourceIndex < Sector->GetGame()->GetResourceCatalog()->Resources.Num(); ResourceIndex++)

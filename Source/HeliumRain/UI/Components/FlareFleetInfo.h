@@ -6,6 +6,7 @@
 #include "../../Player/FlarePlayerController.h"
 #include "../../Game/FlareCompany.h"
 
+#include "../../Spacecrafts/Subsystems/FlareSimulatedSpacecraftDamageSystem.h"
 
 DECLARE_DELEGATE_OneParam(FFlareObjectRemoved, UFlareSimulatedSpacecraft*)
 
@@ -24,12 +25,12 @@ class SFlareFleetInfo : public SCompoundWidget
 	{}
 
 	SLATE_ARGUMENT(AFlarePlayerController*, Player)
-	SLATE_ARGUMENT(UFlareFleet*, Fleet)
-	SLATE_ARGUMENT(SWidget*, OwnerWidget)
-		
-	SLATE_ARGUMENT(bool, Minimized)
+		SLATE_ARGUMENT(UFlareFleet*, Fleet)
+		SLATE_ARGUMENT(SWidget*, OwnerWidget)
 
-	SLATE_END_ARGS()
+		SLATE_ARGUMENT(bool, Minimized)
+
+		SLATE_END_ARGS()
 
 
 public:
@@ -41,10 +42,10 @@ public:
 
 	/** Create the widget */
 	void Construct(const FArguments& InArgs);
-	
+
 	/** Set a fleet as content */
 	void SetFleet(UFlareFleet* Fleet);
-	
+
 	/** Set the minimized mode */
 	void SetMinimized(bool NewState);
 
@@ -79,7 +80,7 @@ public:
 	/*----------------------------------------------------
 		Callbacks
 	----------------------------------------------------*/
-	
+
 	/** Inspect the current target */
 	void OnInspect();
 
@@ -125,12 +126,19 @@ public:
 
 	/** Get the fleet combat value */
 	FText GetCombatValue() const;
-	
+
 	/** Get the fleet description */
 	FText GetDescription() const;
 
 	/** Hide the company flag if owned */
 	EVisibility GetCompanyFlagVisibility() const;
+
+protected:
+	/** Get the current health */
+	TOptional<float> GetGlobalHealth() const;
+	FSlateColor GetIconColor(EFlareSubsystem::Type Type) const;
+	EVisibility GetRefillingVisibility() const;
+	EVisibility GetRepairingVisibility() const;
 
 protected:
 
@@ -164,12 +172,4 @@ protected:
 	TSharedPtr<STextBlock>            FleetName;
 	TSharedPtr<SWidget>               OwnerWidget;
 	TSharedPtr<SFlareCompanyFlag>     CompanyFlag;
-
-protected:
-	/** Get the current health */
-	TOptional<float> GetGlobalHealth() const;
-	FSlateColor GetIconColor(EFlareSubsystem::Type Type) const;
-	EVisibility GetRefillingVisibility() const;
-	EVisibility GetRepairingVisibility() const;
-
 };

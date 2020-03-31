@@ -1544,7 +1544,7 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 				);
 		}
 
-	FText Formatted = FText::Format(LOCTEXT("LocalTradeSuccess", "{0}{1} {2} {3}"),
+		FText Formatted = FText::Format(LOCTEXT("LocalTradeSuccess", "{0}{1} {2} {3}"),
 		FirstHalf,
 		TradeStatus,
 		FText::AsNumber(Quantity),
@@ -1553,35 +1553,18 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		PC->Notify(
 			LOCTEXT("RemoteTradeSuccess", "Remote Trade Info"),
 			Formatted,
-//			"docking-success",
 			"trade-success",
 			EFlareNotification::NT_Info);
-
-//		PlayerMenu->ExitMenu();
 
 		AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
 		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 		{
-			UFlareSimulatedSpacecraft* LeftShip = PlayerMenu->GetTradeMenu()->GetTargetLeftShip();
-			UFlareSimulatedSpacecraft* RightShip = PlayerMenu->GetTradeMenu()->GetTargetRightShip();
-
-			if (LeftShip == ShipSimmed)
-			{
-				bool Successfulrefresh = PlayerMenu->GetTradeMenu()->GetRefreshTradeBlocks();
-				/*
-							PC->Notify(
-								LOCTEXT("RemoteTradeSuccess", "Trade Menu exists, all criteria is met"),
-								Formatted,
-								"docking-success",
-								EFlareNotification::NT_Info);
-				*/
-			}
-
 			TransactionResource = NULL;
 			TransactionQuantity = NULL;
 			SourceSpacecraft = NULL;
 			DestinationSpacecraft = NULL;
 			TransactionDonation = 0;
+			PlayerMenu->GetTradeMenu()->GetRefreshTradeBlocks();
 		}
 	}
 }

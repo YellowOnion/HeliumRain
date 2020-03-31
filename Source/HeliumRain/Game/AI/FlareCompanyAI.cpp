@@ -73,6 +73,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareCompanyAI UpdateMilitaryMovement"), STAT_FlareComp
 UFlareCompanyAI::UFlareCompanyAI(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	AllBudgets.Reserve(4);
 	AllBudgets.Add(EFlareBudget::Military);
 	AllBudgets.Add(EFlareBudget::Station);
 	AllBudgets.Add(EFlareBudget::Technology);
@@ -120,6 +121,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar)
 		// Compute input and output ressource equation (ex: 100 + 10/ day)
 		// TODO
 		WorldResourceVariation.Empty();
+		WorldResourceVariation.Reserve(Company->GetKnownSectors().Num());
 		for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 		{
 			UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
@@ -3131,7 +3133,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 			FName(*UniqueId),
 			EFlareNotification::NT_Info);
 */
-		return BestShipDescriptionEfficiency;
+			return BestShipDescriptionEfficiency;
 		}
 		else
 		{
@@ -3676,54 +3678,8 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 			float ResourceAffility = Behavior->GetResourceAffility(&Resource->Resource->Data);
 			Score *= ResourceAffility;
 
-
 			//FLOGV(" ResourceAffility for %s: %f", *Resource->Resource->Data.Identifier.ToString(), ResourceAffility);
 
-/*
-positive example
-production 186.6
-usage 118.7
-balance 69.9
-stock 3,330
-needs 9,457
-
-maxvolume = 186.6
-overflowratio = 69.9 /186.6 = 0.37
-resourceaffinity = 1
-overflowmalus = 1.f - (0.37 - 0.1f) = 0.27 * 100 = 27) = -26f / 1 = -26 clamped to minimum value = 0.f. multiply score by 0, setting to 0
-
-underflow stuff:
-3,330 / 9,457 = 0.35
-
-negative example
-
-production 44.5
-usage 49.6
-balance - 5.2
-stock 0
-needs 24,619
-
-overflow stuff:
-maxvolume = 49.6
-overflowratio = -5.2 / 46.6 = -0.11
-not above one, do nothing
-
-underflow stuff:
-1 / 24,619 = 0
-
-negative example 2
-
-stock 13,419
-needs 45,462
-production 34444
-usage 277.3
-balance 66.7
-
-underflow
-
-13,419 / 45,462 = 0.29
-
-*/
 			float MaxVolume = FMath::Max(WorldStats[&Resource->Resource->Data].Production, WorldStats[&Resource->Resource->Data].Consumption);
 			if (MaxVolume > 0)
 			{

@@ -3,6 +3,7 @@
 
 #include "Object.h"
 #include "../FlareSaveGame.h"
+#include "Dom/JsonObject.h"
 #include "FlareSaveReaderV1.generated.h"
 
 class UFlareSaveGame;

@@ -50,6 +50,7 @@ void AITradeHelper::CompanyAutoTrade(UFlareCompany* Company)
 {
 	Company->GetAI()->GetBehavior()->Load(Company);
 	TMap<UFlareSimulatedSector*, SectorVariation> WorldResourceVariation;
+	WorldResourceVariation.Reserve(Company->GetVisitedSectors().Num());
 	for (int32 SectorIndex = 0; SectorIndex < Company->GetVisitedSectors().Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Company->GetVisitedSectors()[SectorIndex];
@@ -1000,6 +1001,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 #endif
 
 	SectorVariation SectorVariation;
+	SectorVariation.ResourceVariations.Reserve(Game->GetResourceCatalog()->Resources.Num());
 	for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
@@ -3643,6 +3645,7 @@ void AITradeSources::GenerateCache()
 
 AITradeSourcesByResource::AITradeSourcesByResource(UFlareWorld* World)
 {
+	SourcesPerSector.Reserve(World->GetSectors().Num());
 	for(UFlareSimulatedSector* Sector : World->GetSectors())
 	{
 		SourcesPerSector.Add(Sector, AITradeSourcesByResourceLocation(World));

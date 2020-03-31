@@ -39,6 +39,8 @@ void UFlareSimulatedPlanetarium::Load()
 	// Nema
 	FFlareCelestialBody Nema;
 	{
+		Nema.Sattelites.Reserve(4);
+
 		Nema.Name = LOCTEXT("Nema", "Nema");
 		Nema.Identifier = "nema";
 		Nema.Mass = 8.421e26;

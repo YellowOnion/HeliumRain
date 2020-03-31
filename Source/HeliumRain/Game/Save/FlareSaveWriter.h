@@ -3,8 +3,8 @@
 
 #include "Object.h"
 #include "../FlareSaveGame.h"
+#include "Dom/JsonObject.h"
 #include "FlareSaveWriter.generated.h"
-
 
 struct FFlarePlayerSave;
 struct FFlareQuestSave;

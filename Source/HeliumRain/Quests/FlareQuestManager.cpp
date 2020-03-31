@@ -93,7 +93,6 @@ void UFlareQuestManager::LoadCatalogQuests()
 		// Create the quest
 		UFlareCatalogQuest* Quest = NewObject<UFlareCatalogQuest>(this, UFlareCatalogQuest::StaticClass());
 		Quest->Load(this, QuestDescription);
-
 		AddQuest(Quest);
 	}
 }

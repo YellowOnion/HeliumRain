@@ -37,19 +37,18 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 	// ScenarioList.Add(MakeShareable(new FString(TEXT("Defense"))));
 	// ScenarioList.Add(MakeShareable(new FString(TEXT("Debug"))));
 
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Easy"))));
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Normal"))));
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Hard"))));
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Very Hard"))));
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Expert"))));
-	DifficultyList.Add(MakeShareable(new FString(TEXT("Unfair"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Easy", "Easy"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Normal", "Normal"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Hard", "Hard"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("VeryHard", "Very Hard"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Expert", "Expert"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Unfair", "Unfair"))));
 
-//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Easy", "Easy"))));
-//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Normal", "Normal"))));
-//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Hard", "Hard"))));
-//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("VeryHard", "Very Hard"))));
-//	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("Expert", "Expert"))));
-
+	EconomyList.Add(MakeShareable(new FText(LOCTEXT("Beginning", "Beginning"))));
+	EconomyList.Add(MakeShareable(new FText(LOCTEXT("Developing", "Developing"))));
+	EconomyList.Add(MakeShareable(new FText(LOCTEXT("Prospering", "Prospering"))));
+	EconomyList.Add(MakeShareable(new FText(LOCTEXT("Maturing", "Maturing"))));
+	EconomyList.Add(MakeShareable(new FText(LOCTEXT("Accomplished", "Accomplished"))));
 	// Color
 	FLinearColor Color = Theme.NeutralColor;
 	Color.A = Theme.DefaultAlpha;
@@ -259,7 +258,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 						]
 					]
 				]	
-				//this one
+				//Difficulty
 				+ SVerticalBox::Slot()
 				.Padding(Theme.ContentPadding)
 				.AutoHeight()
@@ -272,7 +271,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
 						.TextStyle(&Theme.TextFont)
-						.Text(LOCTEXT("NewGameScenario", "Game Difficulty"))
+						.Text(LOCTEXT("GameDifficulty", "Game Difficulty"))
 					]
 
 					+ SHorizontalBox::Slot()
@@ -287,10 +286,10 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 							.BorderImage(&Theme.BackgroundBrush)
 							.Padding(Theme.ContentPadding)
 							[
-								SAssignNew(DifficultySelector, SFlareDropList<TSharedPtr<FString>>)
+								SAssignNew(DifficultySelector, SFlareDropList<TSharedPtr<FText>>)
 								.OptionsSource(&DifficultyList)
+								.HeaderWidth(6)
 								.OnGenerateWidget(this, &SFlareNewGameMenu::OnGenerateComboLine)
-								.OnSelectionChanged(this, &SFlareNewGameMenu::OnComboLineSelectionChanged)
 								[
 									SNew(SBox)
 									.Padding(Theme.ListContentPadding)
@@ -303,7 +302,53 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 							]
 						]
 					]
-				]				
+				]
+				//this one
+				+ SVerticalBox::Slot()
+					.Padding(Theme.ContentPadding)
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					[
+						SNew(SHorizontalBox)
+
+						+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+					.Text(LOCTEXT("Economy", "Starting Economy"))
+					]
+
+				+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Right)
+					[
+						SNew(SBox)
+						.WidthOverride(0.4 * Theme.ContentWidth)
+					[
+
+						SNew(SBorder)
+						.BorderImage(&Theme.BackgroundBrush)
+					.Padding(Theme.ContentPadding)
+					[
+						SAssignNew(EconomySelector, SFlareDropList<TSharedPtr<FText>>)
+						.OptionsSource(&EconomyList)
+						.HeaderWidth(6)
+						.OnGenerateWidget(this, &SFlareNewGameMenu::OnGenerateComboLine)
+					[
+						SNew(SBox)
+						.Padding(Theme.ListContentPadding)
+					[
+						SNew(STextBlock)
+						.Text(this, &SFlareNewGameMenu::OnGetCurrentComboLine)
+					.TextStyle(&Theme.TextFont)
+					]
+				]
+			]
+		]
+	]
+]
+				
 					/*
 												// List
 							+ SHorizontalBox::Slot()
@@ -353,7 +398,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					.HAlign(HAlign_Right)
 					[
 						SAssignNew(StoryButton, SFlareButton)
-						.Text(LOCTEXT("Story", "Pendulum contract"))
+						.Text(LOCTEXT("Story", "Story contract"))
 					.HelpText(LOCTEXT("StoryInfo", "Disable the storyline Pendulum quest"))
 					.Toggle(true)
 					.Width(6.5)
@@ -365,8 +410,8 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					.HAlign(HAlign_Right)
 					[
 						SAssignNew(RandomizeStationButton, SFlareButton)
-						.Text(LOCTEXT("Randomize", "Randomize Station Positions"))
-					.HelpText(LOCTEXT("RandomizeInfo", "Randomizes the sectors that the starting stations starts in"))
+						.Text(LOCTEXT("Randomize", "Random Station Positions"))
+					.HelpText(LOCTEXT("RandomizeInfo", "Randomizes most of the starting stations possible sector positions"))
 					.Toggle(true)
 					.Width(6.5)
 					]
@@ -404,7 +449,9 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 	//ScenarioSelector->SetSelectedIndex(0);
 
 	DifficultySelector->RefreshOptions();
+	EconomySelector->RefreshOptions();
 	DifficultySelector->SetSelectedIndex(1);
+	EconomySelector->SetSelectedIndex(0);
 }
 
 
@@ -469,7 +516,8 @@ void SFlareNewGameMenu::Exit()
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
 	EmblemPicker->ClearItems();
-//	DifficultyPicker->ClearItems();
+//	DifficultySelector->ClearItems();
+//	EconomySelector->ClearItems();
 }
 
 
@@ -509,6 +557,7 @@ void SFlareNewGameMenu::OnLaunch()
 		FName CompanyIdentifierData = FName(*CompanyIdentifier->GetText().ToString().ToUpper().Left(3)); // FString needed here
 		int32 ScenarioIndex = 0;//ScenarioList.Find(ScenarioSelector->GetSelectedItem());
 		int32 DifficultyIndex = DifficultyList.Find(DifficultySelector->GetSelectedItem());
+		int32 EconomyIndex = EconomyList.Find(EconomySelector->GetSelectedItem());
 		int32 EmblemIndex = EmblemPicker->GetSelectedIndex();
 
 		FLOGV("SFlareNewGameMenu::OnLaunch '%s', ID '%s', ScenarioIndex %d", *CompanyNameData.ToString(), *CompanyIdentifierData.ToString(), ScenarioIndex);
@@ -528,6 +577,7 @@ void SFlareNewGameMenu::OnLaunch()
 		Data.CompanyDescription = &CompanyData;
 		Data.ScenarioIndex = ScenarioIndex;
 		Data.DifficultyIndex = DifficultyIndex;
+		Data.EconomyIndex = EconomyIndex;
 		Data.PlayerEmblemIndex = EmblemIndex;
 		Data.PlayTutorial = TutorialButton->IsActive();
 		Data.PlayStory = StoryButton->IsActive();
@@ -542,7 +592,8 @@ FText SFlareNewGameMenu::OnGetCurrentComboLine() const
 	return Item.IsValid() ? FText::FromString(*Item) : FText::FromString(*ScenarioList[0]);
 }
 
-TSharedRef<SWidget> SFlareNewGameMenu::OnGenerateComboLine(TSharedPtr<FString> Item)
+//TSharedRef<SWidget> SFlareNewGameMenu::OnGenerateComboLine(TSharedPtr<FString> Item)
+TSharedRef<SWidget> SFlareNewGameMenu::OnGenerateComboLine(TSharedPtr<FText> Item)
 {
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
@@ -550,7 +601,8 @@ TSharedRef<SWidget> SFlareNewGameMenu::OnGenerateComboLine(TSharedPtr<FString> I
 	.Padding(Theme.ListContentPadding)
 	[
 		SNew(STextBlock)
-		.Text(FText::FromString(*Item)) // FString needed here
+//		.Text(FText::FromString(*Item)) // FString needed here
+		.Text(*Item) // FString needed here
 		.TextStyle(&Theme.TextFont)
 	];
 }

@@ -25,255 +25,254 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 	Minimized = InArgs._Minimized;
 	AFlareGame* Game = InArgs._Player->GetGame();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-	
+
 	// Create the layout
 	ChildSlot
-	.VAlign(VAlign_Top)
-	.HAlign(HAlign_Left)
-	[
-		SNew(SBox)
-		.WidthOverride(Theme.ContentWidth)
+		.VAlign(VAlign_Top)
+		.HAlign(HAlign_Left)
+		[
+			SNew(SBox)
+			.WidthOverride(Theme.ContentWidth)
 		.Padding(Theme.SmallContentPadding)
 		[
 			SNew(SHorizontalBox)
 
 			// Data block
-			+ SHorizontalBox::Slot()
-			[
-				SNew(SVerticalBox)
+		+ SHorizontalBox::Slot()
+		[
+			SNew(SVerticalBox)
 
-				// Main line
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(SHorizontalBox)
+			// Main line
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			SNew(SHorizontalBox)
 
-					// Fleet name
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(Theme.SmallContentPadding)
-					.VAlign(VAlign_Center)
-					[
-						SAssignNew(FleetName, STextBlock)
-						.Text(this, &SFlareFleetInfo::GetName)
-						.TextStyle(&Theme.NameFont)
-						.ColorAndOpacity(this, &SFlareFleetInfo::GetTextColor)
-					]
-
-					// Fleet composition
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(Theme.SmallContentPadding)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(this, &SFlareFleetInfo::GetComposition)
-						.TextStyle(&Theme.TextFont)
-					]
-
-					// Combat value icon
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(5, 0, 0, 0))
-					[
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("CombatValue"))
-					]
-
-					// Combat value
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(this, &SFlareFleetInfo::GetCombatValue)
-						.TextStyle(&Theme.TextFont)
-					]
-				]
-
-				// Company line
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SmallContentPadding)
-				[
-					SNew(SHorizontalBox)
-
-					// Company flag
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(CompanyFlag, SFlareCompanyFlag)
-						.Player(InArgs._Player)
-						.Visibility(this, &SFlareFleetInfo::GetCompanyFlagVisibility)
-					]
-
-					// Fleet info
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(Theme.SmallContentPadding)
-					[
-						SNew(STextBlock)
-						.Text(this, &SFlareFleetInfo::GetDescription)
-						.TextStyle(&Theme.TextFont)
-					]
-				]
-
-				// Fleet info line (because unlike individual ships players can rename their fleets so it could be possible for fleet info to scroll off window
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SmallContentPadding)
-				[
-					SNew(SHorizontalBox)
-					// Health
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Right)
-					[
-						SNew(SBox)
-						.WidthOverride(50)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SProgressBar)
-						.Percent(this, &SFlareFleetInfo::GetGlobalHealth)
-					.BorderPadding(FVector2D(0, 0))
-					.Style(&Theme.ProgressBarStyle)
-					]
-					]
-					// Power icon
-					+SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					[
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("Propulsion"))
-					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Propulsion)
-					]
-
-					// RCS icon
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					[
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("RCS"))
-					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_RCS)
-					]
-
-					// Weapon icon
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					[
-						//							SAssignNew(WeaponIndicator, SImage)
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("Shell"))
-					.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Weapon)
-					]
-
-					// Refilling icon
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(5, 0, 5, 0))
-					[
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("Tank"))
-					.Visibility(this, &SFlareFleetInfo::GetRefillingVisibility)
-					]
-
-					// Reparing icon
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(5, 0, 5, 0))
-					[
-						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("Repair"))
-					.Visibility(this, &SFlareFleetInfo::GetRepairingVisibility)
-					]
-				]
-
-				// Buttons 
-				+ SVerticalBox::Slot()
-				.Padding(Theme.SmallContentPadding)
-				.AutoHeight()
-				[
-					SNew(SHorizontalBox)
-
-					// Inspect
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(InspectButton, SFlareButton)
-						.Text(LOCTEXT("Edit", "EDIT"))
-						.HelpText(this, &SFlareFleetInfo::GetInspectHintText)
-						.IsDisabled(this, &SFlareFleetInfo::IsInspectDisabled)
-						.OnClicked(this, &SFlareFleetInfo::OnInspect)
-						.Width(4)
-					]
-
-					// Inspect trade route
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(TradeRouteButton, SFlareButton)
-						.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
-						.HelpText(this, &SFlareFleetInfo::GetInspectTradeRouteHintText)
-						.IsDisabled(this, &SFlareFleetInfo::IsInspectTradeRouteDisabled)
-						.OnClicked(this, &SFlareFleetInfo::OnOpenTradeRoute)
-						.Width(6)
-					]
-
-					// Inspect trade route
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(AutoTradeButton, SFlareButton)
-						.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
-						.HelpText(this, &SFlareFleetInfo::GetAutoTradeHintText)
-						.IsDisabled(this, &SFlareFleetInfo::IsAutoTradeDisabled)
-						.OnClicked(this, &SFlareFleetInfo::OnToggleAutoTrade)
-						.Toggle(true)
-						.Width(6)
-					]
-				]
-				+ SVerticalBox::Slot()
-					.Padding(Theme.SmallContentPadding)
-					.AutoHeight()
-					[
-						SNew(SHorizontalBox)
-				// Refill
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(RefillButton, SFlareButton)
-					.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
-					.IsDisabled(this, &SFlareFleetInfo::IsRefillDisabled)
-					.OnClicked(this, &SFlareFleetInfo::OnRefillClicked)
-					.Text(this, &SFlareFleetInfo::GetRefillText)
-					.Width(8)
-					]
-
-				// Repair
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(RepairButton, SFlareButton)
-					.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
-					.IsDisabled(this, &SFlareFleetInfo::IsRepairDisabled)
-					.OnClicked(this, &SFlareFleetInfo::OnRepairClicked)
-					.Text(this, &SFlareFleetInfo::GetRepairText)
-					.Width(8)
-					]
-				]
-			]
+			// Fleet name
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(Theme.SmallContentPadding)
+		.VAlign(VAlign_Center)
+		[
+			SAssignNew(FleetName, STextBlock)
+			.Text(this, &SFlareFleetInfo::GetName)
+		.TextStyle(&Theme.NameFont)
+		.ColorAndOpacity(this, &SFlareFleetInfo::GetTextColor)
 		]
-	];
+
+	// Fleet composition
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(Theme.SmallContentPadding)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareFleetInfo::GetComposition)
+		.TextStyle(&Theme.TextFont)
+		]
+
+	// Combat value icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(5, 0, 0, 0))
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("CombatValue"))
+		]
+
+	// Combat value
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareFleetInfo::GetCombatValue)
+		.TextStyle(&Theme.TextFont)
+		]
+		]
+
+	// Company line
+	+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(Theme.SmallContentPadding)
+		[
+			SNew(SHorizontalBox)
+
+			// Company flag
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(CompanyFlag, SFlareCompanyFlag)
+			.Player(InArgs._Player)
+		.Visibility(this, &SFlareFleetInfo::GetCompanyFlagVisibility)
+		]
+
+	// Fleet info
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(Theme.SmallContentPadding)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareFleetInfo::GetDescription)
+		.TextStyle(&Theme.TextFont)
+		]
+		]
+
+	// Fleet info line (because unlike individual ships players can rename their fleets so it could be possible for fleet info to scroll off window
+	+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(Theme.SmallContentPadding)
+		[
+			SNew(SHorizontalBox)
+			// Health
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Right)
+		[
+			SNew(SBox)
+			.WidthOverride(50)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SProgressBar)
+			.Percent(this, &SFlareFleetInfo::GetGlobalHealth)
+		.BorderPadding(FVector2D(0, 0))
+		.Style(&Theme.ProgressBarStyle)
+		]
+		]
+	// Power icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("Propulsion"))
+		.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Propulsion)
+		]
+
+	// RCS icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("RCS"))
+		.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_RCS)
+		]
+
+	// Weapon icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("Shell"))
+		.ColorAndOpacity(this, &SFlareFleetInfo::GetIconColor, EFlareSubsystem::SYS_Weapon)
+		]
+
+	// Refilling icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(5, 0, 5, 0))
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("Tank"))
+		.Visibility(this, &SFlareFleetInfo::GetRefillingVisibility)
+		]
+
+	// Reparing icon
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(5, 0, 5, 0))
+		[
+			SNew(SImage)
+			.Image(FFlareStyleSet::GetIcon("Repair"))
+		.Visibility(this, &SFlareFleetInfo::GetRepairingVisibility)
+		]
+		]
+
+	// Buttons 
+	+ SVerticalBox::Slot()
+		.Padding(Theme.SmallContentPadding)
+		.AutoHeight()
+		[
+			SNew(SHorizontalBox)
+
+			// Inspect
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(InspectButton, SFlareButton)
+			.Text(LOCTEXT("Edit", "EDIT"))
+		.HelpText(this, &SFlareFleetInfo::GetInspectHintText)
+		.IsDisabled(this, &SFlareFleetInfo::IsInspectDisabled)
+		.OnClicked(this, &SFlareFleetInfo::OnInspect)
+		.Width(4)
+		]
+
+	// Inspect trade route
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(TradeRouteButton, SFlareButton)
+			.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
+		.HelpText(this, &SFlareFleetInfo::GetInspectTradeRouteHintText)
+		.IsDisabled(this, &SFlareFleetInfo::IsInspectTradeRouteDisabled)
+		.OnClicked(this, &SFlareFleetInfo::OnOpenTradeRoute)
+		.Width(6)
+		]
+
+	// Inspect trade route
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(AutoTradeButton, SFlareButton)
+			.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
+		.HelpText(this, &SFlareFleetInfo::GetAutoTradeHintText)
+		.IsDisabled(this, &SFlareFleetInfo::IsAutoTradeDisabled)
+		.OnClicked(this, &SFlareFleetInfo::OnToggleAutoTrade)
+		.Toggle(true)
+		.Width(6)
+		]
+		]
+	+ SVerticalBox::Slot()
+		.Padding(Theme.SmallContentPadding)
+		.AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			// Refill
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(RefillButton, SFlareButton)
+			.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
+		.IsDisabled(this, &SFlareFleetInfo::IsRefillDisabled)
+		.OnClicked(this, &SFlareFleetInfo::OnRefillClicked)
+		.Text(this, &SFlareFleetInfo::GetRefillText)
+		.Width(8)
+		]
+
+	// Repair
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(RepairButton, SFlareButton)
+			.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
+		.IsDisabled(this, &SFlareFleetInfo::IsRepairDisabled)
+		.OnClicked(this, &SFlareFleetInfo::OnRepairClicked)
+		.Text(this, &SFlareFleetInfo::GetRepairText)
+		.Width(8)
+		]
+		]
+		]
+		]
+		];
 
 	// Setup
 	if (InArgs._Fleet)
@@ -339,7 +338,7 @@ FText SFlareFleetInfo::GetRepairText() const
 		else
 		{
 			// No repair needed
-			return LOCTEXT("NoFleetToRepair", "No ship needs repairing");
+			return LOCTEXT("NoShipToRepair", "No ship needs repairing");
 		}
 	}
 	else
@@ -396,7 +395,7 @@ bool SFlareFleetInfo::IsRepairDisabled() const
 	int32 TotalNeededFS;
 	int64 MaxDuration;
 
-//	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+	//	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
 	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
 
 	if (TotalNeededFS > 0)
@@ -557,7 +556,7 @@ bool SFlareFleetInfo::IsRefillDisabled() const
 
 void SFlareFleetInfo::OnRefillClicked()
 {
-	if(TargetFleet)
+	if (TargetFleet)
 	{
 		SectorHelper::RefillFleets(TargetFleet->GetCurrentSector(), TargetFleet->GetFleetCompany(), TargetFleet);
 	}
@@ -565,9 +564,9 @@ void SFlareFleetInfo::OnRefillClicked()
 
 void SFlareFleetInfo::OnRepairClicked()
 {
-	if(TargetFleet)
+	if (TargetFleet)
 	{
-		SectorHelper::RepairFleets(TargetFleet->GetCurrentSector(),TargetFleet->GetFleetCompany(),TargetFleet);
+		SectorHelper::RepairFleets(TargetFleet->GetCurrentSector(), TargetFleet->GetFleetCompany(), TargetFleet);
 	}
 }
 
@@ -683,7 +682,11 @@ void SFlareFleetInfo::UpdateFleetStatus()
 
 				IsStranded = DamageSystem->IsStranded();
 				IsUncontrollable = DamageSystem->IsUncontrollable();
-				IsDisarmed = DamageSystem->IsDisarmed();
+				if (Ship->IsMilitary())
+				{
+					IsDisarmed = DamageSystem->IsDisarmed();
+				}
+
 				if (Ship->GetRefillStock() > 0 && Ship->NeedRefill())
 				{
 					NeedRefill = true;
@@ -747,7 +750,7 @@ TOptional<float> SFlareFleetInfo::GetGlobalHealth() const
 
 EVisibility SFlareFleetInfo::GetRefillingVisibility() const
 {
-	if(NeedRefill)
+	if (NeedRefill)
 	{
 		return EVisibility::Visible;
 	}
@@ -895,10 +898,10 @@ FSlateColor SFlareFleetInfo::GetIconColor(EFlareSubsystem::Type Type) const
 	bool IsIncapacitated = false;
 	switch (Type)
 	{
-		case EFlareSubsystem::SYS_Propulsion:    IsIncapacitated = IsStranded;         break;
-		case EFlareSubsystem::SYS_RCS:           IsIncapacitated = IsUncontrollable;   break;
-		case EFlareSubsystem::SYS_Weapon:        IsIncapacitated = IsDisarmed;         break;
-		default: break;
+	case EFlareSubsystem::SYS_Propulsion:    IsIncapacitated = IsStranded;         break;
+	case EFlareSubsystem::SYS_RCS:           IsIncapacitated = IsUncontrollable;   break;
+	case EFlareSubsystem::SYS_Weapon:        IsIncapacitated = IsDisarmed;         break;
+	default: break;
 	}
 	// Show in red when disabled
 	if (IsIncapacitated)
@@ -986,7 +989,7 @@ FText SFlareFleetInfo::GetCombatValue() const
 FText SFlareFleetInfo::GetDescription() const
 {
 	FText Result;
-	
+
 	if (TargetFleet)
 	{
 		FText FleetAssignedText;

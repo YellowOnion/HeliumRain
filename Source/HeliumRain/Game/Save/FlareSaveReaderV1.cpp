@@ -99,6 +99,7 @@ void UFlareSaveReaderV1::LoadPlayer(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* UnlockedScannables;
 	if (Object->TryGetArrayField("UnlockedScannables", UnlockedScannables))
 	{
+		Data->UnlockedScannables.Reserve(UnlockedScannables->Num());
 		for (TSharedPtr<FJsonValue> Scannable : *UnlockedScannables)
 		{
 			Data->UnlockedScannables.AddUnique(FName(*Scannable->AsString()));
@@ -118,6 +119,7 @@ void UFlareSaveReaderV1::LoadQuest(const TSharedPtr<FJsonObject> Object, FFlareQ
 	const TArray<TSharedPtr<FJsonValue>>* QuestProgresses;
 	if(Object->TryGetArrayField("QuestProgresses", QuestProgresses))
 	{
+		Data->QuestProgresses.Reserve(QuestProgresses->Num());
 		for (TSharedPtr<FJsonValue> Item : *QuestProgresses)
 		{
 			FFlareQuestProgressSave ChildData;
@@ -129,6 +131,7 @@ void UFlareSaveReaderV1::LoadQuest(const TSharedPtr<FJsonObject> Object, FFlareQ
 	const TArray<TSharedPtr<FJsonValue>>* GeneratedQuests;
 	if(Object->TryGetArrayField("GeneratedQuests", GeneratedQuests))
 	{
+		Data->GeneratedQuests.Reserve(GeneratedQuests->Num());
 		for (TSharedPtr<FJsonValue> Item : *GeneratedQuests)
 		{
 			FFlareGeneratedQuestSave ChildData;
@@ -157,6 +160,7 @@ void UFlareSaveReaderV1::LoadQuestProgress(const TSharedPtr<FJsonObject> Object,
 	const TArray<TSharedPtr<FJsonValue>>* CurrentStepProgress;
 	if(Object->TryGetArrayField("CurrentStepProgress", CurrentStepProgress))
 	{
+		Data->CurrentStepProgress.Reserve(CurrentStepProgress->Num());
 		for (TSharedPtr<FJsonValue> Item : *CurrentStepProgress)
 		{
 			FFlareQuestConditionSave ChildData;
@@ -168,6 +172,7 @@ void UFlareSaveReaderV1::LoadQuestProgress(const TSharedPtr<FJsonObject> Object,
 	const TArray<TSharedPtr<FJsonValue>>* TriggerConditionsSave;
 	if(Object->TryGetArrayField("TriggerConditionsSave", TriggerConditionsSave))
 	{
+		Data->TriggerConditionsSave.Reserve(TriggerConditionsSave->Num());
 		for (TSharedPtr<FJsonValue> Item : *TriggerConditionsSave)
 		{
 			FFlareQuestConditionSave ChildData;
@@ -179,6 +184,7 @@ void UFlareSaveReaderV1::LoadQuestProgress(const TSharedPtr<FJsonObject> Object,
 	const TArray<TSharedPtr<FJsonValue>>* ExpirationConditionsSave;
 	if(Object->TryGetArrayField("ExpirationConditionsSave", ExpirationConditionsSave))
 	{
+		Data->ExpirationConditionsSave.Reserve(ExpirationConditionsSave->Num());
 		for (TSharedPtr<FJsonValue> Item : *ExpirationConditionsSave)
 		{
 			FFlareQuestConditionSave ChildData;
@@ -228,6 +234,7 @@ void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareW
 	const TArray<TSharedPtr<FJsonValue>>* Companies;
 	if(Object->TryGetArrayField("Companies", Companies))
 	{
+		Data->CompanyData.Reserve(Companies->Num());
 		for (TSharedPtr<FJsonValue> Item : *Companies)
 		{
 			FFlareCompanySave ChildData;
@@ -239,6 +246,7 @@ void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareW
 	const TArray<TSharedPtr<FJsonValue>>* Sectors;
 	if(Object->TryGetArrayField("Sectors", Sectors))
 	{
+		Data->SectorData.Reserve(Sectors->Num());
 		for (TSharedPtr<FJsonValue> Item : *Sectors)
 		{
 			FFlareSectorSave ChildData;
@@ -250,6 +258,7 @@ void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareW
 	const TArray<TSharedPtr<FJsonValue>>* Travels;
 	if(Object->TryGetArrayField("Travels", Travels))
 	{
+		Data->TravelData.Reserve(Travels->Num());
 		for (TSharedPtr<FJsonValue> Item : *Travels)
 		{
 			FFlareTravelSave ChildData;
@@ -280,6 +289,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* UnlockedTechnologies;
 	if (Object->TryGetArrayField("UnlockedTechnologies", UnlockedTechnologies))
 	{
+		Data->UnlockedTechnologies.Reserve(UnlockedTechnologies->Num());
 		for (TSharedPtr<FJsonValue> Item : *UnlockedTechnologies)
 		{
 			Data->UnlockedTechnologies.Add(FName(*Item->AsString()));
@@ -289,6 +299,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* CaptureOrders;
 	if (Object->TryGetArrayField("CaptureOrders", CaptureOrders))
 	{
+		Data->CaptureOrders.Reserve(CaptureOrders->Num());
 		for (TSharedPtr<FJsonValue> Item : *CaptureOrders)
 		{
 			Data->CaptureOrders.Add(FName(*Item->AsString()));
@@ -306,6 +317,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* Ships;
 	if(Object->TryGetArrayField("Ships", Ships))
 	{
+		Data->ShipData.Reserve(Ships->Num());
 		for (TSharedPtr<FJsonValue> Item : *Ships)
 		{
 			FFlareSpacecraftSave ChildData;
@@ -317,6 +329,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* ChildStations;
 	if(Object->TryGetArrayField("ChildStations", ChildStations))
 	{
+		Data->ChildStationData.Reserve(ChildStations->Num());
 		for (TSharedPtr<FJsonValue> Item : *ChildStations)
 		{
 			FFlareSpacecraftSave ChildData;
@@ -328,6 +341,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* Stations;
 	if(Object->TryGetArrayField("Stations", Stations))
 	{
+		Data->StationData.Reserve(Stations->Num());
 		for (TSharedPtr<FJsonValue> Item : *Stations)
 		{
 			FFlareSpacecraftSave ChildData;
@@ -339,6 +353,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* DestroyedSpacecrafts;
 	if(Object->TryGetArrayField("DestroyedSpacecrafts", DestroyedSpacecrafts))
 	{
+		Data->DestroyedSpacecraftData.Reserve(DestroyedSpacecrafts->Num());
 		for (TSharedPtr<FJsonValue> Item : *DestroyedSpacecrafts)
 		{
 			FFlareSpacecraftSave ChildData;
@@ -350,6 +365,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* Fleets;
 	if(Object->TryGetArrayField("Fleets", Fleets))
 	{
+		Data->Fleets.Reserve(Fleets->Num());
 		for (TSharedPtr<FJsonValue> Item : *Fleets)
 		{
 			FFlareFleetSave ChildData;
@@ -361,6 +377,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* TradeRoutes;
 	if(Object->TryGetArrayField("TradeRoutes", TradeRoutes))
 	{
+		Data->TradeRoutes.Reserve(TradeRoutes->Num());
 		for (TSharedPtr<FJsonValue> Item : *TradeRoutes)
 		{
 			FFlareTradeRouteSave ChildData;
@@ -372,6 +389,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* SectorsKnowledge;
 	if(Object->TryGetArrayField("SectorsKnowledge", SectorsKnowledge))
 	{
+		Data->SectorsKnowledge.Reserve(SectorsKnowledge->Num());
 		for (TSharedPtr<FJsonValue> Item : *SectorsKnowledge)
 		{
 			FFlareCompanySectorKnowledge ChildData;
@@ -383,6 +401,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* TransactionLog;
 	if(Object->TryGetArrayField("TransactionLog", TransactionLog))
 	{
+		Data->TransactionLog.Reserve(TransactionLog->Num());
 		for (TSharedPtr<FJsonValue> Item : *TransactionLog)
 		{
 			FFlareTransactionLogEntry ChildData;
@@ -474,6 +493,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* Components;
 	if(Object->TryGetArrayField("Components", Components))
 	{
+		Data->Components.Reserve(Components->Num());
 		for (TSharedPtr<FJsonValue> Item : *Components)
 		{
 			FFlareSpacecraftComponentSave ChildData;
@@ -485,6 +505,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* ConstructionCargoBay;
 	if(Object->TryGetArrayField("ConstructionCargoBay", ConstructionCargoBay))
 	{
+		Data->ConstructionCargoBay.Reserve(ConstructionCargoBay->Num());
 		for (TSharedPtr<FJsonValue> Item : *ConstructionCargoBay)
 		{
 			FFlareCargoSave ChildData;
@@ -496,6 +517,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* ProductionCargoBay;
 	if(Object->TryGetArrayField("ProductionCargoBay", ProductionCargoBay))
 	{
+		Data->ProductionCargoBay.Reserve(ProductionCargoBay->Num());
 		for (TSharedPtr<FJsonValue> Item : *ProductionCargoBay)
 		{
 			FFlareCargoSave ChildData;
@@ -509,6 +531,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	if(Object->TryGetArrayField("Cargo", Cargo))
 	{
 		TArray<FFlareCargoSave>& targetCargoBay = Data->IsUnderConstruction ? Data->ConstructionCargoBay : Data->ProductionCargoBay;
+		targetCargoBay.Reserve(Cargo->Num());
 
 		for (TSharedPtr<FJsonValue> Item : *Cargo)
 		{
@@ -523,6 +546,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	if(Object->TryGetArrayField("CargoBackup", CargoBackup))
 	{
 		TArray<FFlareCargoSave>& targetCargoBay = Data->IsUnderConstruction ? Data->ProductionCargoBay : Data->ConstructionCargoBay;
+		targetCargoBay.Reserve(CargoBackup->Num());
 
 		for (TSharedPtr<FJsonValue> Item : *CargoBackup)
 		{
@@ -535,6 +559,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* FactoryStates;
 	if(Object->TryGetArrayField("FactoryStates", FactoryStates))
 	{
+		Data->FactoryStates.Reserve(FactoryStates->Num());
 		for (TSharedPtr<FJsonValue> Item : *FactoryStates)
 		{
 			FFlareFactorySave ChildData;
@@ -546,6 +571,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* ShipyardOrderQueue;
 	if(Object->TryGetArrayField("ShipyardOrderQueue", ShipyardOrderQueue))
 	{
+		Data->ShipyardOrderQueue.Reserve(ShipyardOrderQueue->Num());
 		for (TSharedPtr<FJsonValue> Item : *ShipyardOrderQueue)
 		{
 			FFlareShipyardOrderSave ChildData;
@@ -557,6 +583,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* ConnectedStations;
 	if (Object->TryGetArrayField("ConnectedStations", ConnectedStations))
 	{
+		Data->ConnectedStations.Reserve(ConnectedStations->Num());
 		for (TSharedPtr<FJsonValue> Item : *ConnectedStations)
 		{
 			FFlareConnectionSave ChildData;
@@ -576,6 +603,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* CapturePoints;
 	if(Object->TryGetArrayField("CapturePoints", CapturePoints))
 	{
+		Data->CapturePoints.Reserve(CapturePoints->Num());
 		for (TSharedPtr<FJsonValue> Item : *CapturePoints)
 		{
 			// Object with 2 field, the company name, and the point count
@@ -748,6 +776,7 @@ void UFlareSaveReaderV1::LoadFactory(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* ResourceReserved;
 	if(Object->TryGetArrayField("ResourceReserved", ResourceReserved))
 	{
+		Data->ResourceReserved.Reserve(ResourceReserved->Num());
 		for (TSharedPtr<FJsonValue> Item : *ResourceReserved)
 		{
 			FFlareCargoSave ChildData;
@@ -759,6 +788,7 @@ void UFlareSaveReaderV1::LoadFactory(const TSharedPtr<FJsonObject> Object, FFlar
 	const TArray<TSharedPtr<FJsonValue>>* OutputCargoLimit;
 	if(Object->TryGetArrayField("OutputCargoLimit", OutputCargoLimit))
 	{
+		Data->OutputCargoLimit.Reserve(OutputCargoLimit->Num());
 		for (TSharedPtr<FJsonValue> Item : *OutputCargoLimit)
 		{
 			FFlareCargoSave ChildData;
@@ -837,6 +867,7 @@ void UFlareSaveReaderV1::LoadTradeRoute(const TSharedPtr<FJsonObject> Object, FF
 	const TArray<TSharedPtr<FJsonValue>>* Sectors;
 	if(Object->TryGetArrayField("Sectors", Sectors))
 	{
+		Data->Sectors.Reserve(Sectors->Num());
 		for (TSharedPtr<FJsonValue> Item : *Sectors)
 		{
 			FFlareTradeRouteSectorSave ChildData;
@@ -857,6 +888,7 @@ void UFlareSaveReaderV1::LoadTradeRouteSector(const TSharedPtr<FJsonObject> Obje
 	const TArray<TSharedPtr<FJsonValue>>* ResourcesToUnload;
 	if(Object->TryGetArrayField("ResourcesToUnload", ResourcesToUnload))
 	{
+		Data->Operations.Reserve(ResourcesToUnload->Num());
 		for (TSharedPtr<FJsonValue> Item : *ResourcesToUnload)
 		{
 			FFlareCargoSave ChildData;
@@ -876,6 +908,7 @@ void UFlareSaveReaderV1::LoadTradeRouteSector(const TSharedPtr<FJsonObject> Obje
 	const TArray<TSharedPtr<FJsonValue>>* ResourcesToLoad;
 	if(Object->TryGetArrayField("ResourcesToLoad", ResourcesToLoad))
 	{
+		Data->Operations.Reserve(ResourcesToLoad->Num());
 		for (TSharedPtr<FJsonValue> Item : *ResourcesToLoad)
 		{
 			FFlareCargoSave ChildData;
@@ -894,6 +927,7 @@ void UFlareSaveReaderV1::LoadTradeRouteSector(const TSharedPtr<FJsonObject> Obje
 	const TArray<TSharedPtr<FJsonValue>>* Operations;
 	if(Object->TryGetArrayField("Operations", Operations))
 	{
+		Data->Operations.Reserve(Operations->Num());
 		for (TSharedPtr<FJsonValue> Item : *Operations)
 		{
 			FFlareTradeRouteSectorOperationSave ChildData;
@@ -966,6 +1000,7 @@ void UFlareSaveReaderV1::LoadSector(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* Bombs;
 	if(Object->TryGetArrayField("Bombs", Bombs))
 	{
+		Data->BombData.Reserve(Bombs->Num());
 		for (TSharedPtr<FJsonValue> Item : *Bombs)
 		{
 			FFlareBombSave ChildData;
@@ -977,6 +1012,7 @@ void UFlareSaveReaderV1::LoadSector(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* Asteroids;
 	if(Object->TryGetArrayField("Asteroids", Asteroids))
 	{
+		Data->AsteroidData.Reserve(Asteroids->Num());
 		for (TSharedPtr<FJsonValue> Item : *Asteroids)
 		{
 			FFlareAsteroidSave ChildData;
@@ -988,6 +1024,7 @@ void UFlareSaveReaderV1::LoadSector(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* Meteorites;
 	if(Object->TryGetArrayField("Meteorites", Meteorites))
 	{
+		Data->MeteoriteData.Reserve(Meteorites->Num());
 		for (TSharedPtr<FJsonValue> Item : *Meteorites)
 		{
 			FFlareMeteoriteSave ChildData;
@@ -1002,6 +1039,7 @@ void UFlareSaveReaderV1::LoadSector(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* ResourcePrices;
 	if(Object->TryGetArrayField("ResourcePrices", ResourcePrices))
 	{
+		Data->ResourcePrices.Reserve(ResourcePrices->Num());
 		for (TSharedPtr<FJsonValue> Item : *ResourcePrices)
 		{
 			FFFlareResourcePrice ChildData;
@@ -1041,6 +1079,7 @@ void UFlareSaveReaderV1::LoadPeople(const TSharedPtr<FJsonObject> Object, FFlare
 	const TArray<TSharedPtr<FJsonValue>>* CompanyReputations;
 	if(Object->TryGetArrayField("CompanyReputations", CompanyReputations))
 	{
+		Data->CompanyReputations.Reserve(CompanyReputations->Num());
 		for (TSharedPtr<FJsonValue> Item : *CompanyReputations)
 		{
 			FFlareCompanyReputationSave ChildData;
@@ -1183,6 +1222,7 @@ void UFlareSaveReaderV1::LoadFNameArray(TSharedPtr< FJsonObject > Object, FStrin
 	const TArray<TSharedPtr<FJsonValue>>* Array;
 	if(Object->TryGetArrayField(Key, Array))
 	{
+		(*Data).Reserve(Array->Num());
 		for (TSharedPtr<FJsonValue> Item : *Array)
 		{
 			(*Data).Add(FName(*Item->AsString()));
@@ -1195,6 +1235,7 @@ void UFlareSaveReaderV1::LoadFloatArray(TSharedPtr< FJsonObject > Object, FStrin
 	const TArray<TSharedPtr<FJsonValue>>* Array;
 	if(Object->TryGetArrayField(Key, Array))
 	{
+		(*Data).Reserve(Array->Num());
 		for (TSharedPtr<FJsonValue> Item : *Array)
 		{
 			float Value = Item->AsNumber();
@@ -1378,7 +1419,6 @@ void UFlareSaveReaderV1::LoadBundle(const TSharedPtr<FJsonObject> Object, FStrin
 
 				const TArray< TSharedPtr<FJsonValue> >& Array = Pair.Value->AsArray();
 				TArray<FVector>	VectorArray;
-
 				for (TSharedPtr<FJsonValue> Item : Array)
 				{
 					FVector Vector;
@@ -1414,7 +1454,6 @@ void UFlareSaveReaderV1::LoadBundle(const TSharedPtr<FJsonObject> Object, FStrin
 
 				const TArray< TSharedPtr<FJsonValue> >& Array = Pair.Value->AsArray();
 				TArray<FName>	NameArray;
-
 				for (TSharedPtr<FJsonValue> Item : Array)
 				{
 					FName NameValue = FName(*Item->AsString());

@@ -425,8 +425,8 @@ void UFlareAIBehavior::GenerateAffilities()
 	BuildEfficientMilitaryChance = 0.05;
 	BuildEfficientMilitaryChanceSmall = 0.10;
 
-	BuildEfficientTradeChance = 0.20;
-	BuildEfficientTradeChanceSmall = 0.25;
+	BuildEfficientTradeChance = 0.10;
+	BuildEfficientTradeChanceSmall = 0.30;
 
 	if(Company == ST->Pirates)
 	{
@@ -507,7 +507,7 @@ void UFlareAIBehavior::GenerateAffilities()
 
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
-		BuildEfficientTradeChance = 0.25;
+		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Add("instruments");
 	}
 	else if(Company == ST->MiningSyndicate)
@@ -529,8 +529,8 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildEfficientMilitaryChance = 0.025;
 		BuildEfficientMilitaryChanceSmall = 0.5;
 
-		BuildEfficientTradeChance = 0.10;
-		BuildEfficientTradeChanceSmall = 0.125;
+		BuildEfficientTradeChance = 0.05;
+		BuildEfficientTradeChanceSmall = 0.15;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("orbital-pumps");
@@ -587,7 +587,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildLTradeOnlyTreshhold = 40;
 		BuildTradeDiversity = 2;
 		BuildTradeDiversitySize = 4;
-		BuildEfficientTradeChance = 0.30;
+		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("fast-travel");
@@ -608,8 +608,8 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildEfficientMilitaryChance = 0.025;
 		BuildEfficientMilitaryChanceSmall = 0.5;
 
-		BuildEfficientTradeChance = 0.10;
-		BuildEfficientTradeChanceSmall = 0.125;
+		BuildEfficientTradeChance = 0.05;
+		BuildEfficientTradeChanceSmall = 0.15;
 		ResearchOrder.Add("instruments");
 	}
 	else if(Company == ST->NemaHeavyWorks)
@@ -632,7 +632,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
 
-		BuildEfficientTradeChance = 0.25;
+		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("science");
@@ -666,7 +666,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildLTradeOnlyTreshhold = 40;
 		BuildTradeDiversitySize = 4;
 
-		BuildEfficientTradeChance = 0.30;
+		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("fast-travel");
@@ -681,7 +681,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildMilitaryDiversitySize = 4;
 		BuildMilitaryDiversitySizeBase = 0;
 
-		BuildEfficientMilitaryChance = 0.20;
+		BuildEfficientMilitaryChance = 0.10;
 		BuildEfficientMilitaryChanceSmall = 0.15;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
@@ -702,7 +702,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildEfficientMilitaryChance = 0.10;
 		BuildEfficientMilitaryChanceSmall = 0.15;
 
-		BuildEfficientTradeChance = 0.25;
+		BuildEfficientTradeChance = 0.20;
 		BuildEfficientTradeChanceSmall = 0.30;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("instruments");

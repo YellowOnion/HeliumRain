@@ -885,7 +885,7 @@ struct FFlareSpacecraftSave
 
 	/** Company that harpooned us */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName HarpoonCompany;
+	FName HarpoonCompany;
 
 	/** Current capture points */
 	UPROPERTY(EditAnywhere, Category = Save)

@@ -43,6 +43,7 @@ void UFlareTurret::SetupFiringEffects()
 	if (FiringEffect == NULL && FiringEffectTemplate)
 	{
 		FiringEffects.Empty();
+		FiringEffects.Reserve(ComponentDescription->WeaponCharacteristics.GunCharacteristics.GunCount);
 
 		for (int32 i = 0; i < ComponentDescription->WeaponCharacteristics.GunCharacteristics.GunCount; i++)
 		{

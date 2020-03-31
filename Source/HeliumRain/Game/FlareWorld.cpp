@@ -174,6 +174,9 @@ FFlareWorldSave* UFlareWorld::Save()
 	WorldData.CompanyData.Empty();
 	WorldData.SectorData.Empty();
 	WorldData.TravelData.Empty();
+	WorldData.CompanyData.Reserve(Companies.Num());
+	WorldData.SectorData.Reserve(Sectors.Num());
+	WorldData.TravelData.Reserve(Travels.Num());
 
 	// Companies
 	for (int i = 0; i < Companies.Num(); i++)
@@ -506,6 +509,7 @@ void UFlareWorld::Simulate()
 	UFlareCompany* MaxCombatPointCompany = NULL;
 
 	AICompaniesMoney CompaniesMoney;
+	CompaniesMoney.CompaniesMoney.Reserve(GetCompanies().Num());
 	for(UFlareCompany* Company: GetCompanies())
 	{
 		CompaniesMoney.CompaniesMoney.Add(Company, Company->GetMoney())	;

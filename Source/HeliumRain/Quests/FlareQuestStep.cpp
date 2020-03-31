@@ -146,9 +146,12 @@ void UFlareQuestStep::Save(TArray<FFlareQuestConditionSave>& Data)
 	}
 }
 
-void UFlareQuestStep::PerformInitActions()
+void UFlareQuestStep::PerformInitActions(bool Silent)
 {
-	UFlareQuestAction::PerformActions(InitActions);
+	if (!Silent)
+	{
+		UFlareQuestAction::PerformActions(InitActions);
+	}
 }
 
 void UFlareQuestStep::PerformEndActions()

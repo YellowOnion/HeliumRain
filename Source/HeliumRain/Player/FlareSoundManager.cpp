@@ -73,6 +73,7 @@ UFlareSoundManager::UFlareSoundManager(const class FObjectInitializer& PCIP)
 	MasterSoundMix = MasterSoundMixObj.Object;
 
 	// Music track store
+	MusicTracks.Reserve(14);
 	MusicTracks.Add(NULL);
 	MusicTracks.Add(IntroMusicObj.Object);
 	MusicTracks.Add(MenuMusicObj.Object);

@@ -242,7 +242,7 @@ void UFlareQuest::NextStep(bool Silent)
 
 				FLOGV("Quest %s step %s begin", *GetIdentifier().ToString(), *Step->GetIdentifier().ToString());
 				Step->Init();
-				Step->PerformInitActions();
+				Step->PerformInitActions(Silent);
 
 				if (!Silent)
 				{

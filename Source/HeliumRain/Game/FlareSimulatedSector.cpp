@@ -304,6 +304,11 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 		// TODO
 	}
 
+	ShipData.Components.Reserve(ShipDescription->RCSCount
+		+ ShipDescription->OrbitalEngineCount
+		+ ShipDescription->GunSlots.Num()
+		+ ShipDescription->TurretSlots.Num()
+		+ ShipDescription->InternalComponentSlots.Num());
 	for (int32 i = 0; i < ShipDescription->RCSCount; i++)
 	{
 		FFlareSpacecraftComponentSave ComponentData;
@@ -1963,6 +1968,8 @@ void UFlareSimulatedSector::UpdateReserveShips()
 
 	TArray<TArray<UFlareSimulatedSpacecraft*>> CargoShipListByCompanies;
 	TArray<TArray<UFlareSimulatedSpacecraft*>> MilitaryShipListByCompanies;
+	CargoShipListByCompanies.Reserve(GetGame()->GetGameWorld()->GetCompanies().Num());
+	MilitaryShipListByCompanies.Reserve(GetGame()->GetGameWorld()->GetCompanies().Num());
 	for (int32 CompanyIndex = 0; CompanyIndex < GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
 		CargoShipListByCompanies.Add(TArray<UFlareSimulatedSpacecraft*>());

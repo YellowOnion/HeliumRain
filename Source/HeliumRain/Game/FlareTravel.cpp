@@ -46,6 +46,7 @@ void UFlareTravel::Load(const FFlareTravelSave& Data)
 	DestinationSector = Game->GetGameWorld()->FindSector(TravelData.DestinationSectorIdentifier);
 	OriginSector = Game->GetGameWorld()->FindSector(TravelData.OriginSectorIdentifier);
 
+	TravelShips.Reserve(Fleet->GetShips().Num());
 	for (int ShipIndex = 0; ShipIndex < Fleet->GetShips().Num(); ShipIndex++)
 	{
 		TravelShips.Add(Fleet->GetShips()[ShipIndex]);
@@ -430,7 +431,55 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 		TravelDuration = (UFlareGameTools::SECONDS_IN_DAY/2 + ComputeAltitudeTravelDuration(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody, DestinationAltitude)) / UFlareGameTools::SECONDS_IN_DAY;
 	}
 
-	TravelDuration *= 1.50;
+	int32 GameDifficulty = -1;
+	GameDifficulty = World->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+	if (Company == World->GetGame()->GetPC()->GetCompany())
+	{
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			TravelDuration *= 0.95;
+			break;
+		case 0: // Normal
+			break;
+		case 1: // Hard
+			TravelDuration *= 1.05;
+			break;
+		case 2: // Very Hard
+			TravelDuration *= 1.10;
+			break;
+		case 3: // Expert
+			TravelDuration *= 1.15;
+			break;
+		case 4: // Unfair
+			TravelDuration *= 1.20;
+			break;
+		}
+	}
+	else
+	{
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			break;
+		case 0: // Normal
+			break;
+		case 1: // Hard
+			TravelDuration *= 0.95;
+			break;
+		case 2: // Very Hard
+			TravelDuration *= 0.90;
+			break;
+		case 3: // Expert
+			TravelDuration *= 0.85;
+			break;
+		case 4: // Unfair
+			TravelDuration *= 0.80;
+			break;
+		}
+	}
+
+
 	if(Company && Company->IsTechnologyUnlocked("fast-travel"))
 	{
 		TravelDuration /= 2;

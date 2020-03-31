@@ -233,7 +233,7 @@ void SFlareQuestMenu::FillAvailableQuestList()
 	AvailableQuestList->ClearChildren();
 	TArray<UFlareQuest*>& AvailableQuests = QuestManager->GetAvailableQuests();
 
-	// Get list of availabed quests
+	// Get list of available quests
 	for (int32 QuestIndex = 0; QuestIndex < AvailableQuests.Num(); QuestIndex++)
 	{
 		UFlareQuest* Quest = AvailableQuests[QuestIndex];

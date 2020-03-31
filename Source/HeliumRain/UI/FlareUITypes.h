@@ -77,6 +77,7 @@ struct FFlareMenuParameterData
 		, CompanyDescription(NULL)
 		, ScenarioIndex(0)
 		, DifficultyIndex(0)
+		, EconomyIndex(0)
 		, PlayerEmblemIndex(0)
 		, PlayTutorial(false)
 		, RandomizeStations(false)
@@ -101,6 +102,7 @@ struct FFlareMenuParameterData
 
 	int32                                       ScenarioIndex;
 	int32                                       DifficultyIndex;
+	int32										EconomyIndex;
 	int32                                       PlayerEmblemIndex;
 	bool										RandomizeStations;
 	bool                                        PlayTutorial;

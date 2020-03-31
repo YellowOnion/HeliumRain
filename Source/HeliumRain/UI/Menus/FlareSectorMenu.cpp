@@ -498,10 +498,13 @@ void SFlareSectorMenu::Enter(UFlareSimulatedSector* Sector)
 		UFlareFleet* Fleet = PC->GetCompany()->GetCompanyFleets()[FleetIndex];
 		if (Fleet && Fleet->GetShips().Num())
 		{
-			FleetList.Add(Fleet);
-			if (Fleet->Save()->Identifier == LastSelectedFleetName)
+			if (!Fleet->IsAutoTrading())
 			{
-				SelectedFleet = Fleet;
+				FleetList.Add(Fleet);
+				if (Fleet->Save()->Identifier == LastSelectedFleetName)
+				{
+					SelectedFleet = Fleet;
+				}
 			}
 		}
 	}

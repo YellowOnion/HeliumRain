@@ -15,10 +15,14 @@ class SFlareList : public SCompoundWidget
 	----------------------------------------------------*/
 
 	SLATE_BEGIN_ARGS(SFlareList)
-	 : _UseCompactDisplay(false)
+	: _UseCompactDisplay(false)
+   	, _StationList(false)
+	, _FleetList(false)
 	{}
 
 	SLATE_ARGUMENT(bool, UseCompactDisplay)
+	SLATE_ARGUMENT(bool, StationList)
+	SLATE_ARGUMENT(bool, FleetList)
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
 	SLATE_ARGUMENT(FText, Title)
@@ -43,6 +47,9 @@ public:
 
 	/** Update the list display from content */
 	void RefreshList();
+
+	/** Updates button names/display if fleet*/
+	void SetButtonNamesFleet();
 
 	/** Clear the current selection */
 	void ClearSelection();
@@ -73,6 +80,9 @@ protected:
 
 	/** Show ship filters when ships are present */
 	EVisibility GetShipFiltersVisibility() const;
+
+	/** Show ship filters when ships are present */
+	EVisibility GetStationFilterVisibility() const;
 
 	/** Show fleet filters when ships are present and not in fleet menu */
 	EVisibility GetFleetFilterVisibility() const;
@@ -122,4 +132,6 @@ protected:
 	bool                                                         UseCompactDisplay;
 	bool                                                         HasShips;
 	bool                                                         HasFleets;
+	bool														 StationList;
+	bool														 FleetList;
 };

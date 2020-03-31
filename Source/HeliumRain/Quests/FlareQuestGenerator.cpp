@@ -145,6 +145,7 @@ FText UFlareQuestGenerator::GeneratePersonName(TArray<FString> UsedNames)
 {
 	TArray<FText> Names;
 	
+	Names.Reserve(55);
 	Names.Add(FText::FromString("Amos"));
 	Names.Add(FText::FromString("Anette"));
 	Names.Add(FText::FromString("Alex"));
@@ -250,7 +251,38 @@ float UFlareQuestGenerator::ComputeQuestProbability(UFlareCompany* Company)
 	float CompanyQuestProbability = 1.f - (float) QuestManager->GetVisibleQuestCount(Company)/ (float) MAX_QUEST_PER_COMPANY_COUNT;
 	float GlobalQuestProbability = 1.f - (float) QuestManager->GetVisibleQuestCount()/ (float) MAX_QUEST_COUNT;
 
-	float QuestProbability = GlobalQuestProbability * CompanyQuestProbability;
+	FFlarePlayerSave* PlayerData = Game->GetPC()->GetPlayerData();
+	int32 GameDifficulty = -1;
+	if (PlayerData)
+	{
+		GameDifficulty = PlayerData->DifficultyId;
+	}
+
+	float DifficultyModifier = 1.0f;
+
+	switch (GameDifficulty)
+	{
+	case -1: // Easy
+		DifficultyModifier = 1.0f;
+		break;
+	case 0: // Normal
+		DifficultyModifier = 1.0f;
+		break;
+	case 1: // Hard
+		DifficultyModifier = 0.85f;
+		break;
+	case 2: // Very Hard
+		DifficultyModifier = 0.70f;
+		break;
+	case 3: // Expert
+		DifficultyModifier = 0.55f;
+		break;
+	case 4: // Unfair
+		DifficultyModifier = 0.40f;
+		break;
+	}
+
+	float QuestProbability = (GlobalQuestProbability * CompanyQuestProbability) * DifficultyModifier;
 
 
 	/*FLOGV("CompanyQuestProbability %f", CompanyQuestProbability);
@@ -305,7 +337,7 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		// Get a company
 		int CompanyIndex = FMath::RandRange(0, CompaniesToProcess.Num() - 1);
 		UFlareCompany* Company = CompaniesToProcess[CompanyIndex];
-		CompaniesToProcess.Remove(Company);
+		CompaniesToProcess.RemoveSwap(Company);
 		if (Company == PlayerCompany)
 		{
 			continue;
@@ -354,59 +386,62 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		// Register quest
 		RegisterQuest(Quest);
 		
-		// Compute values
-		int64 TotalValue = 0;
-		int64 TotalCombatValue = 0;
-		CompanyValue Value = Company->GetCompanyValue();
-		for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
+		if (Game->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints > 0)
 		{
-			const CompanyValue& OtherValue = OtherCompany->GetCompanyValue();
-			TotalValue += OtherValue.TotalValue;
-			TotalCombatValue += OtherValue.ArmyCurrentCombatPoints;
-		}
-
-		// Hunt quests
-		for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
-		{
-			if (OtherCompany == PlayerCompany || Company == OtherCompany)
+			// Compute values
+			int64 TotalValue = 0;
+			int64 TotalCombatValue = 0;
+			CompanyValue Value = Company->GetCompanyValue();
+			for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
 			{
-				continue;
+				const CompanyValue& OtherValue = OtherCompany->GetCompanyValue();
+				TotalValue += OtherValue.TotalValue;
+				TotalCombatValue += OtherValue.ArmyCurrentCombatPoints;
 			}
 
-			CompanyValue OtherValue = OtherCompany->GetCompanyValue();
-
-			// Cargo hunt
-			if (OtherValue.TotalValue > Value.TotalValue * 1.1)
+			// Hunt quests
+			for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
 			{
-				// 1% per day per negative reputation point
-				float ValueRatio = float(OtherValue.TotalValue) / TotalValue;
-
-				float CargoHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
-
-				// No luck, no quest this time
-				if (FMath::FRand() > CargoHuntQuestProbability)
+				if (OtherCompany == PlayerCompany || Company == OtherCompany)
 				{
 					continue;
 				}
 
-				RegisterQuest(UFlareQuestGeneratedCargoHunt2::Create(this, Company, OtherCompany));
-			}
+				CompanyValue OtherValue = OtherCompany->GetCompanyValue();
 
-			// Military hunt
-			if (OtherValue.ArmyCurrentCombatPoints > Value.ArmyCurrentCombatPoints*1.1)
-			{
-				float ValueRatio = float(OtherValue.ArmyCurrentCombatPoints) / TotalCombatValue;
-				
-				// 1% per day per negative reputation point
-				float MilitaryHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
-
-				// No luck, no quest this time
-				if (FMath::FRand() > MilitaryHuntQuestProbability)
+				// Cargo hunt
+				if (OtherValue.TotalValue > Value.TotalValue * 1.1)
 				{
-					continue;
+					// 1% per day per negative reputation point
+					float ValueRatio = float(OtherValue.TotalValue) / TotalValue;
+
+					float CargoHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
+
+					// No luck, no quest this time
+					if (FMath::FRand() > CargoHuntQuestProbability)
+					{
+						continue;
+					}
+
+					RegisterQuest(UFlareQuestGeneratedCargoHunt2::Create(this, Company, OtherCompany));
 				}
 
-				RegisterQuest(UFlareQuestGeneratedMilitaryHunt2::Create(this, Company, OtherCompany));
+				// Military hunt
+				if (OtherValue.ArmyCurrentCombatPoints > Value.ArmyCurrentCombatPoints*1.1)
+				{
+					float ValueRatio = float(OtherValue.ArmyCurrentCombatPoints) / TotalCombatValue;
+
+					// 1% per day per negative reputation point
+					float MilitaryHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
+
+					// No luck, no quest this time
+					if (FMath::FRand() > MilitaryHuntQuestProbability)
+					{
+						continue;
+					}
+
+					RegisterQuest(UFlareQuestGeneratedMilitaryHunt2::Create(this, Company, OtherCompany));
+				}
 			}
 		}
 	}
@@ -647,22 +682,21 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 			PenaltyModifier = 1.0f;
 			break;
 		case 1: // Hard
-			DifficultyModifier = 0.80f;
+			DifficultyModifier = 0.75f;
 			PenaltyModifier = 0.70f;
 			break;
 		case 2: // Very Hard
-			DifficultyModifier = 0.70f;
-			PenaltyModifier = 0.55f;
+			DifficultyModifier = 0.50f;
+			PenaltyModifier = 0.45f;
 			break;
 		case 3: // Expert
-			DifficultyModifier = 0.50f;
+			DifficultyModifier = 0.40f;
 			PenaltyModifier = 0.30f;
 			break;
 		case 4: // Unfair
 			DifficultyModifier = 0.30f;
 			PenaltyModifier = 0.10f;
 			break;
-
 	}
 
 	QuestValue = QuestValue * DifficultyModifier;

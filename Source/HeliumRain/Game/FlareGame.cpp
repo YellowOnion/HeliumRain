@@ -629,7 +629,7 @@ bool AFlareGame::DeleteSaveSlot(int32 Index)
 	Save
 ----------------------------------------------------*/
 
-void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations)
+void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations)
 {
 	// Clean up
 	PlayerController = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
@@ -650,22 +650,22 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 
 	// Setup the player company
 	PlayerController->SetCompanyDescription(CompanyData);
-	FFlarePlayerSave PlayerData;
+	FFlarePlayerSave PlayerDataL;
 	UFlareCompany* PlayerCompany = CreateCompany(-1);
-	PlayerData.CompanyIdentifier = PlayerCompany->GetIdentifier();
-	PlayerData.UUID = FName(*FGuid::NewGuid().ToString());
-	PlayerData.ScenarioId = ScenarioIndex;
-	PlayerData.DifficultyId = DifficultyIndex - 1;
+	PlayerDataL.CompanyIdentifier = PlayerCompany->GetIdentifier();
+	PlayerDataL.UUID = FName(*FGuid::NewGuid().ToString());
+	PlayerDataL.ScenarioId = ScenarioIndex;
+	PlayerDataL.DifficultyId = DifficultyIndex - 1;
 	// -1 difficulty index so old games without it saved will read as "normal"
-	PlayerData.PlayerEmblemIndex = PlayerEmblemIndex;
-	PlayerData.QuestData.PlayTutorial = PlayTutorial;
-	PlayerData.QuestData.PlayStory = PlayStory;
-	PlayerData.QuestData.NextGeneratedQuestIndex = 0;
+	PlayerDataL.PlayerEmblemIndex = PlayerEmblemIndex;
+	PlayerDataL.QuestData.PlayTutorial = PlayTutorial;
+	PlayerDataL.QuestData.PlayStory = PlayStory;
+	PlayerDataL.QuestData.NextGeneratedQuestIndex = 0;
 	PlayerController->SetCompany(PlayerCompany);
 	
 	// Create world tools
 	ScenarioTools = NewObject<UFlareScenarioTools>(this, UFlareScenarioTools::StaticClass());
-	ScenarioTools->Init(PlayerCompany, &PlayerData);
+	ScenarioTools->Init(PlayerCompany, &PlayerDataL);
 	World->PostLoad();
 
 	// Discover new sectors
@@ -683,30 +683,30 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 	switch (ScenarioIndex)
 	{
 		case -1: // Empty
-			ScenarioTools->GenerateEmptyScenario(RandomizeStationLocations);
+			ScenarioTools->GenerateEmptyScenario(RandomizeStationLocations, EconomyIndex);
 		break;
 		case 0: // Freighter
-			ScenarioTools->GenerateFreighterScenario(RandomizeStationLocations);
+			ScenarioTools->GenerateFreighterScenario(RandomizeStationLocations, EconomyIndex);
 		break;
 		case 1: // Fighter
-			ScenarioTools->GenerateFighterScenario(RandomizeStationLocations);
+			ScenarioTools->GenerateFighterScenario(RandomizeStationLocations, EconomyIndex);
 		break;
 		case 2: // Debug
-			ScenarioTools->GenerateDebugScenario(RandomizeStationLocations);
+			ScenarioTools->GenerateDebugScenario(RandomizeStationLocations, EconomyIndex);
 		break;
 	}
 
 	// Load
-	PlayerController->Load(PlayerData);
+	PlayerController->Load(PlayerDataL);
 
 	// Init the quest manager
 	QuestManager = NewObject<UFlareQuestManager>(this, UFlareQuestManager::StaticClass());
-	QuestManager->Load(PlayerData.QuestData);
+	QuestManager->Load(PlayerDataL.QuestData);
 
 	// End loading
 	LoadedOrCreated = true;
 	PlayerController->OnLoadComplete();
-	FFlareLogWriter::InitWriter(PlayerData.UUID);
+	FFlareLogWriter::InitWriter(PlayerDataL.UUID);
 }
 
 void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
@@ -730,22 +730,22 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 	
 	// Setup the player company
 	PlayerController->SetCompanyDescription(Skirmish->GetData().PlayerCompanyData);
-	FFlarePlayerSave PlayerData;
+	FFlarePlayerSave PlayerDataL;
 	UFlareCompany* PlayerCompany = CreateCompany(-1);
-	PlayerData.CompanyIdentifier = PlayerCompany->GetIdentifier();
-	PlayerData.UUID = FName(*FGuid::NewGuid().ToString());
-	PlayerData.ScenarioId = -1;
-	PlayerData.DifficultyId = -2;
-	PlayerData.PlayerEmblemIndex = 0;
-	PlayerData.QuestData.PlayTutorial = false;
-	PlayerData.QuestData.PlayStory = false;
-//	PlayerData.QuestData.RandomizeStations = false;
-	PlayerData.QuestData.NextGeneratedQuestIndex = 0;
+	PlayerDataL.CompanyIdentifier = PlayerCompany->GetIdentifier();
+	PlayerDataL.UUID = FName(*FGuid::NewGuid().ToString());
+	PlayerDataL.ScenarioId = -1;
+	PlayerDataL.DifficultyId = -2;
+	PlayerDataL.PlayerEmblemIndex = 0;
+	PlayerDataL.QuestData.PlayTutorial = false;
+	PlayerDataL.QuestData.PlayStory = false;
+//	PlayerDataL.QuestData.RandomizeStations = false;
+	PlayerDataL.QuestData.NextGeneratedQuestIndex = 0;
 	PlayerController->SetCompany(PlayerCompany);
 
 	// Create the universe	
 	ScenarioTools = NewObject<UFlareScenarioTools>(this, UFlareScenarioTools::StaticClass());
-	ScenarioTools->Init(PlayerCompany, &PlayerData);
+	ScenarioTools->Init(PlayerCompany, &PlayerDataL);
 	
 	// Get sector data
 	FFlareSectorDescription* SectorDescription = &Skirmish->GetData().SectorDescription;
@@ -793,8 +793,8 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 		if (Fleet == NULL)
 		{
 			Fleet = Ship->GetCurrentFleet();
-			PlayerData.LastFlownShipIdentifier = Ship->GetImmatriculation();
-			PlayerData.PlayerFleetIdentifier = Fleet->GetIdentifier();
+			PlayerDataL.LastFlownShipIdentifier = Ship->GetImmatriculation();
+			PlayerDataL.PlayerFleetIdentifier = Fleet->GetIdentifier();
 		}
 		else
 		{
@@ -820,14 +820,14 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 	}
 
 	// Load player
-	PlayerController->Load(PlayerData);
+	PlayerController->Load(PlayerDataL);
 	PlayerCompany->SetHostilityTo(EnemyCompany, true);
 	EnemyCompany->SetHostilityTo(PlayerCompany, true);
 
 	// End loading
 	LoadedOrCreated = true;
 	PlayerController->OnLoadComplete();
-	FFlareLogWriter::InitWriter(PlayerData.UUID);
+	FFlareLogWriter::InitWriter(PlayerDataL.UUID);
 }
 
 UFlareSimulatedSpacecraft* AFlareGame::CreateSkirmishSpacecraft(UFlareSimulatedSector* Sector, UFlareCompany* Company, FFlareSkirmishSpacecraftOrder Order, FVector TargetPosition)
@@ -1407,6 +1407,7 @@ FText AFlareGame::PickSpacecraftName(UFlareCompany* OwnerCompany, bool IsStation
 void AFlareGame::InitSpacecraftNameDatabase()
 {
 	StationNameList.Empty();
+	StationNameList.Reserve(144);
 	StationNameList.Add(FText::FromString("Adrastea"));
 	StationNameList.Add(FText::FromString("Aegaeon"));
 	StationNameList.Add(FText::FromString("Aegir"));
@@ -1554,6 +1555,7 @@ void AFlareGame::InitSpacecraftNameDatabase()
 	StationNameList.Add(FText::FromString("Zeus"));
 	
 	CapitalShipNameList.Empty();
+	CapitalShipNameList.Reserve(34);
 	CapitalShipNameList.Add(FText::FromString("Arrow"));
 	CapitalShipNameList.Add(FText::FromString("Atom"));
 	CapitalShipNameList.Add(FText::FromString("Binary_Star"));

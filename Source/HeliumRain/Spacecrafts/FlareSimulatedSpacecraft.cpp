@@ -118,6 +118,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		// Load factories
 		if (!Data.IsUnderConstruction)
 		{
+			Factories.Reserve(SpacecraftDescription->Factories.Num());
 			for (int FactoryIndex = 0; FactoryIndex < SpacecraftDescription->Factories.Num(); FactoryIndex++)
 			{
 				FFlareFactorySave FactoryData;
@@ -224,6 +225,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 	// Setup station connectors
 	ConnectorSlots.Empty();
+	ConnectorSlots.Reserve(SpacecraftDescription->StationConnectorCount);
 	for (int32 DockIndex = 0; DockIndex < SpacecraftDescription->StationConnectorCount; DockIndex++)
 	{
 		// Look for the slot name. Unnamed slots are fine if there is only one (most stations are in that case).
@@ -295,6 +297,7 @@ void UFlareSimulatedSpacecraft::Reload()
 FFlareSpacecraftSave* UFlareSimulatedSpacecraft::Save()
 {
 	SpacecraftData.FactoryStates.Empty();
+	SpacecraftData.FactoryStates.Reserve(Factories.Num());
 	for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
 	{
 		SpacecraftData.FactoryStates.Add(*Factories[FactoryIndex]->Save());
@@ -313,6 +316,7 @@ FFlareSpacecraftSave* UFlareSimulatedSpacecraft::Save()
 
 	// Save connected stations
 	GetData().ConnectedStations.Empty();
+	GetData().ConnectedStations.Reserve(ConnectorSlots.Num());
 	for (FFlareDockingInfo& StationConnection : ConnectorSlots)
 	{
 		if (StationConnection.Granted)

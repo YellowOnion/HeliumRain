@@ -219,6 +219,7 @@ FVector UFlareWeapon::ComputeParallaxCorrection(int GunIndex)
 			}
 
 			TArray<AActor*> TargetCanditates;
+			TargetCanditates.Reserve(Spacecraft->GetGame()->GetActiveSector()->GetBombs().Num());
 
 			for(AFlareBomb* Bomb: Spacecraft->GetGame()->GetActiveSector()->GetBombs())
 			{

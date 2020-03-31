@@ -45,7 +45,7 @@ public:
 
 	void UpdateState();
 
-	void PerformInitActions();
+	void PerformInitActions(bool Silent=false);
 	void PerformEndActions();
 
 	void AddEndConditionObjectives(FFlarePlayerObjectiveData* ObjectiveData);

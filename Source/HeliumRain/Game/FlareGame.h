@@ -126,7 +126,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Create a new sandbox game */
-	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations);
+	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations);
 
 	/** Create a new skirmish game */
 	void CreateSkirmishGame(UFlareSkirmishManager* Skirmish);

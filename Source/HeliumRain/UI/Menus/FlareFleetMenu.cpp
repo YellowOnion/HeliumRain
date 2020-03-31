@@ -162,6 +162,7 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(FleetList, SFlareList)
 						.MenuManager(MenuManager)
+						.FleetList(true)
 						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
 					]
 /*
@@ -634,7 +635,7 @@ FText SFlareFleetMenu::GetRepairText() const
 		else
 		{
 			// No repair needed
-			return LOCTEXT("NoFleetToRepair", "No ship needs repairing");
+			return LOCTEXT("NoShipToRepair", "No ship needs repairing");
 		}
 	}
 	else
@@ -766,7 +767,7 @@ FText SFlareFleetMenu::GetRefillText() const
 		else
 		{
 			// No refill needed
-			return LOCTEXT("NoFleetToRefill", "No ship needs refilling");
+			return LOCTEXT("NoShipToRefill", "No ship needs refilling");
 		}
 	}
 	else

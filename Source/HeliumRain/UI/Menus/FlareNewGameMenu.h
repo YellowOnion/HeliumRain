@@ -59,8 +59,7 @@ protected:
 	FText OnGetCurrentComboLine() const;
 
 	/** Generate a combo box line */
-	TSharedRef<SWidget> OnGenerateComboLine(TSharedPtr<FString> Item);
-
+	TSharedRef<SWidget> OnGenerateComboLine(TSharedPtr<FText> Item);
 	/** Combo line selection changed */
 	void OnComboLineSelectionChanged(TSharedPtr<FString> StringItem, ESelectInfo::Type SelectInfo);
 
@@ -91,8 +90,9 @@ protected:
 
 	// Scenario data
 	TSharedPtr<SFlareDropList<TSharedPtr<FString> >> ScenarioSelector;
-	TSharedPtr<SFlareDropList<TSharedPtr<FString> >> DifficultySelector;
+	TSharedPtr<SFlareDropList<TSharedPtr<FText> >> DifficultySelector;
+	TSharedPtr<SFlareDropList<TSharedPtr<FText> >> EconomySelector;
 	TArray<TSharedPtr<FString>>                 ScenarioList;
-	TArray<TSharedPtr<FString>>				    DifficultyList;
-//	TArray<TSharedPtr<FText>>					DifficultyList;
+	TArray<TSharedPtr<FText>>                   DifficultyList;
+	TArray<TSharedPtr<FText>>                   EconomyList;
 };

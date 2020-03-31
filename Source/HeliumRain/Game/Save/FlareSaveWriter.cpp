@@ -51,6 +51,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SavePlayer(FFlarePlayerSave* Data)
 	JsonObject->SetObjectField("Quest", SaveQuest(&Data->QuestData));
 
 	TArray< TSharedPtr<FJsonValue> > UnlockedScannables;
+	UnlockedScannables.Reserve(Data->UnlockedScannables.Num());
 	for (int i = 0; i < Data->UnlockedScannables.Num(); i++)
 	{
 		UnlockedScannables.Add(MakeShareable(new FJsonValueString(Data->UnlockedScannables[i].ToString())));
@@ -71,6 +72,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > QuestProgresses;
+	QuestProgresses.Reserve(Data->QuestProgresses.Num());
 	for(int i = 0; i < Data->QuestProgresses.Num(); i++)
 	{
 		QuestProgresses.Add(MakeShareable(new FJsonValueObject(SaveQuestProgress(&Data->QuestProgresses[i]))));
@@ -78,6 +80,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 	JsonObject->SetArrayField("QuestProgresses", QuestProgresses);
 
 	TArray< TSharedPtr<FJsonValue> > SuccessfulQuests;
+	SuccessfulQuests.Reserve(Data->SuccessfulQuests.Num());
 	for(int i = 0; i < Data->SuccessfulQuests.Num(); i++)
 	{
 		SuccessfulQuests.Add(MakeShareable(new FJsonValueString(Data->SuccessfulQuests[i].ToString())));
@@ -85,6 +88,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 	JsonObject->SetArrayField("SuccessfulQuests", SuccessfulQuests);
 
 	TArray< TSharedPtr<FJsonValue> > AbandonedQuests;
+	AbandonedQuests.Reserve(Data->AbandonedQuests.Num());
 	for(int i = 0; i < Data->AbandonedQuests.Num(); i++)
 	{
 		AbandonedQuests.Add(MakeShareable(new FJsonValueString(Data->AbandonedQuests[i].ToString())));
@@ -92,6 +96,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 	JsonObject->SetArrayField("AbandonedQuests", AbandonedQuests);
 
 	TArray< TSharedPtr<FJsonValue> > FailedQuests;
+	FailedQuests.Reserve(Data->FailedQuests.Num());
 	for(int i = 0; i < Data->FailedQuests.Num(); i++)
 	{
 		FailedQuests.Add(MakeShareable(new FJsonValueString(Data->FailedQuests[i].ToString())));
@@ -99,6 +104,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 	JsonObject->SetArrayField("FailedQuests", FailedQuests);
 
 	TArray< TSharedPtr<FJsonValue> > GeneratedQuests;
+	GeneratedQuests.Reserve(Data->GeneratedQuests.Num());
 	for(int i = 0; i < Data->GeneratedQuests.Num(); i++)
 	{
 		GeneratedQuests.Add(MakeShareable(new FJsonValueObject(SaveGeneratedQuest(&Data->GeneratedQuests[i]))));
@@ -121,6 +127,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuestProgress(FFlareQuestProgressS
 	JsonObject->SetObjectField("Data", SaveBundle(&Data->Data));
 
 	TArray< TSharedPtr<FJsonValue> > SuccessfullSteps;
+	SuccessfullSteps.Reserve(Data->SuccessfullSteps.Num());
 	for(int i = 0; i < Data->SuccessfullSteps.Num(); i++)
 	{
 		SuccessfullSteps.Add(MakeShareable(new FJsonValueString(Data->SuccessfullSteps[i].ToString())));
@@ -128,6 +135,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuestProgress(FFlareQuestProgressS
 	JsonObject->SetArrayField("SuccessfullSteps", SuccessfullSteps);
 
 	TArray< TSharedPtr<FJsonValue> > CurrentStepProgress;
+	CurrentStepProgress.Reserve(Data->CurrentStepProgress.Num());
 	for(int i = 0; i < Data->CurrentStepProgress.Num(); i++)
 	{
 		CurrentStepProgress.Add(MakeShareable(new FJsonValueObject(SaveQuestStepProgress(&Data->CurrentStepProgress[i]))));
@@ -135,6 +143,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuestProgress(FFlareQuestProgressS
 	JsonObject->SetArrayField("CurrentStepProgress", CurrentStepProgress);
 
 	TArray< TSharedPtr<FJsonValue> > TriggerConditionsSave;
+	TriggerConditionsSave.Reserve(Data->TriggerConditionsSave.Num());
 	for(int i = 0; i < Data->TriggerConditionsSave.Num(); i++)
 	{
 		TriggerConditionsSave.Add(MakeShareable(new FJsonValueObject(SaveQuestStepProgress(&Data->TriggerConditionsSave[i]))));
@@ -142,6 +151,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuestProgress(FFlareQuestProgressS
 	JsonObject->SetArrayField("TriggerConditionsSave", TriggerConditionsSave);
 
 	TArray< TSharedPtr<FJsonValue> > ExpirationConditionsSave;
+	ExpirationConditionsSave.Reserve(Data->ExpirationConditionsSave.Num());
 	for(int i = 0; i < Data->ExpirationConditionsSave.Num(); i++)
 	{
 		ExpirationConditionsSave.Add(MakeShareable(new FJsonValueObject(SaveQuestStepProgress(&Data->ExpirationConditionsSave[i]))));
@@ -196,6 +206,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	JsonObject->SetStringField("Date", FormatInt64(Data->Date));
 
 	TArray< TSharedPtr<FJsonValue> > Companies;
+	Companies.Reserve(Data->CompanyData.Num());
 	for(int i = 0; i < Data->CompanyData.Num(); i++)
 	{
 		Companies.Add(MakeShareable(new FJsonValueObject(SaveCompany(&Data->CompanyData[i]))));
@@ -203,6 +214,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	JsonObject->SetArrayField("Companies", Companies);
 
 	TArray< TSharedPtr<FJsonValue> > Sectors;
+	Sectors.Reserve(Data->SectorData.Num());
 	for(int i = 0; i < Data->SectorData.Num(); i++)
 	{
 		Sectors.Add(MakeShareable(new FJsonValueObject(SaveSector(&Data->SectorData[i]))));
@@ -210,6 +222,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	JsonObject->SetArrayField("Sectors", Sectors);
 
 	TArray< TSharedPtr<FJsonValue> > Travels;
+	Travels.Reserve(Data->TravelData.Num());
 	for(int i = 0; i < Data->TravelData.Num(); i++)
 	{
 		Travels.Add(MakeShareable(new FJsonValueObject(SaveTravel(&Data->TravelData[i]))));
@@ -240,6 +253,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	SaveFloat(JsonObject,"Retaliation", Data->Retaliation);
 
 	TArray< TSharedPtr<FJsonValue> > UnlockedTechnologies;
+	UnlockedTechnologies.Reserve(Data->UnlockedTechnologies.Num());
 	for (int i = 0; i < Data->UnlockedTechnologies.Num(); i++)
 	{
 		UnlockedTechnologies.Add(MakeShareable(new FJsonValueString(Data->UnlockedTechnologies[i].ToString())));
@@ -247,6 +261,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("UnlockedTechnologies", UnlockedTechnologies);
 
 	TArray< TSharedPtr<FJsonValue> > CaptureOrders;
+	CaptureOrders.Reserve(Data->CaptureOrders.Num());
 	for (int i = 0; i < Data->CaptureOrders.Num(); i++)
 	{
 		CaptureOrders.Add(MakeShareable(new FJsonValueString(Data->CaptureOrders[i].ToString())));
@@ -255,6 +270,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > HostileCompanies;
+	HostileCompanies.Reserve(Data->HostileCompanies.Num());
 	for(int i = 0; i < Data->HostileCompanies.Num(); i++)
 	{
 		HostileCompanies.Add(MakeShareable(new FJsonValueString(Data->HostileCompanies[i].ToString())));
@@ -262,6 +278,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("HostileCompanies", HostileCompanies);
 
 	TArray< TSharedPtr<FJsonValue> > Ships;
+	Ships.Reserve(Data->ShipData.Num());
 	for(int i = 0; i < Data->ShipData.Num(); i++)
 	{
 		Ships.Add(MakeShareable(new FJsonValueObject(SaveSpacecraft(&Data->ShipData[i]))));
@@ -269,6 +286,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("Ships", Ships);
 
 	TArray< TSharedPtr<FJsonValue> > ChildStations;
+	ChildStations.Reserve(Data->ChildStationData.Num());
 	for(int i = 0; i < Data->ChildStationData.Num(); i++)
 	{
 		ChildStations.Add(MakeShareable(new FJsonValueObject(SaveSpacecraft(&Data->ChildStationData[i]))));
@@ -276,6 +294,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("ChildStations", ChildStations);
 
 	TArray< TSharedPtr<FJsonValue> > Stations;
+	Stations.Reserve(Data->StationData.Num());
 	for(int i = 0; i < Data->StationData.Num(); i++)
 	{
 		Stations.Add(MakeShareable(new FJsonValueObject(SaveSpacecraft(&Data->StationData[i]))));
@@ -283,6 +302,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("Stations", Stations);
 
 	TArray< TSharedPtr<FJsonValue> > DestroyedSpacecrafts;
+	DestroyedSpacecrafts.Reserve(Data->DestroyedSpacecraftData.Num());
 	for(int i = 0; i < Data->DestroyedSpacecraftData.Num(); i++)
 	{
 		DestroyedSpacecrafts.Add(MakeShareable(new FJsonValueObject(SaveSpacecraft(&Data->DestroyedSpacecraftData[i]))));
@@ -290,6 +310,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("DestroyedSpacecrafts", DestroyedSpacecrafts);
 
 	TArray< TSharedPtr<FJsonValue> > Fleets;
+	Fleets.Reserve(Data->Fleets.Num());
 	for(int i = 0; i < Data->Fleets.Num(); i++)
 	{
 		Fleets.Add(MakeShareable(new FJsonValueObject(SaveFleet(&Data->Fleets[i]))));
@@ -297,6 +318,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetArrayField("Fleets", Fleets);
 
 	TArray< TSharedPtr<FJsonValue> > TradeRoutes;
+	TradeRoutes.Reserve(Data->TradeRoutes.Num());
 	for(int i = 0; i < Data->TradeRoutes.Num(); i++)
 	{
 		TradeRoutes.Add(MakeShareable(new FJsonValueObject(SaveTradeRoute(&Data->TradeRoutes[i]))));
@@ -305,6 +327,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > SectorsKnowledge;
+	SectorsKnowledge.Reserve(Data->SectorsKnowledge.Num());
 	for(int i = 0; i < Data->SectorsKnowledge.Num(); i++)
 	{
 		SectorsKnowledge.Add(MakeShareable(new FJsonValueObject(SaveSectorKnowledge(&Data->SectorsKnowledge[i]))));
@@ -314,6 +337,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	SaveFloat(JsonObject,"PlayerReputation", Data->PlayerReputation);
 
 	TArray< TSharedPtr<FJsonValue> > TransactionLog;
+	TransactionLog.Reserve(Data->TransactionLog.Num());
 	for(int i = 0; i < Data->TransactionLog.Num(); i++)
 	{
 		TransactionLog.Add(MakeShareable(new FJsonValueObject(SaveTransactionLogEntry(&Data->TransactionLog[i]))));
@@ -363,6 +387,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetStringField("AttachComplexConnectorName", Data->AttachComplexConnectorName.ToString());
 
 	TArray< TSharedPtr<FJsonValue> > Components;
+	Components.Reserve(Data->Components.Num());
 	for(int i = 0; i < Data->Components.Num(); i++)
 	{
 		Components.Add(MakeShareable(new FJsonValueObject(SaveSpacecraftComponent(&Data->Components[i]))));
@@ -370,6 +395,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("Components", Components);
 
 	TArray< TSharedPtr<FJsonValue> > ConstructionCargoBay;
+	ConstructionCargoBay.Reserve(Data->ConstructionCargoBay.Num());
 	for(int i = 0; i < Data->ConstructionCargoBay.Num(); i++)
 	{
 		ConstructionCargoBay.Add(MakeShareable(new FJsonValueObject(SaveCargo(&Data->ConstructionCargoBay[i]))));
@@ -377,6 +403,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("ConstructionCargoBay", ConstructionCargoBay);
 
 	TArray< TSharedPtr<FJsonValue> > ProductionCargoBay;
+	ProductionCargoBay.Reserve(Data->ProductionCargoBay.Num());
 	for(int i = 0; i < Data->ProductionCargoBay.Num(); i++)
 	{
 		ProductionCargoBay.Add(MakeShareable(new FJsonValueObject(SaveCargo(&Data->ProductionCargoBay[i]))));
@@ -384,6 +411,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("ProductionCargoBay", ProductionCargoBay);
 
 	TArray< TSharedPtr<FJsonValue> > FactoryStates;
+	FactoryStates.Reserve(Data->FactoryStates.Num());
 	for(int i = 0; i < Data->FactoryStates.Num(); i++)
 	{
 		FactoryStates.Add(MakeShareable(new FJsonValueObject(SaveFactory(&Data->FactoryStates[i]))));
@@ -391,6 +419,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("FactoryStates", FactoryStates);
 
 	TArray< TSharedPtr<FJsonValue> > ShipyardOrderQueue;
+	ShipyardOrderQueue.Reserve(Data->ShipyardOrderQueue.Num());
 	for(int i = 0; i < Data->ShipyardOrderQueue.Num(); i++)
 	{
 		ShipyardOrderQueue.Add(MakeShareable(new FJsonValueObject(SaveShipyardOrderQueue(&Data->ShipyardOrderQueue[i]))));
@@ -398,6 +427,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("ShipyardOrderQueue", ShipyardOrderQueue);
 
 	TArray< TSharedPtr<FJsonValue> > SalesExcludedResources;
+	SalesExcludedResources.Reserve(Data->SalesExcludedResources.Num());
 	for(int i = 0; i < Data->SalesExcludedResources.Num(); i++)
 	{
 		SalesExcludedResources.Add(MakeShareable(new FJsonValueString(Data->SalesExcludedResources[i].ToString())));
@@ -405,6 +435,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("SalesExcludedResources", SalesExcludedResources);
 
 	TArray< TSharedPtr<FJsonValue> > ShipyardOrderExternalConfig;
+	ShipyardOrderExternalConfig.Reserve(Data->ShipyardOrderExternalConfig.Num());
 	for (int i = 0; i < Data->ShipyardOrderExternalConfig.Num(); i++)
 	{
 		ShipyardOrderExternalConfig.Add(MakeShareable(new FJsonValueString(Data->ShipyardOrderExternalConfig[i].ToString())));
@@ -412,6 +443,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetArrayField("ShipyardOrderExternalConfig", ShipyardOrderExternalConfig);
 
 	TArray< TSharedPtr<FJsonValue> > ConnectedStations;
+	ConnectedStations.Reserve(Data->ConnectedStations.Num());
 	for (int i = 0; i < Data->ConnectedStations.Num(); i++)
 	{
 		ConnectedStations.Add(MakeShareable(new FJsonValueObject(SaveStationConnection(&Data->ConnectedStations[i]))));
@@ -421,6 +453,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	TArray<FName> CapturePointCompanies;
 	Data->CapturePoints.GetKeys(CapturePointCompanies);
 	TArray< TSharedPtr<FJsonValue> > CapturePoints;
+	CapturePoints.Reserve(Data->CapturePoints.Num());
 	for(int i = 0; i < Data->CapturePoints.Num(); i++)
 	{
 		FName Company = CapturePointCompanies[i];
@@ -594,6 +627,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFactory(FFlareFactorySave* Data)
 	JsonObject->SetStringField("TargetShipCompany", Data->TargetShipCompany.ToString());
 
 	TArray< TSharedPtr<FJsonValue> > ResourceReserved;
+	ResourceReserved.Reserve(Data->ResourceReserved.Num());
 	for(int i = 0; i < Data->ResourceReserved.Num(); i++)
 	{
 		ResourceReserved.Add(MakeShareable(new FJsonValueObject(SaveCargo(&Data->ResourceReserved[i]))));
@@ -601,6 +635,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFactory(FFlareFactorySave* Data)
 	JsonObject->SetArrayField("ResourceReserved", ResourceReserved);
 
 	TArray< TSharedPtr<FJsonValue> > OutputCargoLimit;
+	OutputCargoLimit.Reserve(Data->OutputCargoLimit.Num());
 	for(int i = 0; i < Data->OutputCargoLimit.Num(); i++)
 	{
 		OutputCargoLimit.Add(MakeShareable(new FJsonValueObject(SaveCargo(&Data->OutputCargoLimit[i]))));
@@ -620,6 +655,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFleet(FFlareFleetSave* Data)
 	JsonObject->SetStringField("Identifier", Data->Identifier.ToString());
 
 	TArray< TSharedPtr<FJsonValue> > ShipImmatriculations;
+	ShipImmatriculations.Reserve(Data->ShipImmatriculations.Num());
 	for(int i = 0; i < Data->ShipImmatriculations.Num(); i++)
 	{
 		ShipImmatriculations.Add(MakeShareable(new FJsonValueString(Data->ShipImmatriculations[i].ToString())));
@@ -662,6 +698,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveTradeRoute(FFlareTradeRouteSave* D
 	JsonObject->SetStringField("StatsOperationFailCount", FormatInt32(Data->StatsOperationFailCount));
 
 	TArray< TSharedPtr<FJsonValue> > Sectors;
+	Sectors.Reserve(Data->Sectors.Num());
 	for(int i = 0; i < Data->Sectors.Num(); i++)
 	{
 		Sectors.Add(MakeShareable(new FJsonValueObject(SaveTradeRouteSector(&Data->Sectors[i]))));
@@ -679,6 +716,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveTradeRouteSector(FFlareTradeRouteS
 
 
 	TArray< TSharedPtr<FJsonValue> > Operations;
+	Operations.Reserve(Data->Operations.Num());
 	for(int i = 0; i < Data->Operations.Num(); i++)
 	{
 		Operations.Add(MakeShareable(new FJsonValueObject(SaveTradeOperation(&Data->Operations[i]))));
@@ -755,6 +793,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > Bombs;
+	Bombs.Reserve(Data->BombData.Num());
 	for(int i = 0; i < Data->BombData.Num(); i++)
 	{
 		Bombs.Add(MakeShareable(new FJsonValueObject(SaveBomb(&Data->BombData[i]))));
@@ -763,6 +802,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > Asteroids;
+	Asteroids.Reserve(Data->AsteroidData.Num());
 	for(int i = 0; i < Data->AsteroidData.Num(); i++)
 	{
 		Asteroids.Add(MakeShareable(new FJsonValueObject(SaveAsteroid(&Data->AsteroidData[i]))));
@@ -770,6 +810,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 	JsonObject->SetArrayField("Asteroids", Asteroids);
 
 	TArray< TSharedPtr<FJsonValue> > Meteorites;
+	Meteorites.Reserve(Data->MeteoriteData.Num());
 	for(int i = 0; i < Data->MeteoriteData.Num(); i++)
 	{
 		Meteorites.Add(MakeShareable(new FJsonValueObject(SaveMeteorite(&Data->MeteoriteData[i]))));
@@ -777,6 +818,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 	JsonObject->SetArrayField("Meteorites", Meteorites);
 
 	TArray< TSharedPtr<FJsonValue> > FleetIdentifiers;
+	FleetIdentifiers.Reserve(Data->FleetIdentifiers.Num());
 	for(int i = 0; i < Data->FleetIdentifiers.Num(); i++)
 	{
 		FleetIdentifiers.Add(MakeShareable(new FJsonValueString(Data->FleetIdentifiers[i].ToString())));
@@ -784,6 +826,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 	JsonObject->SetArrayField("FleetIdentifiers", FleetIdentifiers);
 
 	TArray< TSharedPtr<FJsonValue> > SpacecraftIdentifiers;
+	SpacecraftIdentifiers.Reserve(Data->SpacecraftIdentifiers.Num());
 	for(int i = 0; i < Data->SpacecraftIdentifiers.Num(); i++)
 	{
 		SpacecraftIdentifiers.Add(MakeShareable(new FJsonValueString(Data->SpacecraftIdentifiers[i].ToString())));
@@ -792,6 +835,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSector(FFlareSectorSave* Data)
 
 
 	TArray< TSharedPtr<FJsonValue> > ResourcePrices;
+	ResourcePrices.Reserve(Data->ResourcePrices.Num());
 	for(int i = 0; i < Data->ResourcePrices.Num(); i++)
 	{
 		ResourcePrices.Add(MakeShareable(new FJsonValueObject(SaveResourcePrice(&Data->ResourcePrices[i]))));
@@ -827,6 +871,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SavePeople(FFlarePeopleSave* Data)
 	JsonObject->SetStringField("HappinessPoint", FormatInt32(Data->HappinessPoint));
 
 	TArray< TSharedPtr<FJsonValue> > CompanyReputations;
+	CompanyReputations.Reserve(Data->CompanyReputations.Num());
 	for(int i = 0; i < Data->CompanyReputations.Num(); i++)
 	{
 		CompanyReputations.Add(MakeShareable(new FJsonValueObject(SaveCompanyReputation(&Data->CompanyReputations[i]))));
@@ -882,6 +927,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFloatBuffer(FFlareFloatBuffer* Dat
 
 
 	TArray< TSharedPtr<FJsonValue> > Values;
+	Values.Reserve(Data->Values.Num());
 	for(int i = 0; i < Data->Values.Num(); i++)
 	{
 		Values.Add(MakeShareable(new FJsonValueNumber(Data->Values[i])));
@@ -980,6 +1026,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveBundle(FFlareBundle* Data)
 	if (Data->Tags.Num() > 0)
 	{
 		TArray< TSharedPtr<FJsonValue> > Tags;
+		Tags.Reserve(Data->Tags.Num());
 		for(int i = 0; i < Data->Tags.Num(); i++)
 		{
 			Tags.Add(MakeShareable(new FJsonValueString(Data->Tags[i].ToString())));
