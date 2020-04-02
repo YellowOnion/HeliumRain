@@ -47,11 +47,6 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 		GenerateAffilities();
 		ProposeTributeToPlayer = false;
 	}
-	if (BuildLTradeOnlyTreshhold < 1 || BuildLMilitaryOnlyTreshhold < 1)
-		//missing, redo?
-	{
-		GenerateAffilities();
-	}
 }
 
 inline static bool CompanyValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
@@ -365,6 +360,7 @@ void UFlareAIBehavior::GenerateAffilities()
 {
 	// Reset resource affilities
 	ResourceAffilities.Empty();
+	ResearchOrder.Empty();
 	
 	// Default behavior
 	SetResourceAffilities(1.f);
@@ -483,8 +479,8 @@ void UFlareAIBehavior::GenerateAffilities()
 		DailyProductionCostSensitivityMilitary = 0;
 		DailyProductionCostSensitivityEconomic = 0;
 
-		BuildMilitaryDiversity = 2;
-		BuildMilitaryDiversitySize = 4;
+		BuildEfficientMilitaryChance = 0.0125;
+		BuildEfficientMilitaryChanceSmall = 0.025;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("flak");
@@ -498,6 +494,10 @@ void UFlareAIBehavior::GenerateAffilities()
 
 		SetSectorAffilitiesByMoon(ST->Nema,0.5f);
 		SetSectorAffilitiesByMoon(ST->Hela, 6.f);
+
+		SetResourceAffility(ST->Steel, 2.f);
+		SetResourceAffility(ST->Plastics, 2.f);
+		SetResourceAffility(ST->Tools, 1.5f);
 
 		// Budget
 		BudgetTechnologyWeight = 0.25;
@@ -542,7 +542,7 @@ void UFlareAIBehavior::GenerateAffilities()
 	{
 		// Likes hard factory, and Anka.
 		// Base at Outpost
-		SetResourceAffility(ST->Steel, 10.f);
+		SetResourceAffility(ST->Steel, 11.f);
 		SetResourceAffility(ST->Tools, 10.f);
 		SetResourceAffility(ST->Tech, 5.f);
 		SetSectorAffilitiesByMoon(ST->Anka, 6.f);
@@ -616,7 +616,7 @@ void UFlareAIBehavior::GenerateAffilities()
 	{
 		// Likes Nema and heavy work
 		SetResourceAffility(ST->FleetSupply, 2.f);
-		SetResourceAffility(ST->Steel, 5.f);
+		SetResourceAffility(ST->Steel, 6.f);
 		SetResourceAffility(ST->Tools, 5.f);
 		SetResourceAffility(ST->Tech, 5.f);
 		SetSectorAffilitiesByMoon(ST->Nema, 5.f);
@@ -636,7 +636,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("science");
-		ResearchOrder.Add("shipyard");
+		ResearchOrder.Add("shipyard-station");
 	}
 	else if(Company == ST->AxisSupplies)
 	{

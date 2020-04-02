@@ -27,6 +27,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 	UseCompactDisplay = InArgs._UseCompactDisplay;
 	FleetList = InArgs._FleetList;
 	StationList = InArgs._StationList;
+
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	OnItemSelected = InArgs._OnItemSelected;
@@ -178,6 +179,21 @@ void SFlareList::AddFleet(UFlareFleet* Fleet)
 	HasFleets = true;
 	ObjectList.AddUnique(FInterfaceContainer::New(Fleet));
 	SetButtonNamesFleet();
+}
+
+void SFlareList::SelectFleet(UFlareFleet* Fleet)
+//TODO: figure out how to get this to find the widget properly, so the list can do a full refresh but then reselect the passed through fleet after the refresh
+{
+	for (auto Object : FilteredObjectList)
+	{
+		if (Object->FleetPtr && Object->FleetPtr == Fleet)
+		{
+			OnTargetSelected(Object, ESelectInfo::Direct);
+			HasFleets = true;
+			SetButtonNamesFleet();
+			break;
+		}
+	}
 }
 
 void SFlareList::SetButtonNamesFleet()

@@ -190,7 +190,7 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 						.Visibility(this, &SFlareShipMenu::GetShipyardVisibility)
 					]
 					
-					// Light ship
+					// Heavy ship
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
@@ -1234,9 +1234,20 @@ EVisibility SFlareShipMenu::GetShipyardVisibility() const
 {
 	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
 	{
+		AFlarePlayerController* PC = MenuManager->GetPC();
+		if (PC)
+		{
+			if (TargetSpacecraft->GetCompany() != PC->GetCompany())
+			{
+				if (TargetSpacecraft->IsPlayerHostile())
+				{
+					return EVisibility::Collapsed;
+				}
+			}
+		}
+
 		return EVisibility::Visible;
 	}
-
 	return EVisibility::Collapsed;
 }
 
@@ -1255,6 +1266,12 @@ bool SFlareShipMenu::IsShipSSelectorDisabled() const
 {
 	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
 	{
+		AFlarePlayerController* PC = MenuManager->GetPC();
+		if (PC && TargetSpacecraft->IsPlayerHostile())
+		{
+			return true;
+		}
+
 		for (FFlareShipyardOrderSave& Order : TargetSpacecraft->GetShipyardOrderQueue())
 		{
 			if (Order.Company == MenuManager->GetPC()->GetCompany()->GetIdentifier())
@@ -1268,7 +1285,6 @@ bool SFlareShipMenu::IsShipSSelectorDisabled() const
 			}
 		}
 	}
-
 	return false;
 }
 
@@ -1276,6 +1292,11 @@ bool SFlareShipMenu::IsShipLSelectorDisabled() const
 {
 	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
 	{
+		AFlarePlayerController* PC = MenuManager->GetPC();
+		if (PC && TargetSpacecraft->IsPlayerHostile())
+		{
+			return true;
+		}
 		for (FFlareShipyardOrderSave& Order : TargetSpacecraft->GetShipyardOrderQueue())
 		{
 			if (Order.Company == MenuManager->GetPC()->GetCompany()->GetIdentifier())

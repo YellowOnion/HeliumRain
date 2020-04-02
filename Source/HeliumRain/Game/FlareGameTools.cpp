@@ -376,8 +376,7 @@ void UFlareGameTools::PrintEconomyStatus()
 
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 	WorldStats = WorldHelper::ComputeWorldResourceStats(GetGame(), true);
-
-
+	
 	TArray<UFlareResourceCatalogEntry*> ResourceEntries = GetGame()->GetResourceCatalog()->Resources;
 	for(int ResourceIndex = 0; ResourceIndex < ResourceEntries.Num(); ResourceIndex++)
 	{
@@ -1975,7 +1974,7 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 
 	if (!Desc)
 	{
-		FLOGV("ComputeSpacecraftPrice failed: Unkwnon ship %s", *ShipClass.ToString());
+		FLOGV("ComputeSpacecraftPrice failed: Unknown ship %s", *ShipClass.ToString());
 		return 0;
 	}
 

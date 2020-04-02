@@ -102,10 +102,11 @@ void UFlareCompanyAI::Tick()
 	}
 }
 
-void UFlareCompanyAI::Simulate(bool GlobalWar)
+void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 {
 	if (Game && Company != Game->GetPC()->GetCompany())
 	{
+		GlobalReservedResources = TotalReservedResources;
 		AutoScrap();
 
 		Behavior->Load(Company);
@@ -349,80 +350,86 @@ void UFlareCompanyAI::PurchaseResearch()
 	{
 		// Find a new research
 		TArray<FFlareTechnologyDescription*> ResearchCandidates;
-		int32 Researchtogo = 0 ; 
+		int32 Researchtogo = 0;
 
-		for(UFlareTechnologyCatalogEntry* Technology : GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
+		for (UFlareTechnologyCatalogEntry* Technology : GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
 		{
 			if (!Company->IsTechnologyUnlocked(Technology->Data.Identifier))
 			{
 				++Researchtogo;
 			}
-			if(Company->IsTechnologyAvailable(Technology->Data.Identifier, Reason, true))
+			if (Company->IsTechnologyAvailable(Technology->Data.Identifier, Reason, true))
 			{
 				ResearchCandidates.Add(&Technology->Data);
 			}
 		}
 
-		if(Researchtogo <= 0)
+		if (Researchtogo <= 0)
 		{
 			Behavior->FinishedResearch = true;
 			Behavior->BudgetTechnologyWeight = 0;
 			AIData.BudgetTechnology = 0;
 
-//			int32 ScrappedStations = 0;
-//			int32 TotalStations = 0;
+			//			int32 ScrappedStations = 0;
+			//			int32 TotalStations = 0;
 
 			for (int StationIndex = 0; StationIndex < Company->GetCompanyStations().Num(); StationIndex++)
 			{
 				UFlareSimulatedSpacecraft* Station = Company->GetCompanyStations()[StationIndex];
-				if(Station)
-					{
-//					++TotalStations;
+				if (Station)
+				{
+					//					++TotalStations;
 					FFlareSpacecraftDescription* StationDescription = Station->GetDescription();
 					if (StationDescription && StationDescription->IsResearch())
 					{
 						GetGame()->ScrapStation(Station);
-//						++ScrappedStations;
+						//						++ScrappedStations;
 						--StationIndex;
 						continue;
 					}
 				}
 			}
-/*
-			GetGame()->GetPC()->Notify(
-				LOCTEXT("TestInfo", "Test Notification"),
-				FText::Format(
-					LOCTEXT("TestInfoFormat", "{0} Company has finished all research\n{1} scrapped\n{2} looped"),
-					Company->GetCompanyName(), ScrappedStations, TotalStations),
-				"discover-sector",
-				EFlareNotification::NT_Info,
-				false);
-*/
-				// No research to research
+			/*
+						GetGame()->GetPC()->Notify(
+							LOCTEXT("TestInfo", "Test Notification"),
+							FText::Format(
+								LOCTEXT("TestInfoFormat", "{0} Company has finished all research\n{1} scrapped\n{2} looped"),
+								Company->GetCompanyName(), ScrappedStations, TotalStations),
+							"discover-sector",
+							EFlareNotification::NT_Info,
+							false);
+			*/
+			// No research to research
 			return;
 		}
-		
+
 		bool FoundResearchOrder = false;
 		for (int TechIndex = 0; TechIndex < Behavior->ResearchOrder.Num(); TechIndex++)
-//		for (FName TechnologyName : Behavior->ResearchOrder)
 		{
 			FName TechnologyName = Behavior->ResearchOrder[TechIndex];
 			if (!Company->IsTechnologyUnlocked(TechnologyName))
 			{
 				if (Company->IsTechnologyAvailable(TechnologyName, Reason, true))
 				{
-					//just checking to make sure it actually exists?
+				//just checking to make sure it actually exists?
 					FFlareTechnologyDescription* RealTech = GetGame()->GetTechnologyCatalog()->Get(TechnologyName);
 					if (RealTech)
 					{
 						AIData.ResearchProject = TechnologyName;
 						FoundResearchOrder = true;
-						Behavior->ResearchOrder.Remove(TechnologyName);
+//						Behavior->ResearchOrder.Remove(TechnologyName);
+						Behavior->ResearchOrder.RemoveAt(TechIndex);
 						break;
 					}
 				}
 			}
+			else
+			{
+				Behavior->ResearchOrder.RemoveAt(TechIndex);
+				--TechIndex;
+			}
 		}
+
 		if (!FoundResearchOrder&&ResearchCandidates.Num()>0)
 		{
 			int32 PickIndex = FMath::RandRange(0, ResearchCandidates.Num() - 1);
@@ -824,9 +831,37 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	//			return;
 		}
 	}
+
 	if (UnderConstruction && UnderConstructionUpgrade)
 	{
+		ReservedResources = 75;
 		return;
+	}
+	
+	ReservedResources = 0;
+
+	bool Resources_New = false;
+	bool Resources_Upgrade = false;
+
+	if (UnderConstruction)
+	{
+		ReservedResources += 50;
+	}
+
+
+	if (UnderConstructionUpgrade)
+	{
+		ReservedResources += 25;
+	}
+
+	if (ComputeAvailableConstructionResourceAvailability(50 + (GlobalReservedResources-50)))
+	{
+		Resources_New = true;
+	}
+
+	if(ComputeAvailableConstructionResourceAvailability(25 + (GlobalReservedResources-25)))
+	{
+		Resources_Upgrade = true;
 	}
 
 	// Loop on sector list
@@ -834,7 +869,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	{
 		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
 
-		if (!UnderConstruction)
+		if (!UnderConstruction&&Resources_New)
 		{
 			// Loop on catalog
 			for (int32 StationIndex = 0; StationIndex < StationCatalog.Num(); StationIndex++)
@@ -940,7 +975,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 			}
 		}
 
-		if (!UnderConstructionUpgrade)
+		if (!UnderConstructionUpgrade&&Resources_Upgrade)
 		{
 			for (int32 StationIndex = 0; StationIndex < Sector->GetSectorStations().Num(); StationIndex++)
 			{
@@ -3425,6 +3460,17 @@ float UFlareCompanyAI::GetShipyardUsageRatio() const
 	float SmallRatio = (SmallCount > 0 ? SmallSum / SmallCount : 1.f);
 
 	return FMath::Max(LargeRatio, SmallRatio);
+}
+
+bool UFlareCompanyAI::ComputeAvailableConstructionResourceAvailability(int32 MinimumQuantity) const
+{
+	UFlareScenarioTools* ST = Game->GetScenarioTools();
+	bool OverMinimumQuantity = true;
+	if (WorldStats[ST->Steel].Stock < MinimumQuantity || WorldStats[ST->Plastics].Stock < MinimumQuantity || WorldStats[ST->Tools].Stock < MinimumQuantity)
+	{
+		OverMinimumQuantity = false;
+	}
+	return OverMinimumQuantity;
 }
 
 float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector* Sector, FFlareSpacecraftDescription* StationDescription, FFlareFactoryDescription* FactoryDescription, UFlareSimulatedSpacecraft* Station, bool Technology) const

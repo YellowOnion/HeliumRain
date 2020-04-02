@@ -9,6 +9,8 @@
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
 #include "../../Game/FlareGameTools.h"
+#include "../../UI/Menus/FlareFleetMenu.h"
+#include "../../UI/Menus/FlareSectorMenu.h"
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftInfo"
 
@@ -269,22 +271,333 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 		.Text(this, &SFlareFleetInfo::GetRepairText)
 		.Width(8)
 		]
+	]
+
+	// Travel
+	+ SVerticalBox::Slot()
+		.Padding(Theme.SmallContentPadding)
+		.HAlign(HAlign_Left)
+		.AutoHeight()
+		[
+			SNew(SHorizontalBox)
+
+			// Sector list
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SBox)
+				.WidthOverride(8 * Theme.ButtonWidth)
+			[
+				SAssignNew(SectorSelector, SFlareDropList<UFlareSimulatedSector*>)
+				.OptionsSource(&SectorList)
+			.OnGenerateWidget(this, &SFlareFleetInfo::OnGenerateSectorComboLine)
+			.OnSelectionChanged(this, &SFlareFleetInfo::OnSectorComboLineSelectionChanged)
+			.HeaderWidth(8)
+			.ItemWidth(8)
+			[
+				SNew(SBox)
+				.Padding(Theme.ListContentPadding)
+			[
+				SNew(STextBlock)
+				.Text(this, &SFlareFleetInfo::OnGetCurrentSectorComboLine)
+			.TextStyle(&Theme.TextFont)
+			]
 		]
+	]
 		]
+		// Button
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Top)
+		[
+			SAssignNew(TravelButton,SFlareButton)
+			.Width(8)
+			.Text(this, &SFlareFleetInfo::GetTravelText)
+			.IsDisabled(this, &SFlareFleetInfo::IsTravelDisabled)
+			.HelpText(LOCTEXT("TravelInfoFleet", "Start travelling to the selected sector with the selected ship or fleet"))
+			.Icon(FFlareStyleSet::GetIcon("Travel"))
+			.OnClicked(this, &SFlareFleetInfo::OnTravelHereClicked)
 		]
-		];
+	]
+
+]
+]
+];
 
 	// Setup
 	if (InArgs._Fleet)
 	{
 		SetFleet(InArgs._Fleet);
 	}
+
 	Hide();
 }
 
 /*----------------------------------------------------
 	Interaction
 ----------------------------------------------------*/
+
+bool SFlareFleetInfo::IsTravelDisabled() const
+{
+	if (TargetFleet == NULL)
+	{
+		return true;
+	}
+	else if (TargetSectorTravel->IsTravelSector())
+	{
+		return true;
+	}
+	else if (!TargetFleet->CanTravel(TargetSectorTravel) || TargetFleet->GetCurrentSector() == TargetSectorTravel)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void SFlareFleetInfo::OnTravelHereClicked()
+{
+	if (TargetFleet)
+	{
+		bool Escape = TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger
+			&& (TargetFleet != PC->GetPlayerFleet() || TargetFleet->GetShipCount() > 1);
+
+		bool Abandon = TargetFleet->GetImmobilizedShipCount() != 0;
+
+		if (!Abandon && !Escape)
+		{
+			OnStartTravelConfirmed();
+		}
+
+		else
+		{
+			FText TitleText;
+			FText ConfirmText;
+
+			FText SingleShip = LOCTEXT("ShipIsSingle", "ship is");
+			FText MultipleShips = LOCTEXT("ShipArePlural", "ships are");
+
+			int32 TradingShips = 0;
+			int32 InterceptedShips = 0;
+			int32 StrandedShips = 0;
+			int32 UnableToTravelShips = 0;
+
+			for (UFlareSimulatedSpacecraft* Ship : TargetFleet->GetShips())
+			{
+				if (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted())
+				{
+					UnableToTravelShips++;
+				}
+
+				if (Ship->IsTrading())
+				{
+					TradingShips++;
+				}
+
+				if (Ship->GetDamageSystem()->IsStranded())
+				{
+					StrandedShips++;
+				}
+
+				if (Ship->IsIntercepted())
+				{
+					InterceptedShips++;
+				}
+			}
+
+			FText TooDamagedTravelText;
+			FText TradingTravelText;
+			FText InterceptedTravelText;
+
+			bool useOr = false;
+
+			if (TradingShips > 0)
+			{
+				TradingTravelText = LOCTEXT("TradingTravelText", "trading");
+				useOr = true;
+			}
+
+			if (InterceptedShips > 0)
+			{
+				if (useOr)
+				{
+					InterceptedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrInterceptedTravelText", "or intercepted"));
+				}
+				else
+				{
+					InterceptedTravelText = LOCTEXT("InterceptedTravelText", "intercepted");
+				}
+				useOr = true;
+			}
+
+			if (StrandedShips > 0)
+			{
+				if (useOr)
+				{
+					TooDamagedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrTooDamagedToTravel", "or too damaged to travel"));
+				}
+				else
+				{
+					TooDamagedTravelText = LOCTEXT("TooDamagedToTravel", "too damaged to travel");
+				}
+			}
+
+			FText ReasonNotTravelText = FText::Format(LOCTEXT("ReasonNotTravelText", "{0}{1}{2} and will be left behind"),
+				TradingTravelText,
+				InterceptedTravelText,
+				TooDamagedTravelText);
+
+			// We can escape
+			if (Escape)
+			{
+				TitleText = LOCTEXT("ConfirmTravelEscapeTitle", "ESCAPE ?");
+				FText EscapeWarningText = LOCTEXT("ConfirmTravelEscapeWarningText", "Ships can be intercepted while escaping, are you sure ?");
+
+				if (Abandon)
+				{
+					ConfirmText = FText::Format(LOCTEXT("ConfirmTravelEscapeFormat", "{0} {1} {2} {3}."),
+						EscapeWarningText,
+						FText::AsNumber(TargetFleet->GetImmobilizedShipCount()),
+						(TargetFleet->GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
+						ReasonNotTravelText);
+				}
+				else
+				{
+					ConfirmText = EscapeWarningText;
+				}
+			}
+
+			// We have to abandon
+			else
+			{
+				TitleText = LOCTEXT("ConfirmTravelAbandonTitle", "ABANDON SHIPS ?");
+
+				ConfirmText = FText::Format(LOCTEXT("ConfirmTravelAbandonFormat", "{0} {1} {2}."),
+					FText::AsNumber(TargetFleet->GetImmobilizedShipCount()),
+					(TargetFleet->GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
+					ReasonNotTravelText);
+			}
+
+			if (UnableToTravelShips < TargetFleet->GetShips().Num())
+			{
+				// Open the confirmation
+				PC->GetMenuManager()->Confirm(TitleText,
+					ConfirmText,
+					FSimpleDelegate::CreateSP(this, &SFlareFleetInfo::OnStartTravelConfirmed));
+			}
+		}
+	}
+}
+
+void SFlareFleetInfo::OnStartTravelConfirmed()
+{
+	if (TargetFleet&&TargetSectorTravel)
+	{
+		UFlareTravel* Travel = PC->GetGame()->GetGameWorld()->StartTravel(TargetFleet, TargetSectorTravel);
+		if (Travel)
+		{
+			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Fleet)
+			{
+				PC->GetMenuManager()->GetFleetMenu()->UpdateFleetList(TargetFleet);
+			}
+			else if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Sector)
+			{
+				PC->GetMenuManager()->GetSectorMenu()->UpdateShipLists();//(TargetFleet);
+			}
+		}
+	}
+}
+
+TSharedRef<SWidget> SFlareFleetInfo::OnGenerateSectorComboLine(UFlareSimulatedSector* Item)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	FText Name  = Item->GetSectorName();
+
+	return SNew(SBox)
+	.Padding(Theme.ListContentPadding)
+	[
+		SNew(STextBlock)
+		.Text(Name)
+		.TextStyle(&Theme.TextFont)
+	];
+}
+
+FText SFlareFleetInfo::GetTravelText() const
+{
+	if (TargetSectorTravel)
+	{
+		FText Reason;
+		if (!TargetFleet)
+		{
+			return Reason;
+		}
+
+		if (TargetFleet->GetCurrentSector() == TargetSectorTravel)
+		{
+			return LOCTEXT("TravelAlreadyHereFormat", "Already there");
+		}
+		else if (TargetSectorTravel->IsTravelSector())
+		{
+			return LOCTEXT("CantTravelToTravelFormat", "Can't travel to a moving fleet");
+		}
+		else if (!TargetFleet->CanTravel(Reason, TargetSectorTravel))
+		{
+			return Reason;
+		}
+		else
+		{
+			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(PC->GetGame()->GetGameWorld(), TargetFleet->GetCurrentSector(), TargetSectorTravel, PC->GetCompany());
+
+			FText TravelWord;
+
+			if (TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger)
+			{
+				TravelWord = LOCTEXT("EscapeWord", "Escape");
+			}
+			else
+			{
+				TravelWord = LOCTEXT("TravelWord", "Travel");
+			}
+
+			if (TravelDuration == 1)
+			{
+				return FText::Format(LOCTEXT("ShortTravelFormat", "{0} (1 day)"), TravelWord);
+			}
+			else
+			{
+				return FText::Format(LOCTEXT("TravelFormat", "{0} ({1} days)"), TravelWord, FText::AsNumber(TravelDuration));
+			}
+		}
+	}
+	else
+	{
+		return LOCTEXT("TravelNoSelectionFleet", "No sector selected");
+	}
+}
+
+void SFlareFleetInfo::OnSectorComboLineSelectionChanged(UFlareSimulatedSector* Item, ESelectInfo::Type SelectInfo)
+{
+	if (Item)
+	{
+		TargetSectorTravel = Item;
+	}
+}
+
+FText SFlareFleetInfo::OnGetCurrentSectorComboLine() const
+{
+	UFlareSimulatedSector* SelectedSector = SectorSelector->GetSelectedItem();
+	if (SelectedSector)
+	{
+		return SelectedSector->GetSectorName();
+	}
+	else
+	{
+		return LOCTEXT("SelectSector", "Select a sector");
+	}
+}
 
 FText SFlareFleetInfo::GetRepairText() const
 {
@@ -306,9 +619,6 @@ FText SFlareFleetInfo::GetRepairText() const
 	int32 NeededFS;
 	int32 TotalNeededFS;
 	int64 MaxDuration;
-
-	//SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
-//	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
 
 	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
 	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
@@ -395,7 +705,6 @@ bool SFlareFleetInfo::IsRepairDisabled() const
 	int32 TotalNeededFS;
 	int64 MaxDuration;
 
-	//	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
 	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, false);
 
 	if (TotalNeededFS > 0)
@@ -578,6 +887,7 @@ void SFlareFleetInfo::SetFleet(UFlareFleet* Fleet)
 	{
 		CompanyFlag->SetCompany(TargetFleet->GetFleetCompany());
 		TargetName = TargetFleet->GetFleetName();
+		UpdateSectors();
 	}
 
 	// Text font
@@ -589,6 +899,55 @@ void SFlareFleetInfo::SetFleet(UFlareFleet* Fleet)
 	}
 	FleetName->SetTextStyle(TextFont);
 	UpdateFleetStatus();
+}
+
+void SFlareFleetInfo::UpdateSectors()
+{
+	// Sector list
+	SectorList.Empty();
+	UFlareCompany* Company = TargetFleet->GetFleetCompany();
+	SectorList.Reserve(Company->GetKnownSectors().Num());
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
+//		UFlareSimulatedSector* CurrentSector = TargetFleet->GetCurrentSector();
+//		if (Sector != CurrentSector)
+		SectorList.Add(Sector);
+	}
+
+	SectorList.Sort(SFlareFleetInfo::SortByName);
+	SectorSelector->RefreshOptions();
+
+	if (TargetFleet->GetFleetCompany() == PC->GetCompany())
+	{
+		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Fleet)
+		{
+			UFlareFleet* FleetToEdit = PC->GetMenuManager()->GetFleetMenu()->GetFleetEditing();
+			if (FleetToEdit)
+			{
+				SectorSelector->SetSelectedItem(FleetToEdit->GetCurrentSector());
+			}
+			else
+			{
+				SectorSelector->SetSelectedItem(PC->GetPlayerFleet()->GetCurrentSector());
+			}
+		}
+		else
+		{
+			SectorSelector->SetSelectedItem(PC->GetPlayerFleet()->GetCurrentSector());
+		}
+	}
+	else
+	{
+		SectorSelector->SetSelectedIndex(0);
+	}
+
+	TargetSectorTravel = SectorSelector->GetSelectedItem();
+}
+
+bool SFlareFleetInfo::SortByName(const UFlareSimulatedSector& A, const UFlareSimulatedSector& B)
+{
+	return A.GetName() < B.GetName();
 }
 
 void SFlareFleetInfo::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
@@ -625,6 +984,9 @@ void SFlareFleetInfo::Show()
 		AutoTradeButton->SetVisibility(EVisibility::Collapsed);
 		RefillButton->SetVisibility(EVisibility::Collapsed);
 		RepairButton->SetVisibility(EVisibility::Collapsed);
+		SectorSelector->SetVisibility(EVisibility::Collapsed);
+		TravelButton->SetVisibility(EVisibility::Collapsed);
+
 	}
 	else if (TargetFleet && TargetFleet->IsValidLowLevel())
 	{
@@ -635,6 +997,8 @@ void SFlareFleetInfo::Show()
 			AutoTradeButton->SetVisibility(EVisibility::Visible);
 			RefillButton->SetVisibility(EVisibility::Visible);
 			RepairButton->SetVisibility(EVisibility::Visible);
+			SectorSelector->SetVisibility(EVisibility::Visible);
+			TravelButton->SetVisibility(EVisibility::Visible);
 			AutoTradeButton->SetActive(TargetFleet->IsAutoTrading());
 		}
 		else
@@ -644,7 +1008,8 @@ void SFlareFleetInfo::Show()
 			AutoTradeButton->SetVisibility(EVisibility::Collapsed);
 			RefillButton->SetVisibility(EVisibility::Collapsed);
 			RepairButton->SetVisibility(EVisibility::Collapsed);
-
+			SectorSelector->SetVisibility(EVisibility::Collapsed);
+			TravelButton->SetVisibility(EVisibility::Collapsed);
 		}
 	}
 }
@@ -1012,6 +1377,7 @@ FText SFlareFleetInfo::GetDescription() const
 	return Result;
 }
 
+ 
 EVisibility SFlareFleetInfo::GetCompanyFlagVisibility() const
 {
 	// Crash mitigation - If parent is hidden, so are we, don't try to use the target (#178)

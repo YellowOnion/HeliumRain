@@ -39,6 +39,11 @@ public:
 	/** Exit this menu */
 	void Exit();
 
+	/** Update the ship lists */
+	void UpdateShipLists();//(UFlareFleet* TargetOwnedFleet=nullptr, UFlareFleet* TargetOtherFleet = nullptr);
+
+	/** Update the fleet list */
+	void UpdateFleetList(); 
 
 protected:
 

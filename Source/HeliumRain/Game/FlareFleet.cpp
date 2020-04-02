@@ -70,11 +70,18 @@ bool UFlareFleet::IsTrading() const
 }
 
 
-bool UFlareFleet::CanTravel()
+bool UFlareFleet::CanTravel(UFlareSimulatedSector* TargetSector)
 {
-	if (IsTraveling() && !GetCurrentTravel()->CanChangeDestination())
+	if (IsTraveling())
 	{
-		return false;
+		if (!GetCurrentTravel()->CanChangeDestination())
+		{
+			return false;
+		}
+		if (TargetSector && TargetSector == GetCurrentTravel()->GetDestinationSector())
+		{
+			return false;
+		}
 	}
 
 	if (GetImmobilizedShipCount() == FleetShips.Num())
@@ -92,12 +99,33 @@ bool UFlareFleet::CanTravel()
 	return true;
 }
 
-bool UFlareFleet::CanTravel(FText& OutInfo)
+bool UFlareFleet::CanTravel(FText& OutInfo, UFlareSimulatedSector* TargetSector)
 {
-	if (IsTraveling() && !GetCurrentTravel()->CanChangeDestination())
+	if (IsTraveling())
 	{
-		OutInfo = LOCTEXT("TravelingFormat", "Can't change destination");
-		return false;
+		if (!GetCurrentTravel()->CanChangeDestination())
+		{
+			OutInfo = LOCTEXT("TravelingFormat", "Can't change destination");
+			return false;
+		}
+
+		if(TargetSector && TargetSector == GetCurrentTravel()->GetDestinationSector())
+		{
+			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), GetCurrentSector(), TargetSector, Game->GetPC()->GetCompany());
+			FText DayText;
+
+			if (TravelDuration == 1)
+			{
+				OutInfo = LOCTEXT("ShortTravelFormat", "(1 day)");
+			}
+			else
+			{
+				DayText = FText::Format(LOCTEXT("TravelFormat", "({0} days)"), FText::AsNumber(TravelDuration));
+			}
+
+			OutInfo = FText::Format(LOCTEXT("TravelingFormatHere", "Already on the way {0}"), DayText);
+			return false;
+		}
 	}
 
 	if (GetImmobilizedShipCount() == FleetShips.Num())
@@ -292,10 +320,13 @@ void UFlareFleet::RemoveImmobilizedShips()
 		}
 	}
 
+	RemoveShips(ShipToRemove);
+/*
 	for (int ShipIndex = 0; ShipIndex < ShipToRemove.Num(); ShipIndex++)
 	{
 		RemoveShip(ShipToRemove[ShipIndex]);
 	}
+*/
 }
 
 void UFlareFleet::SetFleetColor(FLinearColor Color)
@@ -401,6 +432,44 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	if (FleetCompany == GetGame()->GetPC()->GetCompany() && GetGame()->GetQuestManager())
 	{
 		GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("add-ship-to-fleet"));
+	}
+}
+
+
+void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
+{
+	if (IsTraveling())
+	{
+		FLOGV("Fleet RemoveShips fail: '%s' is travelling", *GetFleetName().ToString());
+		return;
+	}
+
+	UFlareFleet* NewFleet = nullptr;
+	for (int32 Index = 0; Index < ShipsToRemove.Num(); Index++)
+	{
+		UFlareSimulatedSpacecraft* Ship = ShipsToRemove[Index];
+		if (!Ship)
+		{
+			continue;
+		}
+
+		FleetData.ShipImmatriculations.Remove(Ship->GetImmatriculation());
+		FleetShips.Remove(Ship);
+		Ship->SetCurrentFleet(NULL);
+
+		if (NewFleet == nullptr)
+		{
+			NewFleet = Ship->GetCompany()->CreateAutomaticFleet(Ship);
+		}
+		else
+		{
+			NewFleet->AddShip(Ship);
+		}
+	}
+
+	if (FleetShips.Num() == 0)
+	{
+		Disband();
 	}
 }
 

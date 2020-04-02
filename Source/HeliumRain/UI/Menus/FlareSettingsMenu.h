@@ -163,6 +163,10 @@ protected:
 	void OnShipCountSliderChanged(float Value);
 	FText GetShipCountLabel(int32 Value) const;
 
+	// Default controls
+	void SetDefaultControls();
+	void SetDefaultControlsConfirmed();
+
 	// Toggles
 	void OnFullscreenToggle();
 	void OnVSyncToggle();

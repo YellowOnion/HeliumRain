@@ -117,12 +117,10 @@ void SFlareSpacecraftOrderOverlay::Construct(const FArguments& InArgs)
 						.AutoWidth()
 						.VAlign(VAlign_Top)
 						[
-							SAssignNew(ConfirmButon, SFlareButton)
+							SAssignNew(ConfirmButton, SFlareButton)
 							.Text(LOCTEXT("Confirm", "Confirm"))
 							.HelpText(LOCTEXT("ConfirmInfo", "Confirm the choice and start production"))
-//							.Text(GetConfirmText())
-//							.HelpText(GetConfirmHelpText())
-							.Icon(FFlareStyleSet::GetIcon("OK"))
+							.Icon(this, &SFlareSpacecraftOrderOverlay::GetConfirmIcon)
 							.OnClicked(this, &SFlareSpacecraftOrderOverlay::OnConfirmed)
 							.Visibility(this, &SFlareSpacecraftOrderOverlay::GetConfirmVisibility)
 						]
@@ -131,10 +129,11 @@ void SFlareSpacecraftOrderOverlay::Construct(const FArguments& InArgs)
 						.AutoWidth()
 						.VAlign(VAlign_Top)
 						[
-							SNew(SFlareButton)
-							.Text(LOCTEXT("Cancel", "Cancel"))
-							.HelpText(LOCTEXT("CancelInfo", "Go back without saving changes"))
-							.Icon(FFlareStyleSet::GetIcon("Delete"))
+							SAssignNew(CancelButton, SFlareButton)
+							.Text(LOCTEXT("Accept", "Accept"))
+							.HelpText(LOCTEXT("AcceptInfo", "Go back, saving any changes made"))
+							.Icon(this, &SFlareSpacecraftOrderOverlay::GetCancelIcon)
+//							.Icon(FFlareStyleSet::GetIcon("OK"))
 							.OnClicked(this, &SFlareSpacecraftOrderOverlay::OnClose)
 						]
 					]
@@ -175,6 +174,9 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Complex, FNam
 	OrderIsConfig = false;
 	IsComplexSlotSpecial = (TargetComplex != NULL) && UFlareSimulatedSpacecraft::IsSpecialComplexSlot(ConnectorName);
 
+	CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
+	CancelButton->SetHelpText(LOCTEXT("CancelInfo", "Go back without saving changes"));
+
 	// Init station list
 	SpacecraftList.Empty();
 	if (TargetSector)
@@ -202,6 +204,17 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Shipyard, boo
 	SetVisibility(EVisibility::Visible);
 	TargetShipyard = Shipyard;
 	OrderIsConfig = IsConfig;
+
+	if (OrderIsConfig)
+	{
+		CancelButton->SetText(LOCTEXT("Accept", "Accept"));
+		CancelButton->SetHelpText(LOCTEXT("AcceptInfo", "Go back, saving any changes made"));
+	}
+	else
+	{
+		CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
+		CancelButton->SetHelpText(LOCTEXT("CancelInfo", "Go back without saving changes"));
+	}
 
 	// Init ship list
 	SpacecraftList.Empty();
@@ -245,6 +258,9 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSector* Sector, FOrderDel
 	OnConfirmedCB = ConfirmationCallback;
 	OrderIsConfig = false;
 
+	CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
+	CancelButton->SetHelpText(LOCTEXT("CancelInfo", "Go back without saving changes"));
+
 	// Init station list
 	SpacecraftList.Empty();
 	if (TargetSector)
@@ -273,6 +289,9 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, bool Fo
 	OnConfirmedCB = ConfirmationCallback;
 	OrderForPlayer = ForPlayer;
 	OrderIsConfig = false;
+
+	CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
+	CancelButton->SetHelpText(LOCTEXT("CancelInfo", "Go back without saving changes"));
 
 	// Init ship list
 	SpacecraftList.Empty();
@@ -328,8 +347,10 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 		FFlareSpacecraftDescription* Desc = SpacecraftSelector->GetSelectedItems()[0]->SpacecraftDescriptionPtr;
 		UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
 		ConfirmText->SetText(FText());
-		ConfirmButon->SetText(LOCTEXT("Confirm", "Confirm"));
+		ConfirmButton->SetText(LOCTEXT("Confirm", "Confirm"));
+		ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfo", "Confirm the choice and start production"));
 
+		ConfirmedState = true;
 		bool CanBuild = false;
 
 		if (Desc)
@@ -345,13 +366,17 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 					{
 						ConfirmText->SetText(FText::Format(LOCTEXT("ConfigEnabledInfo", "Disable remote company access to {0}?"),
 							Desc->Name));
-						ConfirmButon->SetText(LOCTEXT("ConfigEnabled", "Disable"));
+						ConfirmButton->SetText(LOCTEXT("ConfigEnabled", "Disable"));
+						ConfirmedState = false;
+						ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Disable remote company access"));
 					}
 					else
 					{
 						ConfirmText->SetText(FText::Format(LOCTEXT("ConfigDisabledInfo", "Enable remote company access to {0}?"),
 						Desc->Name));
-						ConfirmButon->SetText(LOCTEXT("ConfigDisabled", "Enable"));
+						ConfirmButton->SetText(LOCTEXT("ConfigDisabled", "Enable"));
+						ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Enable remote company access"));
+						ConfirmedState = true;
 					}
 				}
 				else
@@ -408,7 +433,7 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 				}
 			}
 		}
-		ConfirmButon->SetDisabled(!CanBuild);
+		ConfirmButton->SetDisabled(!CanBuild);
 	}
 }
 
@@ -497,103 +522,6 @@ TSharedRef<ITableRow> SFlareSpacecraftOrderOverlay::OnGenerateSpacecraftLine(TSh
 		.TargetSector(TargetSector)
 		.MenuManager(MenuManager)
 	];
-
-	/*
-	return SNew(SFlareListItem, OwnerTable)
-	.Width(Width)
-	.Height(2)
-	.Content()
-	[
-		SNew(SHorizontalBox)
-
-		// Picture
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(Theme.ContentPadding)
-		.VAlign(VAlign_Top)
-		[
-			SNew(SImage)
-			.Image(&Desc->MeshPreviewBrush)
-		]
-
-		// Main infos
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(Theme.ContentPadding)
-		[
-			SNew(SVerticalBox)
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(Theme.SmallContentPadding)
-			[
-				SNew(STextBlock)
-				.Text(Desc->Name)
-				.TextStyle(&Theme.NameFont)
-			]
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(Theme.SmallContentPadding)
-			[
-				SNew(SBox)
-				.WidthOverride(Theme.ContentWidth)
-				[
-					SNew(STextBlock)
-					.Text(Desc->Description)
-					.TextStyle(&Theme.TextFont)
-					.WrapTextAt(Theme.ContentWidth)
-				]
-			]
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(Theme.SmallContentPadding)
-			[
-				SNew(STextBlock)
-				.Text(SpacecraftInfoText)
-				.TextStyle(&Theme.TextFont)
-			]
-		]
-
-		// Costs
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(Theme.ContentPadding)
-		[
-			SNew(SVerticalBox)
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("ProductionCost", "Production cost & duration"))
-				.Visibility(!OrderIsConfig ? EVisibility::Visible : EVisibility::Collapsed)
-				.TextStyle(&Theme.NameFont)
-			]
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-//				SAssignNew(TextBlock, STextBlock)
-				SNew(STextBlock)
-				.Text(ProductionCost)
-				.WrapTextAt(0.65 * Theme.ContentWidth)
-				.TextStyle(&Theme.TextFont)
-			]
-
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(FText::Format(LOCTEXT("ProductionTimeFormat", "\u2022 {0} days"), FText::AsNumber(ProductionTime)))
-				.Visibility((!TargetSkirmish && !OrderIsConfig && ProductionTime > 0) ? EVisibility::Visible : EVisibility::Collapsed)
-				.WrapTextAt(0.65 * Theme.ContentWidth)
-				.TextStyle(&Theme.TextFont)
-			]
-		]
-	];
-*/
 }
 
 void SFlareSpacecraftOrderOverlay::OnSpacecraftSelectionChanged(TSharedPtr<FInterfaceContainer> Item, ESelectInfo::Type SelectInfo)
@@ -623,6 +551,27 @@ EVisibility SFlareSpacecraftOrderOverlay::GetConfirmVisibility() const
 	}
 	return EVisibility::Hidden;
 }
+
+const FSlateBrush* SFlareSpacecraftOrderOverlay::GetConfirmIcon() const
+{
+	if(ConfirmedState)
+	{
+		return FFlareStyleSet::GetIcon("OK");
+	}
+	return FFlareStyleSet::GetIcon("Delete");
+}
+
+const FSlateBrush* SFlareSpacecraftOrderOverlay::GetCancelIcon() const
+{
+	if (OrderIsConfig)
+	{
+		return FFlareStyleSet::GetIcon("OK");
+	}
+	return FFlareStyleSet::GetIcon("Delete");
+}
+
+
+
 
 /*----------------------------------------------------
 	Action callbacks

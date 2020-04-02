@@ -74,7 +74,7 @@ public:
 	virtual void Tick();
 
 	/** Simulate a day */
-	virtual void Simulate(bool GlobalWar);
+	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
@@ -165,6 +165,7 @@ public:
 
 	bool HasHealthyTradeFleet() const;
 
+	bool ComputeAvailableConstructionResourceAvailability(int32 MinimumQuantity) const;
 
 protected:
 
@@ -239,7 +240,9 @@ protected:
 
 	TArray<UFlareSimulatedSector*>            SectorWithBattle;
 
-	int32 IdleCargoCapacity;
+	int32									IdleCargoCapacity;
+	int32									ReservedResources;
+	int32									GlobalReservedResources;
 
 public:
 
@@ -248,6 +251,11 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	int32 GetReservedResources() const
+	{
+		return ReservedResources;
+	}
 
 	AFlareGame* GetGame() const
 	{

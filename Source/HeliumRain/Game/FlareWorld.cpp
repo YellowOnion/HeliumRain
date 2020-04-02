@@ -541,9 +541,15 @@ void UFlareWorld::Simulate()
 	AITradeHelper::ComputeGlobalTrading(this, MaintenanceNeeds, Sources, MaintenanceSources, IdleShips, CompaniesMoney);
 	AITradeHelper::ComputeGlobalTrading(this, Needs, Sources, MaintenanceSources, IdleShips, CompaniesMoney);
 
+	int32 TotalReservedResources = 0;
 	for(UFlareCompany* Company: Companies)
 	{
-		Company->GetAI()->UpdateIdleShipsStats(IdleShips);
+		UFlareCompanyAI* AI = Company->GetAI();
+		if (AI)
+		{
+			AI->UpdateIdleShipsStats(IdleShips);
+			TotalReservedResources += AI->GetReservedResources();
+		}
 	}
 
 	AITradeHelper::ComputeGlobalTrading(this, StorageNeeds, Sources, MaintenanceSources, IdleShips, CompaniesMoney);
@@ -682,10 +688,11 @@ void UFlareWorld::Simulate()
 	}
 
 	TArray<UFlareCompany*> CompaniesToSimulateAI = Companies;
+
 	while(CompaniesToSimulateAI.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
-		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar);
+		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources);
 		CompaniesToSimulateAI.RemoveAt(Index);
 	}
 
@@ -1116,6 +1123,8 @@ void UFlareWorld::ProcessShipCapture()
 			switch (GameDifficulty)
 				{
 				case -1: // Easy
+					ReputationDrop = -15;
+					NonPirateDrop = - 4;
 					break;
 				case 0: // Normal
 					break;
@@ -1919,7 +1928,6 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 
 		// Remove immobilized ships
 		TravelingFleet->RemoveImmobilizedShips();
-
 
 		// Make the fleet exit the sector
 

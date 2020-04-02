@@ -853,6 +853,19 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 			]
 
 			// Controls form
+
+			+SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			.HAlign(HAlign_Left)
+			[
+				SNew(SFlareButton)
+				.Width(3)
+				.Text(LOCTEXT("Default", "Set to Defaults"))
+				.HelpText(LOCTEXT("DefaultInfo", "Set all control mappings to their default values"))
+				.OnClicked(this, &SFlareSettingsMenu::SetDefaultControls)
+			]
+
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(Theme.ContentPadding)
@@ -1829,6 +1842,50 @@ FText SFlareSettingsMenu::GetPostProcessQualityLabel(int32 Value) const
 	}
 }
 
+void SFlareSettingsMenu::SetDefaultControls()
+{
+	MenuManager->Confirm(LOCTEXT("ConfirmDefaults", "ARE YOU SURE ?"),
+		LOCTEXT("ConfirmDefaultsInfo", "Do you really want to reset all keybindings to their default values?"),
+		FSimpleDelegate::CreateSP(this, &SFlareSettingsMenu::SetDefaultControlsConfirmed));
+}
+
+void SFlareSettingsMenu::SetDefaultControlsConfirmed()
+{
+	for (TSharedPtr<FSimpleBind> Bind : Binds)
+	{
+		FKey DefaultPrimary = Bind->DefaultKey;
+		FKey DefaultAlt = Bind->DefaultAltKey;
+		if (Bind->KeyWidget.IsValid())
+		{
+			Bind->KeyWidget->SetKey(DefaultPrimary, false, false);
+		}
+
+		if (Bind->AltKeyWidget.IsValid())
+		{
+			Bind->AltKeyWidget->SetKey(DefaultAlt, false, false);
+			Bind->WriteBind();
+		}
+	}
+	for (TSharedPtr<FSimpleBind> Bind : Binds2)
+	{
+		FKey DefaultPrimary = Bind->DefaultKey;
+		FKey DefaultAlt = Bind->DefaultAltKey;
+		if (Bind->KeyWidget.IsValid())
+		{
+			Bind->KeyWidget->SetKey(DefaultPrimary, false, false);
+		}
+
+		if (Bind->AltKeyWidget.IsValid())
+		{
+			Bind->AltKeyWidget->SetKey(DefaultAlt, false, false);
+			Bind->WriteBind();
+		}
+	}
+
+	UInputSettings* InputSettings = UInputSettings::StaticClass()->GetDefaultObject<UInputSettings>();
+	InputSettings->SaveKeyMappings();
+}
+
 void SFlareSettingsMenu::OnMusicVolumeSliderChanged(float Value)
 {
 	int32 Step = 10;
@@ -2129,13 +2186,13 @@ void  SFlareSettingsMenu::ApplyNewBinding(TSharedPtr<FSimpleBind> BindingThatCha
 			{
 				if (*(Bind->Key) == KeyToErase && Bind->KeyWidget.IsValid())
 				{
-					Bind->KeyWidget->SetKey(FKey(), true, false);
+					Bind->KeyWidget->SetKey(Bind->DefaultKey, true, false);
 					Bind->WriteBind();
 				}
 
 				if (*(Bind->AltKey) == KeyToErase && Bind->AltKeyWidget.IsValid())
 				{
-					Bind->AltKeyWidget->SetKey(FKey(), true, false);
+					Bind->AltKeyWidget->SetKey(Bind->DefaultAltKey, true, false);
 					Bind->WriteBind();
 				}
 			}

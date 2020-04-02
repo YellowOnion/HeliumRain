@@ -374,7 +374,7 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 		switch (GameDifficulty)
 		{
 		case -1: // Easy
-			ReputationGain = 0.01f;
+			ReputationGain = 0.011f;
 			break;
 		case 0: // Normal
 			ReputationGain = 0.01f;

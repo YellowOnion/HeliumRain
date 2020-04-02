@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Flare.h"
+#include "Widgets/SCompoundWidget.h"
 
 class UFlareCompany;
 class AFlarePlayerController;

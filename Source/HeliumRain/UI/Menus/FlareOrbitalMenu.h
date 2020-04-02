@@ -69,6 +69,8 @@ public:
 
 	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 
+	/** Set Shipyard Open var */
+	void SetShipyardOpen(bool ShipyardOpen);
 
 protected:
 
@@ -115,6 +117,9 @@ protected:
 	/** Set the display mode */
 	void SetDisplayMode(EFlareOrbitalMode::Type Mode);
 
+	/** Shipyard Menu button */
+	void OnShipyard();
+
 	/** Open a sector */
 	void OnOpenSector(TSharedPtr<int32> Index);
 	
@@ -140,6 +145,8 @@ protected:
 	// Game data
 	AFlareGame*                                 Game;
 	TWeakObjectPtr<class AFlareMenuManager>     MenuManager;
+
+	bool									    ShipyardMenuOpen;
 
 	// Fast forward
 	bool                                        FastForwardActive;

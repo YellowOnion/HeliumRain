@@ -445,6 +445,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 
 	// Laboratories
 	CreateStations(StationResearch, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationFoundry, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Anka bases for Broken Moon
 	CreateStations(StationOutpost, BrokenMoon, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
@@ -547,8 +548,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	if (EconomyIndex >= 2) // Prospering
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, NightsHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-
-		CreateStations(StationFoundry, Quantalium, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+		CreateStations(StationFoundry, Quantalium, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheDepths, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 		CreateShips(ShipOmen, IonLane, FrozenRealm, 4);
@@ -563,9 +563,8 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	if (EconomyIndex >= 3) // Maturing
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-		CreateStations(StationFoundry, Quantalium, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-		CreateStations("station-shipyard", GhostWorksShipyards, Outpost, 1, 1, SpawnParameters, RandomizeStationLocations);
+		CreateStations("station-shipyard", GhostWorksShipyards, BlueShores, 1, 1, SpawnParameters, RandomizeStationLocations);
 
 		CreateShips(ShipSphinx, IonLane, Tranquility, 1);
 		CreateShips(ShipSphinx, InfiniteOrbit, Tranquility, 1);
@@ -576,7 +575,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	if (EconomyIndex >= 4) // Accomplished
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-		CreateStations("station-shipyard", GhostWorksShipyards, BlueShores, 1, 1, SpawnParameters, RandomizeStationLocations);
 		CreateShips(ShipSphinx, Quantalium, Tranquility, 1);
 		CreateShips(ShipSphinx, BrokenMoon, Tranquility, 1);
 		CreateShips(ShipSphinx, GhostWorksShipyards, BlueHeart, 1);
@@ -823,6 +821,7 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 			}
 
 			Station->GetData().Level = Level;
+			Station->GetClass();
 
 			if (Station->GetFactories().Num() > 0)
 			{

@@ -979,7 +979,7 @@ void SFlareCompanyInfo::OnToggleHostility()
 			Player->GetCompany()->SetHostilityTo(Company, true);
 
 			FText Text = LOCTEXT("WarDeclared", "War has been declared");
-			FText InfoText = FText::Format(LOCTEXT("WarDeclaredFormat", "You have declared war to {0} !"), Company->GetCompanyName());
+			FText InfoText = FText::Format(LOCTEXT("WarDeclaredFormat", "You have declared war on {0} !"), Company->GetCompanyName());
 			Player->Notify(Text, InfoText, NAME_None, EFlareNotification::NT_Military);
 		}
 	}

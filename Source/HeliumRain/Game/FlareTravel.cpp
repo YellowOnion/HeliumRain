@@ -461,6 +461,7 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 		switch (GameDifficulty)
 		{
 		case -1: // Easy
+			TravelDuration *= 1.05;
 			break;
 		case 0: // Normal
 			break;

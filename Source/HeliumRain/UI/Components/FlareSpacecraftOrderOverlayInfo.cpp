@@ -30,13 +30,6 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
-	uint32 Width = 32;
-
-	if (OrderIsConfig)
-	{
-		Width = 24;
-	}
-
 	if (TargetShipyard || TargetSkirmish)
 	{
 		// Regular ship-buying (no skirmish)
@@ -169,8 +162,6 @@ void SFlareSpaceCraftOverlayInfo::Tick(const FGeometry& AllottedGeometry, const 
 
 EVisibility SFlareSpaceCraftOverlayInfo::GetProductionTimeVisibility() const
 {
-	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-
 	if (IsEnabled() && ProductionTime > 0)
 	{
 		if (!TargetSkirmish && !OrderIsConfig)

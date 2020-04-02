@@ -17,6 +17,7 @@ class SFlareMainOverlay;
 class SFlareSpacecraftInfo;
 class SFlareConfirmationOverlay;
 class SFlareSpacecraftOrderOverlay;
+class SFlareShipyardOverlay;
 
 // Menus
 class SFlareMainMenu;
@@ -94,6 +95,9 @@ public:
 
 	/** Show the list of spacecraft that can be ordered here */
 	void OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrderDelegate ConfirmationCallback);
+
+	/** Show the list of shipyards */
+	void OpenShipyardOrder();
 
 	/** Return to the previous menu */
 	void Back();
@@ -415,6 +419,7 @@ protected:
 	TSharedPtr<SFlareMainOverlay>           MainOverlay;
 	TSharedPtr<SFlareConfirmationOverlay>   Confirmation;
 	TSharedPtr<SFlareSpacecraftOrderOverlay>SpacecraftOrder;
+	TSharedPtr<SFlareShipyardOverlay>       ShipyardOrder;
 
 	// Menus
 	TSharedPtr<SFlareMainMenu>              MainMenu;

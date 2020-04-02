@@ -39,7 +39,7 @@ public:
 	void Exit();
 
 	/** Update the fleet list */
-	void UpdateFleetList(TSharedPtr<SFlareList>& List);
+	void UpdateFleetList(UFlareFleet* SelectedFleet = nullptr);
 
 	/** Update the ship list */
 	void UpdateShipList(UFlareFleet* Fleet);

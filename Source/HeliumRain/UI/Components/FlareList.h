@@ -29,7 +29,6 @@ class SFlareList : public SCompoundWidget
 	
 	SLATE_END_ARGS()
 
-
 public:
 
 	/*----------------------------------------------------
@@ -41,6 +40,9 @@ public:
 
 	/** Add a new fleet to the list */
 	void AddFleet(UFlareFleet* Fleet);
+
+	/** Select a fleet in the list */
+	void SelectFleet(UFlareFleet* Fleet);
 
 	/** Add a new ship to the list */
 	void AddShip(UFlareSimulatedSpacecraft* Ship);

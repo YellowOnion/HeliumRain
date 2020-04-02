@@ -1434,9 +1434,7 @@ inline static int32 NeedComparatorComparator(const AITradeNeed& n1, const AITrad
 		return n1.Ratio > n2.Ratio;
 	}
 	else
-	{
 		return n1.HighPriority > n2.HighPriority;
-	}
 }
 
 // New trading
@@ -1444,6 +1442,20 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 {
 	// Trading needs
 	UFlareScenarioTools* ST = World->GetGame()->GetScenarioTools();
+
+	int32 GameDifficulty = -1;
+	GameDifficulty = World->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+	
+	int32 PlayerPriority = 0;
+	bool PlayerallowedpriorityConstruction = true;
+	if (GameDifficulty >= 1) // Hard
+	{
+		PlayerallowedpriorityConstruction = false;
+	}
+	if (GameDifficulty >= 2)  // Very Hard
+	{
+		PlayerPriority = -1;
+	}
 
 	for(UFlareCompany* Company : World->GetCompanies())
 	{
@@ -1469,7 +1481,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						}
 					}
 
-					if(Quantity > TRADING_MIN_NEED_QUANTITY || (IsConstruction && Quantity > 0))// || (IsShipyard && Quantity > 0))
+					if(Quantity > TRADING_MIN_NEED_QUANTITY || (IsConstruction && Quantity > 0) || (IsShipyard && Quantity > 0))
 					{
 						AITradeNeed Need;
 						Need.Resource = Resource;
@@ -1482,13 +1494,33 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						Need.Maintenance = false;
 						Need.Consume(0); // Generate ratio
 
-						if (IsConstruction)
+						if (Company == World->GetGame()->GetPC()->GetCompany())
+						{
+							if (IsConstruction && PlayerallowedpriorityConstruction)
+							{
+								Need.HighPriority = 1;
+							}
+							else
+							{
+								Need.HighPriority = PlayerPriority;
+							}
+						}
+
+						else if (IsConstruction)
 						{
 							Need.HighPriority = 1;
 						}
-						else if(Company != World->GetGame()->GetPC()->GetCompany() && IsShipyard && Company != ST->Pirates)
+
+						else  if (Company != ST->Pirates)
 						{
-							Need.HighPriority = 2;
+							if (IsShipyard)
+							{
+								Need.HighPriority = 2;
+							}
+							else
+							{
+								Need.HighPriority = 0;
+							}
 						}
 						else
 						{

@@ -223,9 +223,9 @@ FFlareCompanySave* UFlareCompany::Save()
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareCompany::SimulateAI(bool GlobalWar)
+void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 {
-	CompanyAI->Simulate(GlobalWar);
+	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
 }
 
 void UFlareCompany::TickAI()
@@ -340,10 +340,52 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 
 			if (this == PlayerCompany && TargetCompany->GetHostility(this) != EFlareHostility::Hostile)
 			{
-				TargetCompany->GivePlayerReputation(-50);
-				TargetCompany->GetAI()->GetData()->Pacifism = FMath::Min(50.f, TargetCompany->GetAI()->GetData()->Pacifism);
+				int32 ReputationDecrease = -50;
+				int32 ReputationDecreaseOther = 0;
+				int32 GameDifficulty = -1;
+				GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
 
+				switch (GameDifficulty)
+				{
+				case -1: // Easy
+					ReputationDecrease = -45;
+					break;
+				case 0: // Normal
+					break;
+				case 1: // Hard
+					ReputationDecrease = -55;
+					ReputationDecreaseOther = -4;
+					break;
+				case 2: // Very Hard
+					ReputationDecrease = -60;
+					ReputationDecreaseOther = -8;
+					break;
+				case 3: // Expert
+					ReputationDecrease = -65;
+					ReputationDecreaseOther = -12;
+					break;
+				case 4: // Unfair
+					ReputationDecrease = -70;
+					ReputationDecreaseOther = -16;
+					break;
+				}
+
+				if (TargetCompany == Game->GetScenarioTools()->AxisSupplies)
+				{
+					ReputationDecreaseOther *= 2;
+				}
+
+				TargetCompany->GivePlayerReputation(ReputationDecrease);
+				TargetCompany->GetAI()->GetData()->Pacifism = FMath::Min(50.f, TargetCompany->GetAI()->GetData()->Pacifism);
 				TargetCompany->SetLastWarDate();
+				
+				if (ReputationDecreaseOther != 0)
+				{
+					for (UFlareCompany* OtherCompany : this->GetOtherCompanies())
+					{
+						OtherCompany->GivePlayerReputation(ReputationDecreaseOther);
+					}
+				}
 			}
 
 			if (Game->GetQuestManager())
@@ -1463,6 +1505,11 @@ bool UFlareCompany::IsTechnologyAvailable(FName Identifier, FText& Reason, bool 
 {
 	FFlareTechnologyDescription* Technology = GetGame()->GetTechnologyCatalog()->Get(Identifier);
  
+	if (Technology == NULL)
+	{
+		return false;
+	}
+
 	if (GetTechnologyLevel() < Technology->Level)
 	{
 		Reason = LOCTEXT("CantUnlockTechLevel", "You don't have the technology level to research this technology");

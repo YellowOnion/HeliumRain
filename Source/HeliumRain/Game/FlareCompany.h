@@ -52,7 +52,7 @@ public:
 		Gameplay
 	----------------------------------------------------*/
 
-	virtual void SimulateAI(bool GlobalWar);
+	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources);
 
 	virtual void TickAI();
 

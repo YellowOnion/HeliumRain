@@ -427,15 +427,113 @@ void SFlareSectorMenu::Enter(UFlareSimulatedSector* Sector)
 
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
+
+	// List Setup
+	UpdateShipLists();
+
+	// Fleet list
+	UpdateFleetList();
+}
+
+void SFlareSectorMenu::UpdateFleetList()
+{
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
+	FleetList.Empty();
+	UFlareFleet* SelectedFleet = NULL;
+	int32 FleetCount = PC->GetCompany()->GetCompanyFleets().Num();
+	for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
+	{
+		UFlareFleet* Fleet = PC->GetCompany()->GetCompanyFleets()[FleetIndex];
+		if (Fleet && Fleet->GetShips().Num())
+		{
+			UFlareSimulatedSector* CurrentSector = Fleet->GetCurrentSector();
+			if (!Fleet->IsAutoTrading())
+			{
+				if (Fleet == PC->GetPlayerFleet() || TargetSector != CurrentSector)
+				{
+					FleetList.Add(Fleet);
+					if (Fleet->Save()->Identifier == LastSelectedFleetName)
+					{
+						SelectedFleet = Fleet;
+					}
+				}
+			}
+		}
+	}
+
+	const UFlareFleet& PlayerFleet = *PC->GetPlayerFleet();
+
+	FleetList.Sort([&](const UFlareFleet& left, const UFlareFleet& right)
+	{
+		if (&left == &PlayerFleet)
+		{
+			return true;
+		}
+		else if (&right == &PlayerFleet)
+		{
+			return false;
+		}
+		else if (left.GetCurrentTradeRoute() && !right.GetCurrentTradeRoute())
+		{
+			return false;
+		}
+		else if (!left.GetCurrentTradeRoute() && right.GetCurrentTradeRoute())
+		{
+			return true;
+		}
+		else if (!left.GetCurrentTradeRoute() && !right.GetCurrentTradeRoute())
+		{
+			// 0 trade routes
+			return left.GetFleetName().ToString() < right.GetFleetName().ToString();
+		}
+		else
+		{
+			// 2 trade routes
+			if (left.GetCurrentTradeRoute()->IsPaused() && !right.GetCurrentTradeRoute()->IsPaused())
+			{
+				return true;
+			}
+			else if (!left.GetCurrentTradeRoute()->IsPaused() && right.GetCurrentTradeRoute()->IsPaused())
+			{
+				return false;
+			}
+			else
+			{
+				// 0 paused or 2 paused
+				return left.GetFleetName().ToString() < right.GetFleetName().ToString();
+
+			}
+		}
+	});
+
+	// Update the fleet selector
+	FleetSelector->RefreshOptions();
+	if (SelectedFleet)
+	{
+		FleetSelector->SetSelectedItem(SelectedFleet);
+	}
+	else
+	{
+		FleetSelector->SetSelectedItem(PC->GetPlayerFleet());
+	}
+}
+
+void SFlareSectorMenu::UpdateShipLists()//(UFlareFleet* TargetOwnedFleet, UFlareFleet* TargetOtherFleet)
+{
+	AFlarePlayerController* PC = MenuManager->GetPC();
+
+	OwnedShipList->Reset();
+	OtherShipList->Reset();
+	OwnedReserveShipList->Reset();
+	OtherReserveShipList->Reset();
 	// Known sector
 	if (PC->GetCompany()->HasVisitedSector(TargetSector) || TargetSector->IsTravelSector())
 	{
 		// Add stations
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorStations().Num(); SpacecraftIndex++)
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < TargetSector->GetSectorStations().Num(); SpacecraftIndex++)
 		{
-			UFlareSimulatedSpacecraft* StationCandidate = Sector->GetSectorStations()[SpacecraftIndex];
+			UFlareSimulatedSpacecraft* StationCandidate = TargetSector->GetSectorStations()[SpacecraftIndex];
 
 			if (StationCandidate && StationCandidate->GetDamageSystem()->IsAlive())
 			{
@@ -451,9 +549,9 @@ void SFlareSectorMenu::Enter(UFlareSimulatedSector* Sector)
 		}
 
 		// Add ships
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorShips().Num(); SpacecraftIndex++)
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < TargetSector->GetSectorShips().Num(); SpacecraftIndex++)
 		{
-			UFlareSimulatedSpacecraft* ShipCandidate = Sector->GetSectorShips()[SpacecraftIndex];
+			UFlareSimulatedSpacecraft* ShipCandidate = TargetSector->GetSectorShips()[SpacecraftIndex];
 
 			if (ShipCandidate && ShipCandidate->GetDamageSystem()->IsAlive())
 			{
@@ -481,88 +579,23 @@ void SFlareSectorMenu::Enter(UFlareSimulatedSector* Sector)
 				}
 			}
 		}
-	}
+/*
+		if (TargetOwnedFleet != nullptr)
+		{
+			OwnedShipList->SelectFleet(TargetOwnedFleet);
+		}
 
+		if (TargetOtherFleet != nullptr)
+		{
+			OtherShipList->SelectFleet(TargetOtherFleet);
+		}
+*/
+	}
 	// List setup
 	OwnedShipList->RefreshList();
 	OtherShipList->RefreshList();
 	OwnedReserveShipList->RefreshList();
 	OtherReserveShipList->RefreshList();
-
-	// Fleet list
-	FleetList.Empty();
-	UFlareFleet* SelectedFleet = NULL;
-	int32 FleetCount = PC->GetCompany()->GetCompanyFleets().Num();
-	for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
-	{
-		UFlareFleet* Fleet = PC->GetCompany()->GetCompanyFleets()[FleetIndex];
-		if (Fleet && Fleet->GetShips().Num())
-		{
-			if (!Fleet->IsAutoTrading())
-			{
-				FleetList.Add(Fleet);
-				if (Fleet->Save()->Identifier == LastSelectedFleetName)
-				{
-					SelectedFleet = Fleet;
-				}
-			}
-		}
-	}
-
-	const UFlareFleet& PlayerFleet = *PC->GetPlayerFleet();
-
-	FleetList.Sort([&](const UFlareFleet& left, const UFlareFleet& right)
-	{
-		if (&left == &PlayerFleet)
-		{
-			return left < right;
-		}
-		else if (&right == &PlayerFleet)
-		{
-			return right < left;
-		}
-		else if (left.GetCurrentTradeRoute() && !right.GetCurrentTradeRoute())
-		{
-			return right < left;
-		}
-		else if (!left.GetCurrentTradeRoute() && right.GetCurrentTradeRoute())
-		{
-			return left < right;
-		}
-		else if (!left.GetCurrentTradeRoute() && !right.GetCurrentTradeRoute())
-		{
-			// 0 trade routes
-			return left.GetFleetName().ToString() < right.GetFleetName().ToString();
-		}
-		else
-		{
-			// 2 trade routes
-			if(left.GetCurrentTradeRoute()->IsPaused() && !right.GetCurrentTradeRoute()->IsPaused())
-			{
-				return left < right;
-			}
-			else if(!left.GetCurrentTradeRoute()->IsPaused() && right.GetCurrentTradeRoute()->IsPaused())
-			{
-				return right < left;
-			}
-			else
-			{
-				// 0 paused or 2 paused
-				return left.GetFleetName().ToString() < right.GetFleetName().ToString();
-			}
-		}
-	});
-
-	// Update the fleet selector
-	FleetSelector->RefreshOptions();
-	if (SelectedFleet)
-	{
-		FleetSelector->SetSelectedItem(SelectedFleet);
-	}
-	else
-	{
-		FleetSelector->SetSelectedItem(PC->GetPlayerFleet());
-	}
 }
 
 void SFlareSectorMenu::Exit()
@@ -744,7 +777,7 @@ FText SFlareSectorMenu::GetTravelText() const
 		{
 			return LOCTEXT("CantTravelToTravelFormat", "Can't travel to a moving fleet");
 		}
-		else if (!SelectedFleet->CanTravel(Reason))
+		else if (!SelectedFleet->CanTravel(Reason,TargetSector))
 		{
 			return Reason;
 		}
@@ -791,7 +824,7 @@ bool SFlareSectorMenu::IsTravelDisabled() const
 	{
 		return true;
 	}
-	else if (!SelectedFleet->CanTravel() || SelectedFleet->GetCurrentSector() == TargetSector)
+	else if (!SelectedFleet->CanTravel(TargetSector) || SelectedFleet->GetCurrentSector() == TargetSector)
 	{
 		return true;
 	}
@@ -1310,9 +1343,14 @@ void SFlareSectorMenu::OnTravelHereClicked()
 			int32 TradingShips = 0;
 			int32 InterceptedShips = 0;
 			int32 StrandedShips = 0;
+			int32 UnableToTravelShips = 0;
 
 			for(UFlareSimulatedSpacecraft* Ship : SelectedFleet->GetShips())
 			{
+				if (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted())
+				{
+					UnableToTravelShips++;
+				}
 				if(Ship->IsTrading())
 				{
 					TradingShips++;
@@ -1402,10 +1440,13 @@ void SFlareSectorMenu::OnTravelHereClicked()
 					ReasonNotTravelText);
 			}
 
-			// Open the confirmation
-			MenuManager->Confirm(TitleText,
-								 ConfirmText,
-								 FSimpleDelegate::CreateSP(this, &SFlareSectorMenu::OnStartTravelConfirmed, SelectedFleet));
+			if (UnableToTravelShips < SelectedFleet->GetShips().Num())
+			{
+				// Open the confirmation
+				MenuManager->Confirm(TitleText,
+					ConfirmText,
+					FSimpleDelegate::CreateSP(this, &SFlareSectorMenu::OnStartTravelConfirmed, SelectedFleet));
+			}
 		}
 	}
 }
@@ -1427,12 +1468,19 @@ void SFlareSectorMenu::OnStartTravelConfirmed(UFlareFleet* SelectedFleet)
 		UFlareTravel* Travel = MenuManager->GetGame()->GetGameWorld()->StartTravel(SelectedFleet, TargetSector);
 		if (Travel)
 		{
-			FFlareMenuParameterData Data;
-			Data.Travel = Travel;
-			MenuManager->OpenMenu(EFlareMenu::MENU_Travel, Data);
+			if(SelectedFleet==MenuManager->GetPC()->GetPlayerFleet())
+			{
+				FFlareMenuParameterData Data;
+				Data.Travel = Travel;
+				MenuManager->OpenMenu(EFlareMenu::MENU_Travel, Data);
+				FleetSelector->SetSelectedItem(MenuManager->GetPC()->GetPlayerFleet());
+			}
+			else
+			{
+				UpdateShipLists();
+				UpdateFleetList();
+			}
 		}
-
-		FleetSelector->SetSelectedItem(MenuManager->GetPC()->GetPlayerFleet());
 	}
 }
 

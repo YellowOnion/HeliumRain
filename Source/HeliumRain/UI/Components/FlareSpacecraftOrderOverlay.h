@@ -81,6 +81,12 @@ public:
 	/** Can we confirm */
 	EVisibility GetConfirmVisibility() const;
 
+	/** Get the icon brush */
+	const FSlateBrush* GetConfirmIcon() const;
+
+	/** Get the icon brush */
+	const FSlateBrush* GetCancelIcon() const;
+	
 	/*----------------------------------------------------
 		Action callbacks
 	----------------------------------------------------*/
@@ -104,6 +110,7 @@ protected:
 	bool                                                      IsComplexSlotSpecial;
 	bool                                                      OrderForPlayer;
 	bool													  OrderIsConfig;
+	bool													  ConfirmedState;
 
 	// Spacecraft building
 	UFlareSimulatedSpacecraft*                                TargetComplex;
@@ -115,7 +122,8 @@ protected:
 	FFlareSpacecraftSave									  SpaceCraftData;
 
 	// Slate data
-	TSharedPtr<SFlareButton>                                  ConfirmButon;
+	TSharedPtr<SFlareButton>                                  ConfirmButton;
+	TSharedPtr<SFlareButton>                                  CancelButton;
 	TSharedPtr<STextBlock>                                    ConfirmText;
 	TSharedPtr<SFlareListItem>                                PreviousSelection;
 	TSharedPtr<FInterfaceContainer>                           SelectedItem;

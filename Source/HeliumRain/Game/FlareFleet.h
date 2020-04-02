@@ -92,6 +92,9 @@ public:
 
 	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed = false);
 
+	/**Remove multiple ships simultaniously, moving them all to the same fleet*/
+	virtual void RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove);
+
 	/** Remove all ship from the fleet and delete it. Not possible during travel */
 	virtual void Disband();
 
@@ -104,10 +107,10 @@ public:
 	bool IsTrading() const;
 
 	/** Tell us if we can travel */
-	bool CanTravel();
+	bool CanTravel(UFlareSimulatedSector* TargetSector = nullptr);
 
 	/** Tell us if we can travel, and why */
-	bool CanTravel(FText& OutInfo);
+	bool CanTravel(FText& OutInfo, UFlareSimulatedSector* TargetSector = nullptr);
 
 	virtual void Merge(UFlareFleet* Fleet);
 

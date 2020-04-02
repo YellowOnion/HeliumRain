@@ -675,7 +675,7 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 	{
 		case -1: // Easy
 			DifficultyModifier = 1.10f;
-			PenaltyModifier = 1.00f;
+			PenaltyModifier = 1.05f;
 			break;
 		case 0: // Normal
 			DifficultyModifier = 1.0f;

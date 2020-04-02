@@ -378,19 +378,12 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 	ShipToRemove = NULL;
 	FleetToEdit = TargetFleet;
 
-//	OtherFleetList->SetTitle(LOCTEXT("OtherFleetsListTitle", "Other fleets"));
-
 	// We are in edit mode
 	if (FleetToEdit)
 	{
 		FleetList->SetTitle(LOCTEXT("OtherFleetsListTitle", "Other Fleets"));
 		ShipList->SetUseCompactDisplay(true);
 		EditFleetName->SetText(FleetToEdit->GetFleetName());
-
-//		UpdateFleetList(OtherFleetList);
-//		FleetList->SetVisibility(EVisibility::Collapsed);
-//		OtherFleetList->SetVisibility(EVisibility::Collapsed);
-
 		MenuManager->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("fleet-edited").PutName("fleet", FleetToEdit->GetIdentifier()));
 		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
 	}
@@ -401,11 +394,9 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 		FleetList->SetTitle(LOCTEXT("AllFleetsListTitle", "Fleets"));
 		ShipList->SetUseCompactDisplay(false);
 		AutoTradeButton->SetActive(false);
-//		UpdateFleetList(FleetList);
-//		OtherFleetList->SetVisibility(EVisibility::Collapsed);
 	}
 
-	UpdateFleetList(FleetList);
+	UpdateFleetList();
 	UpdateShipList(FleetToEdit);
 }
 
@@ -425,38 +416,33 @@ void SFlareFleetMenu::Exit()
 
 void SFlareFleetMenu::OnToggleShowFlags()
 {
-/*
-	if(FleetToEdit)
-	{
-		UpdateFleetList(OtherFleetList);
-	}
-	else
-	{
-		UpdateFleetList(FleetList);
-	}
-	*/
-	UpdateFleetList(FleetList);
+	UpdateFleetList();
 }
 
-void SFlareFleetMenu::UpdateFleetList(TSharedPtr<SFlareList>& List)
+void SFlareFleetMenu::UpdateFleetList(UFlareFleet* SelectedFleet)
 {
-	List->Reset();
-	List->SetVisibility(EVisibility::Visible);
+	FleetList->Reset();
+	FleetList->SetVisibility(EVisibility::Visible);
 
 	int32 FleetCount = MenuManager->GetPC()->GetCompany()->GetCompanyFleets().Num();
 	FLOGV("SFlareFleetMenu::UpdateFleetList : found %d fleets", FleetCount);
 	
-		for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
+	for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
+	{
+		UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
+
+		if (Fleet && Fleet->GetShips().Num() && FleetToEdit != Fleet)
 		{
-			UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
-
-			if (Fleet && Fleet->GetShips().Num() && FleetToEdit != Fleet)
-			{
-				List->AddFleet(Fleet);
-
-			}
+			FleetList->AddFleet(Fleet);
 		}
-	List->RefreshList();
+	}
+	FleetList->RefreshList();
+/*
+	if (SelectedFleet != nullptr)
+	{
+		FleetList->SelectFleet(SelectedFleet);
+	}
+*/
 }
 
 void SFlareFleetMenu::UpdateShipList(UFlareFleet* Fleet)
@@ -1037,8 +1023,7 @@ void SFlareFleetMenu::OnAddToFleet()
 	FleetToEdit->Merge(FleetToAdd);
 
 	UpdateShipList(FleetToEdit);
-//	UpdateFleetList(OtherFleetList);
-	UpdateFleetList(FleetList);
+	UpdateFleetList();
 	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 }
@@ -1052,8 +1037,7 @@ void SFlareFleetMenu::OnRemoveFromFleet()
 	FleetToEdit->RemoveShip(ShipToRemove);
 
 	UpdateShipList(FleetToEdit);
-//	UpdateFleetList(OtherFleetList);
-	UpdateFleetList(FleetList);
+	UpdateFleetList();
 	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 }

@@ -2,9 +2,14 @@
 
 #include "../../Flare.h"
 #include "../Components/FlareButton.h"
+
 #include "../Components/FlareCompanyFlag.h"
 #include "../../Player/FlarePlayerController.h"
 #include "../../Game/FlareCompany.h"
+
+//#include "../Components/FlareListItem.h"
+//#include "../Components/FlareList.h"
+#include "../Components/FlareDropList.h"
 
 #include "../../Spacecrafts/Subsystems/FlareSimulatedSpacecraftDamageSystem.h"
 
@@ -46,6 +51,9 @@ public:
 	/** Set a fleet as content */
 	void SetFleet(UFlareFleet* Fleet);
 
+	/** Update sector travel array */
+	void UpdateSectors();
+		
 	/** Set the minimized mode */
 	void SetMinimized(bool NewState);
 
@@ -75,7 +83,6 @@ public:
 
 	/** Upgrade fleet status icons */
 	void UpdateFleetStatus();
-
 
 	/*----------------------------------------------------
 		Callbacks
@@ -140,6 +147,27 @@ protected:
 	EVisibility GetRefillingVisibility() const;
 	EVisibility GetRepairingVisibility() const;
 
+	/** Current sector info line */
+	FText OnGetCurrentSectorComboLine() const;
+
+	/** Sector info line */
+	TSharedRef<SWidget> OnGenerateSectorComboLine(UFlareSimulatedSector* Item);
+
+	/** Fleet selection */
+	void OnSectorComboLineSelectionChanged(UFlareSimulatedSector* Item, ESelectInfo::Type SelectInfo);
+
+	/** Move the fleet to selected sector */
+	void OnTravelHereClicked();
+
+	/** Get the travel text */
+	FText GetTravelText() const;
+
+	/** Start travel */
+	void OnStartTravelConfirmed();
+
+	/** Visibility setting for the travel button */
+	bool IsTravelDisabled() const;
+
 protected:
 
 	/*----------------------------------------------------
@@ -167,9 +195,16 @@ protected:
 	TSharedPtr<SFlareButton>          AutoTradeButton;
 	TSharedPtr<SFlareButton>          RefillButton;
 	TSharedPtr<SFlareButton>          RepairButton;
+	TSharedPtr<SFlareButton>          TravelButton;	
 
 	// Slate data (various)
 	TSharedPtr<STextBlock>            FleetName;
 	TSharedPtr<SWidget>               OwnerWidget;
 	TSharedPtr<SFlareCompanyFlag>     CompanyFlag;
+	TSharedPtr<SFlareDropList<UFlareSimulatedSector*>>   SectorSelector;
+	TArray<UFlareSimulatedSector*>                      SectorList;
+	UFlareSimulatedSector*                     TargetSectorTravel;
+
+public:
+	static bool SortByName(const UFlareSimulatedSector& A, const UFlareSimulatedSector& B);
 };

@@ -325,7 +325,6 @@ uint32 UFlarePeople::BuyResourcesInSector(FFlareResourceDescription* Resource, u
 
 	int64 SectorResourcePrice = Parent->GetResourcePrice(Resource, EFlareResourcePriceContext::ConsumerConsumption);
 
-
 	uint32 BaseQuantity = FMath::Min(Quantity, PeopleData.Money / (uint32) (SectorResourcePrice));
 	uint32 ResourceToBuy = BaseQuantity;
 
@@ -352,7 +351,6 @@ uint32 UFlarePeople::BuyResourcesInSector(FFlareResourceDescription* Resource, u
 		for (int32 CompanyIndex = 0; CompanyIndex < SellingCompanies.Num(); CompanyIndex++)
 		{
 			FFlareCompanyReputationSave* Reputation = GetCompanyReputation(SellingCompanies[CompanyIndex]);
-
 			ReputationSum += Reputation->Reputation;
 		}
 
@@ -372,14 +370,96 @@ uint32 UFlarePeople::BuyResourcesInSector(FFlareResourceDescription* Resource, u
 			}
 		}
 	}
+	int32 RemainingStations = SellingStations.Num();
+	if (RemainingStations < 1)
+	{
+		RemainingStations = 1;
+	}
+
+	while (ResourceToBuy > 0 && SellingStations.Num() > 0)
+	{
+		for (int32 StationIndex = 0; StationIndex < SellingStations.Num(); StationIndex++)
+		{
+			UFlareSimulatedSpacecraft* Station = SellingStations[StationIndex];
+			UFlareCompany* Company = Station->GetCompany();
+			uint32 StationResourceQuantity = Station->GetActiveCargoBay()->GetResourceQuantity(Resource, Company);
+
+			if (StationResourceQuantity == 0)
+			{
+				--RemainingStations;
+				SellingStations.RemoveAt(StationIndex);
+				continue;
+			}
+
+			uint32 PartToBuy = ResourceToBuy / RemainingStations;
+			if (PartToBuy > 0)
+			{
+				double Multiplier = GetDifficultyModifier(Company);
+				uint32 TakenQuantity = Station->GetActiveCargoBay()->TakeResources(Resource, PartToBuy, Company);
+				ResourceToBuy -= TakenQuantity;
+				uint32 Price = (uint32)(MarketPrice * TakenQuantity) * Multiplier;
+				PeopleData.Money -= Price;
+				Company->GiveMoney(Price, FFlareTransactionLogEntry::LogPeoplePurchase(Station, Resource, TakenQuantity));
+			}
+			SellingStations.RemoveAt(StationIndex);
+		}
+	}
 
 	return BaseQuantity - ResourceToBuy;
+}
+
+double UFlarePeople::GetDifficultyModifier(UFlareCompany* Company)
+{
+	if (!Company)
+	{
+		return 1;
+	}
+
+	int32 GameDifficulty = -1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+	if (Company == Game->GetPC()->GetCompany())
+	{
+		//AI gets more money from population while the player gets less
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			return 1.05;
+		case 0: // Normal
+			return 1;
+		case 1: // Hard
+			return 0.95;
+		case 2: // Very Hard
+			return 0.90;
+		case 3: // Expert
+			return 0.80;
+		case 4: // Unfair
+			return 0.70;
+		}
+	}
+	else
+	{
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			return 0.95;
+		case 0: // Normal
+			return 1;
+		case 1: // Hard
+			return 1.05;
+		case 2: // Very Hard
+			return 1.10;
+		case 3: // Expert
+			return 1.20;
+		case 4: // Unfair
+			return 1.30;
+		}
+	}
+	return 1;
 }
 
 uint32 UFlarePeople::BuyInStationForCompany(FFlareResourceDescription* Resource, uint32 Quantity, UFlareCompany* Company, TArray<UFlareSimulatedSpacecraft*>& Stations, int64 ResourcePrice)
 {
 	uint32 RemainingQuantity = Quantity;
-
 
 	while(RemainingQuantity > 0)
 	{
@@ -416,68 +496,13 @@ uint32 UFlarePeople::BuyInStationForCompany(FFlareResourceDescription* Resource,
 			break;
 		}
 
-		double DifficultyMultiplier = 1;
-
-		int32 GameDifficulty = -1;
-		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
-		double Multiplier = 1;
-
-		if (Company == Game->GetPC()->GetCompany())
-		{
-			//AI gets more money from population while the player gets less
-			switch (GameDifficulty)
-			{
-			case -1: // Easy
-				Multiplier = 1.05;
-				break;
-			case 0: // Normal
-				Multiplier = 1;
-				break;
-			case 1: // Hard
-				Multiplier = 0.95;
-				break;
-			case 2: // Very Hard
-				Multiplier = 0.90;
-				break;
-			case 3: // Expert
-				Multiplier = 0.80;
-				break;
-			case 4: // Unfair
-				Multiplier = 0.70;
-				break;
-			}
-		}
-		else
-			{
-			switch (GameDifficulty)
-			{
-			case -1: // Easy
-				Multiplier = 0.95;
-				break;
-			case 0: // Normal
-				Multiplier = 1;
-				break;
-			case 1: // Hard
-				Multiplier = 1.05;
-				break;
-			case 2: // Very Hard
-				Multiplier = 1.10;
-				break;
-			case 3: // Expert
-				Multiplier = 1.20;
-				break;
-			case 4: // Unfair
-				Multiplier = 1.30;
-				break;
-			}
-		}
-
+		double Multiplier = GetDifficultyModifier(Company);
 		uint32 TakenQuantity = BestStation->GetActiveCargoBay()->TakeResources(Resource, RemainingQuantity, Company);
 		RemainingQuantity -= TakenQuantity;
 		uint32 Price = (uint32) (ResourcePrice * TakenQuantity) * Multiplier;
 		PeopleData.Money -= Price;
 		Company->GiveMoney(Price, FFlareTransactionLogEntry::LogPeoplePurchase(BestStation, Resource, TakenQuantity));
-
+		Stations.Remove(BestStation);
 	}
 
 	return Quantity - RemainingQuantity;

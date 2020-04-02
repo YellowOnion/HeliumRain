@@ -6,6 +6,7 @@
 #include "../UI/Components/FlareNotifier.h"
 #include "../UI/Components/FlareMainOverlay.h"
 #include "../UI/Components/FlareSpacecraftOrderOverlay.h"
+#include "../UI/Components/FlareShipyardOverlay.h"
 #include "../UI/Components/FlareConfirmationOverlay.h"
 
 #include "../UI/Menus/FlareMainMenu.h"
@@ -37,6 +38,7 @@
 #include "FlareHUD.h"
 #include "FlareMenuPawn.h"
 #include "FlarePlayerController.h"
+#include "../UI/HUD/FlareMouseMenu.h"
 
 #include "../HeliumRainLoadingScreen/FlareLoadingScreen.h"
 
@@ -100,6 +102,7 @@ void AFlareMenuManager::SetupMenu()
 		SAssignNew(MainOverlay, SFlareMainOverlay).MenuManager(this);
 		SAssignNew(Confirmation, SFlareConfirmationOverlay).MenuManager(this);
 		SAssignNew(SpacecraftOrder, SFlareSpacecraftOrderOverlay).MenuManager(this);
+		SAssignNew(ShipyardOrder, SFlareShipyardOverlay).MenuManager(this);
 		SAssignNew(Notifier, SFlareNotifier).MenuManager(this).Visibility(EVisibility::SelfHitTestInvisible);
 
 		// Tooltip
@@ -139,6 +142,7 @@ void AFlareMenuManager::SetupMenu()
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(Notifier.ToSharedRef()),           60);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(MainOverlay.ToSharedRef()),        70);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(SpacecraftOrder.ToSharedRef()),    80);
+		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(ShipyardOrder.ToSharedRef()),      80);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(Confirmation.ToSharedRef()),       90);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(Tooltip.ToSharedRef()),            100);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(Fader.ToSharedRef()),              200);
@@ -277,6 +281,7 @@ bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterDat
 	{
 		return false;
 	}
+
 	FLOGV("AFlareMenuManager::OpenMenu : '%s'", *GetMenuName(Target).ToString());
 	
 	// Store current menu in history
@@ -355,6 +360,12 @@ void AFlareMenuManager::OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrder
 	}
 }
 
+void AFlareMenuManager::OpenShipyardOrder()
+{
+	FLOG("AFlareMenuManager::OpenShipyardOrder");
+	ShipyardOrder->Open();
+}
+
 void AFlareMenuManager::Back()
 {
 	// Close confirmation
@@ -367,6 +378,12 @@ void AFlareMenuManager::Back()
 	else if (SpacecraftOrder->IsOpen())
 	{
 		SpacecraftOrder->Close();
+	}
+
+	// Close spacecraft order
+	else if (ShipyardOrder->IsOpen())
+	{
+		ShipyardOrder->Close();
 	}
 
 	// Is in menu
@@ -572,6 +589,7 @@ void AFlareMenuManager::ResetMenu()
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
 	
 	SpacecraftOrder->Close();
+	ShipyardOrder->Close();
 
 	MainMenu->Exit();
 	SettingsMenu->Exit();
@@ -694,7 +712,7 @@ void AFlareMenuManager::OnEnterMenu(bool LightBackground, bool ShowOverlay, bool
 {
 	ResetMenu();
 	CurrentMenu = NextMenu;
-
+	
 	if (LightBackground)
 	{
 		UseLightBackground();
@@ -1200,6 +1218,8 @@ void AFlareMenuManager::ExitMenu()
 	MenuHistory.Empty();
 	CurrentMenu.Key = EFlareMenu::MENU_None;
 	CurrentMenu.Value = FFlareMenuParameterData();
+
+	OrbitMenu->SetShipyardOpen(false);
 
 	// Signal PC
 	GetPC()->OnExitMenu();

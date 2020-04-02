@@ -25,6 +25,7 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 	MenuManager = InArgs._MenuManager;
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	Game = MenuManager->GetPC()->GetGame();
+	ShipyardMenuOpen = false;
 
 	// FF setup
 	FastForwardPeriod = 0.5f;
@@ -56,7 +57,6 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 				SNew(SHorizontalBox)
 
 				+ SHorizontalBox::Slot()
-				.HAlign(HAlign_Fill)
 				.HAlign(HAlign_Left)
 				.AutoWidth()
 				[
@@ -81,6 +81,16 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 				.Padding(Theme.SmallContentPadding)
 				[
 					SNew(SHorizontalBox)
+
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SFlareButton)
+						.Width(3)
+					.Text(LOCTEXT("Shipyards", "Shipyards"))
+					.HelpText(LOCTEXT("ShipyardsInfo", "Display shipyards menu"))
+					.OnClicked(this, &SFlareOrbitalMenu::OnShipyard)
+					]
 
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -296,6 +306,11 @@ void SFlareOrbitalMenu::Enter()
 	TradeRouteInfo->Update();
 
 	Game->SaveGame(MenuManager->GetPC(), true);
+
+	if (ShipyardMenuOpen)
+	{
+		OnShipyard();
+	}
 }
 
 void SFlareOrbitalMenu::Exit()
@@ -311,6 +326,11 @@ void SFlareOrbitalMenu::Exit()
 
 	TradeRouteInfo->Clear();
 	StopFastForward();
+}
+
+void SFlareOrbitalMenu::SetShipyardOpen(bool ShipyardOpen)
+{
+	ShipyardMenuOpen = ShipyardOpen;
 }
 
 void SFlareOrbitalMenu::StopFastForward()
@@ -626,6 +646,12 @@ FVector2D SFlareOrbitalMenu::GetWidgetSize(int32 Index) const
 /*----------------------------------------------------
 	Action callbacks
 ----------------------------------------------------*/
+
+void SFlareOrbitalMenu::OnShipyard()
+{
+	ShipyardMenuOpen = true;
+	MenuManager->OpenShipyardOrder();
+}
 
 void SFlareOrbitalMenu::SetDisplayMode(EFlareOrbitalMode::Type Mode)
 {
