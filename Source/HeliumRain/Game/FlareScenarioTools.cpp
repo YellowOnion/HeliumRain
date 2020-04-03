@@ -821,7 +821,6 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 			}
 
 			Station->GetData().Level = Level;
-			Station->GetClass();
 
 			if (Station->GetFactories().Num() > 0)
 			{

@@ -383,6 +383,10 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 				{
 					for (UFlareCompany* OtherCompany : this->GetOtherCompanies())
 					{
+						if (OtherCompany == TargetCompany)
+						{
+							continue;
+						}
 						OtherCompany->GivePlayerReputation(ReputationDecreaseOther);
 					}
 				}
