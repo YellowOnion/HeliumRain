@@ -427,13 +427,13 @@ double UFlarePeople::GetDifficultyModifier(UFlareCompany* Company)
 		case 0: // Normal
 			return 1;
 		case 1: // Hard
-			return 0.95;
+			return 0.96;
 		case 2: // Very Hard
-			return 0.90;
+			return 0.92;
 		case 3: // Expert
-			return 0.80;
+			return 0.88;
 		case 4: // Unfair
-			return 0.70;
+			return 0.84;
 		}
 	}
 	else
@@ -445,13 +445,13 @@ double UFlarePeople::GetDifficultyModifier(UFlareCompany* Company)
 		case 0: // Normal
 			return 1;
 		case 1: // Hard
-			return 1.05;
+			return 1.04;
 		case 2: // Very Hard
-			return 1.10;
+			return 1.08;
 		case 3: // Expert
-			return 1.20;
+			return 1.12;
 		case 4: // Unfair
-			return 1.30;
+			return 1.16;
 		}
 	}
 	return 1;

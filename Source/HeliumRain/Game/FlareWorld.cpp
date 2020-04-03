@@ -628,16 +628,16 @@ void UFlareWorld::Simulate()
 				Chance = 1.00f;
 				break;
 			case 1: // Hard
-				Chance = 0.70f;
+				Chance = 0.80f;
 				break;
 			case 2: // Very Hard
-				Chance = 0.40f;
+				Chance = 0.60f;
 				break;
 			case 3: // Expert
-				Chance = 0.10f;
+				Chance = 0.40f;
 				break;
 			case 4: // Unfair
-				Chance = 0.00f;
+				Chance = 0.10f;
 				break;
 			}
 		}

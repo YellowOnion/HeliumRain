@@ -309,10 +309,10 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 						Skipchance = 0.40f;
 						break;
 					case 3: // Expert
-						Skipchance = 0.60f;
+						Skipchance = 0.50f;
 						break;
 					case 4: // Unfair
-						Skipchance = 0.80f;
+						Skipchance = 0.60f;
 						break;
 					}
 				}
@@ -495,9 +495,9 @@ void UFlareAIBehavior::GenerateAffilities()
 		SetSectorAffilitiesByMoon(ST->Nema,0.5f);
 		SetSectorAffilitiesByMoon(ST->Hela, 6.f);
 
-		SetResourceAffility(ST->Steel, 2.f);
-		SetResourceAffility(ST->Plastics, 2.f);
-		SetResourceAffility(ST->Tools, 1.5f);
+		SetResourceAffility(ST->Steel, 1.5f);
+		SetResourceAffility(ST->Plastics, 1.5f);
+		SetResourceAffility(ST->Tools, 1.25f);
 
 		// Budget
 		BudgetTechnologyWeight = 0.25;

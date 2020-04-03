@@ -32,6 +32,7 @@
 
 // TODO, make it depend on company's nature
 #define AI_MAX_SHIP_COUNT 200
+#define AI_MAX_SHIPYARD_COUNT 3
 
 //#define AI_CARGO_DIVERSITY_THRESHOLD 1
 //#define AI_CARGO_SIZE_DIVERSITY_THRESHOLD 5
@@ -792,6 +793,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	//Check if a construction is in progress
 	bool UnderConstruction = false;
 	bool UnderConstructionUpgrade = false;
+
 	for(UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
 	{
 		if(Station->IsUnderConstruction())
@@ -865,8 +867,13 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	}
 
 	// Loop on sector list
-	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	TArray<UFlareSimulatedSector*> KnownSectors = Company->GetKnownSectors();
+
+
+//	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	while (KnownSectors.Num())
 	{
+		int32 SectorIndex = FMath::RandRange(0, KnownSectors.Num() - 1);
 		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
 
 		if (!UnderConstruction&&Resources_New)
@@ -1079,6 +1086,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 				}
 			}
 		}
+		KnownSectors.RemoveAt(SectorIndex);
 	}
 
 	if (BestSector && BestStationDescription)
@@ -3633,6 +3641,21 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 	}
 	else if (FactoryDescription && FactoryDescription->IsShipyard())
 	{
+		int32 TotalOwnedShipyards = 0;
+		for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
+		{
+			UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
+			if (Shipyard&&Shipyard->GetCompany() == Company)
+			{
+				TotalOwnedShipyards++;
+			}
+		}
+
+		if (TotalOwnedShipyards >= AI_MAX_SHIPYARD_COUNT)
+		{
+			return 0;
+		}
+
 		Score *= Behavior->ShipyardAffility;
 		Score *= GetShipyardUsageRatio() * 0.5;
 

@@ -843,16 +843,16 @@ void UFlareCompany::GiveResearch(int64 Amount)
 			Multiplier = 1.00f;
 			break;
 		case 1: // Hard
-			Multiplier = 1.25f;
+			Multiplier = 1.20f;
 			break;
 		case 2: // Very Hard
-			Multiplier = 1.50f;
+			Multiplier = 1.40f;
 			break;
 		case 3: // Expert
-			Multiplier = 2.00f;
+			Multiplier = 1.60f;
 			break;
 		case 4: // Unfair
-			Multiplier = 2.50f;
+			Multiplier = 1.80f;
 			break;
 		}
 
@@ -1816,7 +1816,6 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 		{
 			CompanyValue.TotalShipCountTradeL++;
 		}
-
 
 		// Value of the stock
 		{

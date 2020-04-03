@@ -351,7 +351,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	GhostWorksShipyards->UnlockTechnology("mining", false, true);
 	GhostWorksShipyards->UnlockTechnology("chemicals", false, true);
 	GhostWorksShipyards->UnlockTechnology("metallurgy", false, true);
-	GhostWorksShipyards->UnlockTechnology("station-shipyard", false, true);
+	GhostWorksShipyards->UnlockTechnology("shipyard-station", false, true);
 	
 	Pirates->UnlockTechnology("pirate-tech", false, true);
 	Pirates->UnlockTechnology("quick-repair", false, true);
