@@ -237,7 +237,7 @@ void SFlareList::AddShip(UFlareSimulatedSpacecraft* Ship)
 	ObjectList.AddUnique(FInterfaceContainer::New(Ship));
 }
 
-void SFlareList::RefreshList()
+void SFlareList::RefreshList(bool DisableSort)
 {
 	struct FSortBySize
 	{
@@ -536,7 +536,11 @@ void SFlareList::RefreshList()
 	}
 
 	// Sort and update
-	FilteredObjectList.Sort(FSortBySize());
+	if (!DisableSort)
+	{
+		FilteredObjectList.Sort(FSortBySize());
+	}
+
 	WidgetList->RequestListRefresh();
 	SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
 

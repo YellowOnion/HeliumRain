@@ -1836,7 +1836,10 @@ EVisibility SFlareTradeRouteMenu::GetQuantityLimitVisibility() const
 
 EVisibility SFlareTradeRouteMenu::GetInventoryLimitVisibility() const
 {
-
+	if (InventoryLimitButton->IsActive())
+	{
+		return EVisibility::Visible;
+	}
 
 	return EVisibility::Collapsed;
 }

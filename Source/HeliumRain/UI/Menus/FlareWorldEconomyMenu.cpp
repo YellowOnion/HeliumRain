@@ -8,7 +8,7 @@
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
 #include "../../Data/FlareResourceCatalog.h"
-
+#include "../Components/FlareTabView.h"
 
 #define LOCTEXT_NAMESPACE "FlareWorldEconomyMenu"
 
@@ -28,8 +28,14 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 	.VAlign(VAlign_Fill)
 	.Padding(FMargin(0, AFlareMenuManager::GetMainOverlayHeight(), 0, 0))
 	[
-		SNew(SVerticalBox)
+		SAssignNew(TabView, SFlareTabView)
 
+		// Content block
+		+ SFlareTabView::Slot()
+		.Header(LOCTEXT("EconomyMainTab", "Resources"))
+		.HeaderHelp(LOCTEXT("EcononyMainTabHelp", "Resource economy information"))
+		[
+		SNew(SVerticalBox)
 		// Selector and info
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -96,7 +102,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 									SAssignNew(ResourceSelector, SFlareDropList<UFlareResourceCatalogEntry*>)
 									.OptionsSource(&MenuManager->GetPC()->GetGame()->GetResourceCatalog()->Resources)
 									.OnGenerateWidget(this, &SFlareWorldEconomyMenu::OnGenerateResourceComboLine)
-									.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged)
+									.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged, false)
 									.HeaderWidth(5)
 									.ItemWidth(5)
 									[
@@ -323,7 +329,278 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 				]
 			]
 		]
-	];
+	]
+	+ SFlareTabView::Slot()
+	.Header(LOCTEXT("StationTab", "Stations"))
+	.HeaderHelp(LOCTEXT("StationTabHelp", "Station economy information"))
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		[
+// List Box
+			SNew(SHorizontalBox)
+
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(Theme.SmallContentPadding)
+			[
+				SNew(SVerticalBox)
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(FiltersButton, SFlareButton)
+					.Text(LOCTEXT("Filter", "Filters"))
+					.HelpText(LOCTEXT("FilterHelp", "Enable/Disable filters"))
+				.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+				.Toggle(true)
+				.Width(5)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(ResourceFiltersButton, SFlareButton)
+					.Text(LOCTEXT("FilterResource", "Filter Resources"))
+					.HelpText(LOCTEXT("FilterResourceHelp", "Enable/Disable Specific resource filters"))
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
+					.Toggle(true)
+					.Width(5)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(InputOutputButton, SFlareButton)
+					.Text(LOCTEXT("Output", "OUTPUT"))
+					.HelpText(LOCTEXT("OutputHelp", "Filter output"))
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnInputOutput)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility)
+					.Width(5)
+				]
+
+				// Resource name
+				+SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(SHorizontalBox)
+					// Icon
+					+SHorizontalBox::Slot()
+					.VAlign(VAlign_Top)
+					.HAlign(HAlign_Right)
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					[
+						SNew(SImage)
+						.Image(this, &SFlareWorldEconomyMenu::GetResourceIcon)
+						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility)
+					]
+
+					+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Top)
+					.HAlign(HAlign_Left)
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					[
+						SNew(SBox)
+						.WidthOverride(Theme.ContentWidth / 2)
+						.Padding(FMargin(0))
+						.HAlign(HAlign_Left)
+						[
+							SAssignNew(StationResourceSelector, SFlareDropList<UFlareResourceCatalogEntry*>)
+							.OptionsSource(&MenuManager->GetPC()->GetGame()->GetResourceCatalog()->Resources)
+							.OnGenerateWidget(this, &SFlareWorldEconomyMenu::OnGenerateResourceComboLine)
+							.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged, true)
+							.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility)
+							.HeaderWidth(5)
+							.ItemWidth(5)
+							[
+								SNew(SBox)
+								.Padding(Theme.ListContentPadding)
+								[
+									SNew(STextBlock)
+									.Text(this, &SFlareWorldEconomyMenu::OnGetCurrentResourceComboLine)
+									.TextStyle(&Theme.TextFont)
+									.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility)
+								]
+							]
+						]
+					]
+				]
+
+				// Resource description
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareWorldEconomyMenu::GetResourceDescription)
+					.WrapTextAt(Theme.ContentWidth * 0.60)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(CompanyFiltersButton, SFlareButton)
+					.Text(LOCTEXT("FilterCompany", "Filter Company"))
+					.HelpText(LOCTEXT("FilterCompanyHelp", "Enable/Disable Company filter"))
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
+					.Toggle(true)
+					.Width(5)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(SHorizontalBox)
+					// Icon
+					+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Top)
+					.HAlign(HAlign_Right)
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					[
+						SNew(SImage)
+						.Image(this, &SFlareWorldEconomyMenu::GetCompanyEmblem)
+						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+					]
+
+				+ SHorizontalBox::Slot()
+					.VAlign(VAlign_Top)
+					.HAlign(HAlign_Right)
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					[
+						SNew(SBox)
+						.WidthOverride(Theme.ContentWidth / 2)
+						.Padding(FMargin(0))
+						.HAlign(HAlign_Left)
+						[
+								SAssignNew(StationCompanySelector, SFlareDropList<UFlareCompany*>)
+								.OptionsSource(&CompanyList)
+								.OnGenerateWidget(this, &SFlareWorldEconomyMenu::OnGenerateCompanyComboLine)
+								.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnCompanyComboLineSelectionChanged)
+								.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+								.HeaderWidth(6)
+								.ItemWidth(6)
+							[
+								SNew(SBox)
+								.Padding(Theme.ListContentPadding)
+								[
+									SNew(STextBlock)
+									.Text(this, &SFlareWorldEconomyMenu::OnGetCurrentResourceComboLine)
+									.TextStyle(&Theme.TextFont)
+									.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+								]
+							]
+						]
+					]
+				]
+
+				// Company description
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareWorldEconomyMenu::GetCompanyDescription)
+					.WrapTextAt(Theme.ContentWidth * 0.60)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+				]
+
+				// Include hubs
+				+SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				.HAlign(HAlign_Left)
+				[
+					SAssignNew(StorageHubButton, SFlareButton)
+					.Text(LOCTEXT("IncludeHubs", "Include Storage Hubs"))
+					.HelpText(LOCTEXT("IncludeHubsHelp", "Include Storage Hubs"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(QuantityButton,SFlareButton)
+					.Text(LOCTEXT("SortQuantity", "Sort Quantity"))
+					.HelpText(LOCTEXT("SortQuantityHelp", "Sort by quantity"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
+				]
+
+				+ SVerticalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SAssignNew(DistanceButton,SFlareButton)
+					.Text(LOCTEXT("SortDistance", "Sort Distance"))
+					.HelpText(LOCTEXT("SortDistanceHelp", "Sort by distance"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
+				]
+			]
+
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(Theme.SmallContentPadding)
+
+			[
+				SNew(SScrollBox)
+				.Style(&Theme.ScrollBoxStyle)
+				.ScrollBarStyle(&Theme.ScrollBarStyle)
+
+				+ SScrollBox::Slot()
+				.Padding(Theme.ContentPadding)
+				[
+					SAssignNew(StationList, SFlareList)
+					.MenuManager(MenuManager)
+					.Title(LOCTEXT("Stations", "Stations"))
+				]
+			]
+		]
+	]
+];
 	IncludeTradingHubsButton->SetActive(false);
 }
 
@@ -331,6 +608,246 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 /*----------------------------------------------------
 	Interaction
 ----------------------------------------------------*/
+
+EVisibility SFlareWorldEconomyMenu::GetStationFiltersVisibility() const
+{
+	if (FiltersButton->IsActive())
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+EVisibility SFlareWorldEconomyMenu::GetStationFiltersResourceVisibility() const
+{
+	if (FiltersButton->IsActive() && ResourceFiltersButton->IsActive())
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+EVisibility SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility() const
+{
+	if (FiltersButton->IsActive() && CompanyFiltersButton->IsActive())
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+void SFlareWorldEconomyMenu::OnToggleShowFlags()
+{
+	RefreshStationList();
+}
+
+void SFlareWorldEconomyMenu::OnInputOutput()
+{
+	if (InputOutputMode)
+	{
+		InputOutputMode = false;
+		InputOutputButton->SetHelpText(LOCTEXT("OutputHelp", "Filter output"));
+		InputOutputButton->SetText(LOCTEXT("Output", "OUTPUT"));
+	}
+	else
+	{
+		InputOutputMode = true;
+		InputOutputButton->SetHelpText(LOCTEXT("InputHelp", "Filter input"));
+		InputOutputButton->SetText(LOCTEXT("Input", "INPUT"));
+	}
+	RefreshStationList();
+}
+
+
+void SFlareWorldEconomyMenu::GenerateStationList()
+{
+	StationsArray.Empty();
+	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		TArray<UFlareSimulatedSpacecraft*> SectorStations = TargetSector->GetSectorStations();
+
+		StationsArray.Reserve(StationsArray.Num() + SectorStations.Num());
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < SectorStations.Num(); SpacecraftIndex++)
+		{
+			UFlareSimulatedSpacecraft* StationCandidate = TargetSector->GetSectorStations()[SpacecraftIndex];
+
+			if (StationCandidate && StationCandidate->GetDamageSystem()->IsAlive())
+			{
+				StationsArray.Add(StationCandidate);
+			}
+		}
+	}
+	RefreshStationList();
+}
+
+void SFlareWorldEconomyMenu::RefreshStationList()
+{
+	bool DisableDefaultSorting = false;
+	StationList->Reset();
+	TArray<UFlareSimulatedSpacecraft*> FilteredStationsArray;
+
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < StationsArray.Num(); SpacecraftIndex++)
+	{
+		UFlareSimulatedSpacecraft* StationCandidate = StationsArray[SpacecraftIndex];
+		if (StationCandidate)
+		{
+			if (FiltersButton->IsActive())
+			{
+				if (!StorageHubButton->IsActive() && StationCandidate->HasCapability(EFlareSpacecraftCapability::Storage))
+				{
+					continue;
+					//filter out storage hubs if button not enabled
+				}
+
+				if (CompanyFiltersButton->IsActive() && TargetCompany!=StationCandidate->GetCompany())
+				{
+					continue;
+				}
+
+				if (ResourceFiltersButton->IsActive())
+				{
+					if (InputOutputMode)
+					{
+						if (!StationCandidate->GetActiveCargoBay()->WantBuy(TargetResource, nullptr))
+						{
+							continue;
+						}
+
+					}
+					else
+					{
+						if (!StationCandidate->GetActiveCargoBay()->WantSell(TargetResource, nullptr))
+						{
+							continue;
+						}
+					}
+				}
+
+				FilteredStationsArray.Add(StationCandidate);
+			}
+			else
+			{
+				FilteredStationsArray.Add(StationCandidate);
+			}
+		}
+	}
+
+	if (FiltersButton->IsActive())
+	{
+		if (QuantityButton->IsActive()&&!DistanceButton->IsActive())
+		{
+			DisableDefaultSorting = true;
+			if (ResourceFiltersButton->IsActive())
+			{
+				FilteredStationsArray.Sort([this](UFlareSimulatedSpacecraft& ShipA, UFlareSimulatedSpacecraft& ShipB)
+				{
+					int32 AQuantity = ShipA.GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource);
+					int32 BQuantity = ShipB.GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource);
+					return (AQuantity > BQuantity);
+				});
+			}
+			else
+			{
+				FilteredStationsArray.Sort([this](UFlareSimulatedSpacecraft& ShipA, UFlareSimulatedSpacecraft& ShipB)
+				{
+					int32 AQuantity = ShipA.GetActiveCargoBay()->GetUsedCargoSpace();
+					int32 BQuantity = ShipB.GetActiveCargoBay()->GetUsedCargoSpace();
+					return (AQuantity > BQuantity);
+				});
+			}
+		}
+
+		else if (DistanceButton->IsActive() && !QuantityButton->IsActive() && MenuManager->GetPC()->GetPlayerFleet()->GetCurrentSector())
+		{
+			DisableDefaultSorting = true;
+			FilteredStationsArray.Sort([this](UFlareSimulatedSpacecraft& ShipA ,UFlareSimulatedSpacecraft& ShipB)
+			{
+				UFlareSimulatedSector* PlayerSector = MenuManager->GetPC()->GetPlayerFleet()->GetCurrentSector();
+
+				if (ShipA.GetCurrentSector() == PlayerSector)
+				{
+					return true;
+				}
+				else if (ShipB.GetCurrentSector() == PlayerSector)
+				{
+					return false;
+				}
+				else
+				{
+					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany());
+					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany());
+					if (DistanceComparisonA < DistanceComparisonB)
+					{
+						return true;
+					}
+//					return (ShipA.GetCurrentSector()->GetSectorName().ToString() < ShipB.GetCurrentSector()->GetSectorName().ToString());
+					return false;
+				}
+			});
+		}
+		else if (DistanceButton->IsActive() && QuantityButton->IsActive() && MenuManager->GetPC()->GetPlayerFleet()->GetCurrentSector())
+		{
+			DisableDefaultSorting = true;
+			FilteredStationsArray.Sort([this](UFlareSimulatedSpacecraft& ShipA, UFlareSimulatedSpacecraft& ShipB)
+			{
+				int32 AQuantity;
+				int32 BQuantity;
+				if (ResourceFiltersButton->IsActive())
+				{
+					AQuantity = ShipA.GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource);
+					BQuantity = ShipB.GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource);
+				}
+				else
+				{
+					AQuantity = ShipA.GetActiveCargoBay()->GetUsedCargoSpace();
+					BQuantity = ShipB.GetActiveCargoBay()->GetUsedCargoSpace();
+				}
+
+				if (AQuantity > BQuantity)
+				{
+					return true;
+				}
+
+				UFlareSimulatedSector* PlayerSector = MenuManager->GetPC()->GetPlayerFleet()->GetCurrentSector();
+
+				if (ShipA.GetCurrentSector() == PlayerSector)
+				{
+					return true;
+				}
+				else if (ShipB.GetCurrentSector() == PlayerSector)
+				{
+					return false;
+				}
+				else
+				{
+					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany());
+					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany());
+					if (DistanceComparisonA < DistanceComparisonB)
+					{
+						return true;
+					}
+//					return (ShipA.GetCurrentSector()->GetSectorName().ToString() < ShipB.GetCurrentSector()->GetSectorName().ToString());
+					return false;
+				}
+			});
+
+		}
+	}
+
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < FilteredStationsArray.Num(); SpacecraftIndex++)
+	{
+		UFlareSimulatedSpacecraft* StationCandidate = FilteredStationsArray[SpacecraftIndex];
+		if (StationCandidate)
+		{
+			StationList->AddShip(StationCandidate);
+		}
+	}
+
+	StationList->RefreshList(DisableDefaultSorting);
+}
 
 void SFlareWorldEconomyMenu::Setup()
 {
@@ -348,6 +865,14 @@ void SFlareWorldEconomyMenu::Enter(FFlareResourceDescription* Resource, UFlareSi
 	{
 		TargetResource = Resource;
 	}
+
+	CompanyList.Empty();
+	for (int CompanyIndex = 0; CompanyIndex < MenuManager->GetPC()->GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		UFlareCompany* Company = MenuManager->GetPC()->GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex];
+		CompanyList.Add(Company);
+	}
+
 	WorldStats = WorldHelper::ComputeWorldResourceStats(MenuManager->GetGame(), IncludeTradingHubsButton->IsActive());
 
 	// Default state
@@ -356,16 +881,36 @@ void SFlareWorldEconomyMenu::Enter(FFlareResourceDescription* Resource, UFlareSi
 
 	// Update resource selector
 	ResourceSelector->RefreshOptions();
+	StationResourceSelector->RefreshOptions();
+	StationCompanySelector->RefreshOptions();
+
 	if (TargetResource)
 	{
 		ResourceSelector->SetSelectedItem(MenuManager->GetPC()->GetGame()->GetResourceCatalog()->GetEntry(TargetResource));
+		StationResourceSelector->SetSelectedItem(MenuManager->GetPC()->GetGame()->GetResourceCatalog()->GetEntry(TargetResource));
 	}
 	else
 	{
 		TargetResource = &MenuManager->GetPC()->GetGame()->GetResourceCatalog()->GetResourceList()[0]->Data;
 	}
 
+	if (TargetCompany)
+	{
+		StationCompanySelector->SetSelectedItem(TargetCompany);
+	}
+	else
+	{
+		StationCompanySelector->SetSelectedItem(MenuManager->GetPC()->GetGame()->GetGameWorld()->GetCompanies()[0]);
+		TargetCompany = StationCompanySelector->GetSelectedItem();
+	}
+
 	GenerateSectorList();
+
+	InputOutputMode = true;
+	InputOutputButton->SetHelpText(LOCTEXT("InputHelp", "Filter input"));
+	InputOutputButton->SetText(LOCTEXT("Input", "INPUT"));
+
+	GenerateStationList();
 }
 
 void SFlareWorldEconomyMenu::GenerateSectorList()
@@ -582,6 +1127,8 @@ void SFlareWorldEconomyMenu::Exit()
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
 	SectorList->ClearChildren();
+	StationList->Reset();
+	StationsArray.Empty();
 }
 
 
@@ -651,6 +1198,20 @@ FSlateColor SFlareWorldEconomyMenu::GetPriceColor(UFlareSimulatedSector* Sector)
 	return Theme.FriendlyColor;
 }
 
+FText SFlareWorldEconomyMenu::GetCompanyDescription() const
+{
+	if (TargetCompany)
+	{
+		const FFlareCompanyDescription* Desc = TargetCompany->GetDescription();
+		if (Desc)
+		{
+			return Desc->Description;
+		}
+	}
+
+	return FText();
+}
+
 FText SFlareWorldEconomyMenu::GetResourceDescription() const
 {
 	if (TargetResource)
@@ -670,6 +1231,13 @@ FText SFlareWorldEconomyMenu::GetResourceName() const
 
 	return LOCTEXT("NoResourceSelected", "No resource selected");
 }
+
+const FSlateBrush* SFlareWorldEconomyMenu::GetCompanyEmblem() const
+{
+	return (TargetCompany ? TargetCompany->GetEmblem() : NULL);
+}
+
+
 
 const FSlateBrush* SFlareWorldEconomyMenu::GetResourceIcon() const
 {
@@ -872,7 +1440,48 @@ FText SFlareWorldEconomyMenu::OnGetCurrentResourceComboLine() const
 	}
 }
 
-void SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged(UFlareResourceCatalogEntry* Item, ESelectInfo::Type SelectInfo)
+TSharedRef<SWidget> SFlareWorldEconomyMenu::OnGenerateCompanyComboLine(UFlareCompany* Item)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	return SNew(SBox)
+		.Padding(Theme.ListContentPadding)
+		[
+			SNew(STextBlock)
+			.Text(Item->GetCompanyName())
+		.TextStyle(&Theme.TextFont)
+		];
+
+}
+
+FText SFlareWorldEconomyMenu::OnGetCurrentCompanyComboLine() const
+{
+	UFlareCompany* Item = StationCompanySelector->GetSelectedItem();
+
+	if (Item)
+	{
+		return FText::Format(LOCTEXT("ComboResourceLineFormat", "{0}"), Item->GetCompanyName());
+	}
+	else
+	{
+		return LOCTEXT("SelectCompany", "Select a company");
+	}
+}
+
+void SFlareWorldEconomyMenu::OnCompanyComboLineSelectionChanged(UFlareCompany* Item, ESelectInfo::Type SelectInfo)
+{
+	if (Item)
+	{
+		TargetCompany = Item;
+	}
+	else
+	{
+		TargetCompany = NULL;
+	}
+
+	RefreshStationList();
+}
+
+void SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged(UFlareResourceCatalogEntry* Item, ESelectInfo::Type SelectInfo, bool Station)
 {
 	if (Item)
 	{
@@ -883,7 +1492,16 @@ void SFlareWorldEconomyMenu::OnResourceComboLineSelectionChanged(UFlareResourceC
 		TargetResource = NULL;
 	}
 
-	GenerateSectorList();
+	if (!Station)
+	{
+		StationResourceSelector->SetSelectedItem(ResourceSelector->GetSelectedItem());
+		GenerateSectorList();
+	}
+	else
+	{
+		ResourceSelector->SetSelectedItem(StationResourceSelector->GetSelectedItem());
+		RefreshStationList();
+	}
 }
 
 void SFlareWorldEconomyMenu::OnOpenSector(UFlareSimulatedSector* Sector)

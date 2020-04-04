@@ -3,6 +3,8 @@
 #include "../../Flare.h"
 #include "../Components/FlareButton.h"
 #include "../Components/FlareDropList.h"
+#include "../Components/FlareList.h"
+#include "../Components/FlareListItem.h"
 #include "../../Game/FlareWorldHelper.h"
 #include "../../Data/FlareResourceCatalogEntry.h"
 #include "../FlareUITypes.h"
@@ -64,11 +66,17 @@ protected:
 	/** Get the resource price info */
 	FText GetResourceDescription() const;
 
+	/** Get the company desc */
+	FText GetCompanyDescription() const;
+
 	/** Get the resource name */
 	FText GetResourceName() const;
 
 	/** Get the resource icon */
 	const FSlateBrush* GetResourceIcon() const;
+
+	/** Get the company icon */
+	const FSlateBrush* GetCompanyEmblem() const;
 
 	/** Get the resource usage & production info */
 	FText GetResourceInfo() const;
@@ -98,8 +106,12 @@ protected:
 	FText GetResourcePriceVariationInfo(UFlareSimulatedSector* Sector, TSharedPtr<int32> MeanDuration) const;
 
 	TSharedRef<SWidget> OnGenerateResourceComboLine(UFlareResourceCatalogEntry* Item);
-	void OnResourceComboLineSelectionChanged(UFlareResourceCatalogEntry* Item, ESelectInfo::Type SelectInfo);
+	void OnResourceComboLineSelectionChanged(UFlareResourceCatalogEntry* Item, ESelectInfo::Type SelectInfo, bool Station=false);
 	FText OnGetCurrentResourceComboLine() const;
+
+	TSharedRef<SWidget> OnGenerateCompanyComboLine(UFlareCompany* Item);
+	void OnCompanyComboLineSelectionChanged(UFlareCompany* Item, ESelectInfo::Type SelectInfo);
+	FText OnGetCurrentCompanyComboLine() const;
 
 	void OnOpenSector(UFlareSimulatedSector* Sector);
 
@@ -107,6 +119,26 @@ protected:
 
 	void OnIncludeTradingHubsToggle();
 
+	/** Generate Station List */
+	void GenerateStationList();
+	
+	/** Refresh Station List */
+	void RefreshStationList();
+
+	/** Update filters */
+	void OnToggleShowFlags();
+
+	/** Change input/output button */
+	void OnInputOutput();
+
+	/** Hide the station filters */
+	EVisibility GetStationFiltersVisibility() const;
+
+	/** Hide the station filters */
+	EVisibility GetStationFiltersResourceVisibility() const;
+
+	/** Hide the station filters */
+	EVisibility GetStationFiltersCompanyVisibility() const;
 
 protected:
 
@@ -114,9 +146,13 @@ protected:
 		Protected data
 	----------------------------------------------------*/
 
+	// Menu data
+	TSharedPtr<class SFlareTabView>          TabView;
+
 	// Target data
 	TWeakObjectPtr<class AFlareMenuManager>         MenuManager;
 	FFlareResourceDescription*                      TargetResource;
+	UFlareCompany*									TargetCompany;
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 
 	// Slate data
@@ -128,4 +164,20 @@ protected:
 	bool                                            IsCurrentSortDescending;
 	TEnumAsByte<EFlareEconomySort::Type>            CurrentSortType;
 
+	TSharedPtr<SFlareDropList<UFlareResourceCatalogEntry*>> StationResourceSelector;
+	TSharedPtr<SFlareDropList<UFlareCompany*>>              StationCompanySelector;
+	TArray<UFlareCompany*>						            CompanyList;
+
+
+	TArray<UFlareSimulatedSpacecraft*>						  StationsArray;
+	TSharedPtr<SFlareList>									  StationList;
+
+	TSharedPtr<SFlareButton>                                  FiltersButton;
+	TSharedPtr<SFlareButton>                                  ResourceFiltersButton;
+	TSharedPtr<SFlareButton>                                  CompanyFiltersButton;
+	TSharedPtr<SFlareButton>                                  StorageHubButton;
+	TSharedPtr<SFlareButton>                                  QuantityButton;
+	TSharedPtr<SFlareButton>                                  DistanceButton;
+	TSharedPtr<SFlareButton>                                  InputOutputButton;
+	bool												      InputOutputMode;
 };

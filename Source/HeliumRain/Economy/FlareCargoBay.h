@@ -95,6 +95,11 @@ public:
 	/* If client is not null, consider as not identified company*/
 	int32 GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client) const;
 
+	/* Quantity only, simple method*/
+	int32 GetResourceQuantitySimple(FFlareResourceDescription* Resource) const;
+
+	
+
 	/* If client is not null, consider as not identified company*/
 	int32 GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false) const;
 

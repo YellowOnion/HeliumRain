@@ -56,7 +56,7 @@ void SFlareShipyardOverlay::Construct(const FArguments& InArgs)
 							[
 								SAssignNew(ShipyardList, SFlareList)
 								.MenuManager(MenuManager)
-							.Title(LOCTEXT("Shipyards", "Shipyards"))
+								.Title(LOCTEXT("Shipyards", "Shipyards"))
 							]
 						]
 

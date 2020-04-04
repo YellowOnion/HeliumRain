@@ -915,7 +915,12 @@ void SFlareFleetInfo::UpdateSectors()
 		SectorList.Add(Sector);
 	}
 
-	SectorList.Sort(SFlareFleetInfo::SortByName);
+//	SectorList.Sort(SFlareFleetInfo::SortByName);
+	SectorList.Sort([this](UFlareSimulatedSector& A, UFlareSimulatedSector& B)
+	{
+		return A.GetSectorName().ToString() < B.GetSectorName().ToString();
+	});
+
 	SectorSelector->RefreshOptions();
 
 	if (TargetFleet->GetFleetCompany() == PC->GetCompany())
@@ -944,12 +949,12 @@ void SFlareFleetInfo::UpdateSectors()
 
 	TargetSectorTravel = SectorSelector->GetSelectedItem();
 }
-
+/*
 bool SFlareFleetInfo::SortByName(const UFlareSimulatedSector& A, const UFlareSimulatedSector& B)
 {
 	return A.GetName() < B.GetName();
 }
-
+*/
 void SFlareFleetInfo::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);

@@ -48,7 +48,7 @@ public:
 	void AddShip(UFlareSimulatedSpacecraft* Ship);
 
 	/** Update the list display from content */
-	void RefreshList();
+	void RefreshList(bool DisableSort = false);
 
 	/** Updates button names/display if fleet*/
 	void SetButtonNamesFleet();

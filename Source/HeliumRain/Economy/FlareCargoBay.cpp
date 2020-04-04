@@ -392,6 +392,20 @@ int32 UFlareCargoBay::GetFreeCargoSpace() const
 	return GetCapacity() - GetUsedCargoSpace();
 }
 
+int32 UFlareCargoBay::GetResourceQuantitySimple(FFlareResourceDescription* Resource) const
+{
+	int32 Quantity = 0;
+	for (int CargoIndex = 0; CargoIndex < CargoBay.Num(); CargoIndex++)
+	{
+		const FFlareCargo& Cargo = CargoBay[CargoIndex];
+		if (Cargo.Resource == Resource)
+		{
+			Quantity += Cargo.Quantity;
+		}
+	}
+	return Quantity;
+}
+
 int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client) const
 {
 	int32 Quantity = 0;
