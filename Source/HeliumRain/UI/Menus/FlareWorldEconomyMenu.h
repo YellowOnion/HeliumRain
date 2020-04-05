@@ -128,8 +128,20 @@ protected:
 	/** Update filters */
 	void OnToggleShowFlags();
 
+	/** Change station/ship button */
+	void OnStationShip();
+
 	/** Change input/output button */
 	void OnInputOutput();
+
+	/** Hide the station filters */
+	EVisibility GetStationFiltersStationModeVisibility() const;
+	
+	/** Hide the station filters */
+	EVisibility GetStationFiltersShipModeVisibility() const;
+
+	/** Hide the station filters */
+	EVisibility GetStationFiltersResourceInputOutputVisibility() const;
 
 	/** Hide the station filters */
 	EVisibility GetStationFiltersVisibility() const;
@@ -168,7 +180,7 @@ protected:
 	TSharedPtr<SFlareDropList<UFlareCompany*>>              StationCompanySelector;
 	TArray<UFlareCompany*>						            CompanyList;
 
-
+	TArray<UFlareSimulatedSpacecraft*>						  ShipsArray;
 	TArray<UFlareSimulatedSpacecraft*>						  StationsArray;
 	TSharedPtr<SFlareList>									  StationList;
 
@@ -176,8 +188,11 @@ protected:
 	TSharedPtr<SFlareButton>                                  ResourceFiltersButton;
 	TSharedPtr<SFlareButton>                                  CompanyFiltersButton;
 	TSharedPtr<SFlareButton>                                  StorageHubButton;
+	TSharedPtr<SFlareButton>                                  PlayerCompanyToggleButton;
 	TSharedPtr<SFlareButton>                                  QuantityButton;
 	TSharedPtr<SFlareButton>                                  DistanceButton;
 	TSharedPtr<SFlareButton>                                  InputOutputButton;
 	bool												      InputOutputMode;
+	TSharedPtr<SFlareButton>                                  StationShipsButton;
+	bool												      StationShipMode;
 };

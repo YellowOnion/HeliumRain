@@ -23,6 +23,7 @@ class SFlareSpacecraftInfo : public SCompoundWidget
 		, _OwnerWidget(NULL)
 		, _NoInspect(false)
 		, _Minimized(false)
+		, _WidthAdjuster(0.f)
 	{}
 
 	SLATE_ARGUMENT(AFlarePlayerController*, Player)
@@ -33,6 +34,7 @@ class SFlareSpacecraftInfo : public SCompoundWidget
 
 	SLATE_ARGUMENT(bool, NoInspect)
 	SLATE_ARGUMENT(bool, Minimized)
+	SLATE_ARGUMENT(float, WidthAdjuster)
 
 	SLATE_END_ARGS()
 
@@ -205,5 +207,6 @@ protected:
 	TSharedPtr<SFlareCompanyFlag>     CompanyFlag;
 	TSharedPtr<SHorizontalBox>        CargoBay1;
 	TSharedPtr<SHorizontalBox>        CargoBay2;
-
+	int32				      		  WidthAdjusted;
+	float				      		  WidthAdjuster;
 };

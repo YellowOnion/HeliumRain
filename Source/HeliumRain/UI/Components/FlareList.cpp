@@ -27,19 +27,28 @@ void SFlareList::Construct(const FArguments& InArgs)
 	UseCompactDisplay = InArgs._UseCompactDisplay;
 	FleetList = InArgs._FleetList;
 	StationList = InArgs._StationList;
+	WidthAdjuster = InArgs._WidthAdjuster;
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	OnItemSelected = InArgs._OnItemSelected;
 	HasShips = false;
 	HasFleets = false;
+	LastDisableSort = false;
+
+	float WidthSetting = Theme.ContentWidth;
+	if (WidthAdjuster)
+	{
+		WidthSetting *= WidthAdjuster;
+	}
+
 	// Build structure
 	ChildSlot
 	.VAlign(VAlign_Fill)
 	.HAlign(HAlign_Left)
 	[
 		SNew(SBox)
-		.WidthOverride(Theme.ContentWidth)
+		.WidthOverride(WidthSetting)
 		[
 			SNew(SVerticalBox)
 
@@ -239,6 +248,7 @@ void SFlareList::AddShip(UFlareSimulatedSpacecraft* Ship)
 
 void SFlareList::RefreshList(bool DisableSort)
 {
+	LastDisableSort = DisableSort;
 	struct FSortBySize
 	{
 		FORCEINLINE bool operator()(const TSharedPtr<FInterfaceContainer> PtrA, const TSharedPtr<FInterfaceContainer> PtrB) const
@@ -339,9 +349,14 @@ void SFlareList::RefreshList(bool DisableSort)
 					{
 						return true;
 					}
-					else
+					else if (A->GetWeaponsSystem()->GetWeaponGroupCount() > B->GetWeaponsSystem()->GetWeaponGroupCount())
 					{
-						return A->GetWeaponsSystem()->GetWeaponGroupCount() > B->GetWeaponsSystem()->GetWeaponGroupCount();
+						return true;
+//						return A->GetWeaponsSystem()->GetWeaponGroupCount() > B->GetWeaponsSystem()->GetWeaponGroupCount();
+					}
+					else 
+					{
+						return A->GetCombatPoints(true) > B->GetCombatPoints(true);
 					}
 				}
 				else
@@ -635,6 +650,11 @@ TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContai
 	int32 Width = 15;
 	int32 Height = 1;
 
+	if (WidthAdjuster)
+	{
+		Width *= WidthAdjuster;
+	}
+
 	// Ship
 	if (Item->SpacecraftPtr)
 	{
@@ -647,6 +667,7 @@ TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContai
 		[
 			SAssignNew(Temp, SFlareSpacecraftInfo)
 			.Player(MenuManager->GetPC())
+			.WidthAdjuster(WidthAdjuster)
 			.OwnerWidget(this)
 			.Minimized(true)
 			.OnRemoved(this, &SFlareList::OnShipRemoved)
@@ -742,7 +763,7 @@ void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectI
 
 void SFlareList::OnToggleShowFlags()
 {
-	RefreshList();
+	RefreshList(LastDisableSort);
 }
 
 void SFlareList::OnShipRemoved(UFlareSimulatedSpacecraft* Ship)
@@ -757,7 +778,7 @@ void SFlareList::OnShipRemoved(UFlareSimulatedSpacecraft* Ship)
 	}
 
 	PreviousWidget.Reset();
-	RefreshList();
+	RefreshList(LastDisableSort);
 }
 
 #undef LOCTEXT_NAMESPACE

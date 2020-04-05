@@ -34,16 +34,23 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 	NoInspect = InArgs._NoInspect;
 	Minimized = InArgs._Minimized;
 	OnRemoved = InArgs._OnRemoved;
+	WidthAdjuster = InArgs._WidthAdjuster;
 	AFlareGame* Game = InArgs._Player->GetGame();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-	
+
+	WidthAdjusted = Theme.ContentWidth;
+	if (WidthAdjuster)
+	{
+		WidthAdjusted *= WidthAdjuster;
+	}
+
 	// Create the layout
 	ChildSlot
 	.VAlign(VAlign_Top)
 	.HAlign(HAlign_Left)
 	[
 		SNew(SBox)
-		.WidthOverride(Theme.ContentWidth)
+		.WidthOverride(WidthAdjusted)
 		.Padding(Theme.SmallContentPadding)
 		[
 			SNew(SVerticalBox)
@@ -871,7 +878,7 @@ void SFlareSpacecraftInfo::AddMessage(FText Message, const FSlateBrush* Icon, UF
 		SNew(STextBlock)
 		.TextStyle(&Theme.TextFont)
 		.Text(Message)
-		.WrapTextAt(0.9 * Theme.ContentWidth)
+		.WrapTextAt(0.9 * WidthAdjusted)
 	];
 
 	// Progress bar
@@ -1416,9 +1423,12 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 		FText DistanceText;
 		bool TradeMenu = 0;
 
-		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
+		if (PC->GetMenuManager()->IsUIOpen())
 		{
-			TradeMenu = 1;
+			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade)
+			{
+				TradeMenu = 1;
+			}
 		}
 
 		if (PC->GetPlayerShip() && PC->GetPlayerShip() != TargetSpacecraft)
@@ -1511,23 +1521,37 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 		// Other company
 		else if (TargetCompany)
 		{
-			if(TradeMenu)
-			{ 
-				return FText::Format(LOCTEXT("OwnedByFormat", "{0}{1}{2}"),
-					DistanceText,
-					ClassText,
-					TargetCompany->GetCompanyName());
-			}
-			else
+			if (PC->GetMenuManager()->IsUIOpen() && PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_WorldEconomy)
 			{
-				return FText::Format(LOCTEXT("OwnedByFormat", "{0}{1}{2} ({3})"),
-					DistanceText,
-					ClassText,
-					TargetCompany->GetCompanyName(),
-					TargetCompany->GetPlayerHostilityText());
+				UFlareSimulatedSector* CurrentSector = TargetSpacecraft->GetCurrentSector();
+				if (CurrentSector)
+				{
+					return FText::Format(LOCTEXT("OwnedByFormat", "{0} - {1}{2}{3} ({4})"),
+						TargetSpacecraft->GetCurrentSector()->GetSectorName(),
+						DistanceText,
+						ClassText,
+						TargetCompany->GetCompanyName(),
+						TargetCompany->GetPlayerHostilityText()
+					);
+				}
+			}
+			else if (TradeMenu)
+				{
+					return FText::Format(LOCTEXT("OwnedByFormat", "{0}{1}{2}"),
+						DistanceText,
+						ClassText,
+						TargetCompany->GetCompanyName());
+				}
+				else
+				{
+					return FText::Format(LOCTEXT("OwnedByFormat", "{0}{1}{2} ({3})"),
+						DistanceText,
+						ClassText,
+						TargetCompany->GetCompanyName(),
+						TargetCompany->GetPlayerHostilityText());
+				}
 			}
 		}
-	}
 	return FText();
 }
 

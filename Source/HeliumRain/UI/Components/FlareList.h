@@ -18,11 +18,13 @@ class SFlareList : public SCompoundWidget
 	: _UseCompactDisplay(false)
    	, _StationList(false)
 	, _FleetList(false)
+	, _WidthAdjuster(0.f)
 	{}
 
 	SLATE_ARGUMENT(bool, UseCompactDisplay)
 	SLATE_ARGUMENT(bool, StationList)
 	SLATE_ARGUMENT(bool, FleetList)
+	SLATE_ARGUMENT(float, WidthAdjuster)
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
 	SLATE_ARGUMENT(FText, Title)
@@ -136,4 +138,6 @@ protected:
 	bool                                                         HasFleets;
 	bool														 StationList;
 	bool														 FleetList;
+	bool														 LastDisableSort;
+	float														 WidthAdjuster;
 };
