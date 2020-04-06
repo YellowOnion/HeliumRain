@@ -332,7 +332,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 	]
 	+ SFlareTabView::Slot()
 	.Header(LOCTEXT("StationTab", "Stations / Ships"))
-	.HeaderHelp(LOCTEXT("StationTabHelp", "Station and ships economy information"))
+	.HeaderHelp(LOCTEXT("StationTabHelp", "Station and ship economy information"))
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
@@ -743,9 +743,9 @@ void SFlareWorldEconomyMenu::GenerateStationList()
 	StationsArray.Empty();
 	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
 
-	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetVisitedSectors().Num(); SectorIndex++)
 	{
-		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		UFlareSimulatedSector* TargetSector = Company->GetVisitedSectors()[SectorIndex];
 		TArray<UFlareSimulatedSpacecraft*> SectorStations = TargetSector->GetSectorStations();
 		TArray<UFlareSimulatedSpacecraft*> SectorShips = TargetSector->GetSectorShips();
 

@@ -495,7 +495,9 @@ struct CompanyValue
 
 	int32 TotalShipCount;
 	int32 TotalShipCountMilitaryS;
+	int32 TotalShipCountMilitarySSalvager;
 	int32 TotalShipCountMilitaryL;
+	int32 TotalShipCountMilitaryLSalvager;
 	int32 TotalShipCountTradeS;
 	int32 TotalShipCountTradeL;
 

@@ -2070,7 +2070,6 @@ void UFlareSimulatedSpacecraft::AddRemoveExternalOrderArray(const FName ShipDesc
 			{
 				if (Order.Company != GetCompany()->GetIdentifier())
 				{
-					//TODO TEST THIS IS THE SAME
 					if (ShipDescription == Order.ShipClass)
 					{
 						CancelShipyardOrder(Index);
@@ -2258,6 +2257,23 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 
 	return Efficiency;
 }
+
+
+int32 UFlareSimulatedSpacecraft::GetEquippedSalvagerCount()
+{
+	int32 Salvagers = 0;
+	int32 WeaponGroupCount = GetDescription()->WeaponGroups.Num();
+	for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
+	{
+		FFlareSpacecraftComponentDescription* CurrentWeapon = GetCurrentPart(EFlarePartType::Weapon, WeaponGroupIndex);
+		if (CurrentWeapon->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage || CurrentWeapon->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage)
+		{
+			Salvagers++;
+		}
+	}
+	return Salvagers;
+}
+
 
 int32 UFlareSimulatedSpacecraft::GetCombatPoints(bool ReduceByDamage)
 {

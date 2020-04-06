@@ -92,7 +92,9 @@ protected:
 	bool                           IsDestroyingSector;
 	FVector                        SectorCenter;
 	float                          SectorRadius;
-
+	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
+	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
+	
 
 public:
 

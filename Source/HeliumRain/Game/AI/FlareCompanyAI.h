@@ -39,6 +39,7 @@ struct DefenseSector
 	int32 LargeShipArmyCount;
 	int32 SmallShipArmyCount;
 	bool CapturingStation;
+	bool CapturingShip;
 	UFlareSimulatedSpacecraft* PrisonersKeeper;
 
 	bool operator==(const DefenseSector& lhs)
@@ -74,7 +75,7 @@ public:
 	virtual void Tick();
 
 	/** Simulate a day */
-	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
+	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
@@ -141,7 +142,7 @@ public:
 
 	UFlareSimulatedSector* FindNearestSectorWithUpgradePossible(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
 
-	bool UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize);
+	bool UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager=false);
 
 	bool UpgradeMilitaryFleet(AIWarContext& WarContext, WarTarget Target, DefenseSector& Sector, TArray<UFlareSimulatedSpacecraft*> &MovableShips);
 

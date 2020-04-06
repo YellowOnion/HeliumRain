@@ -10,7 +10,6 @@ DECLARE_CYCLE_STAT(TEXT("FlareTurret Update"), STAT_FlareTurret_Update, STATGROU
 DECLARE_CYCLE_STAT(TEXT("FlareTurret IsReacheableAxis"), STAT_FlareTurret_IsReacheableAxis, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareTurret GetMinLimitAtAngle"), STAT_FlareTurret_GetMinLimitAtAngle, STATGROUP_Flare);
 
-
 /*----------------------------------------------------
 	Constructor
 ----------------------------------------------------*/
@@ -32,6 +31,8 @@ void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany
 {
 	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
 	AimDirection = FVector::ZeroVector;
+	IsIgnoreManualAimCached = false;
+	BarrelsMinAngleCache.Empty();
 
 	// Initialize pilot
 	Pilot = NewObject<UFlareTurretPilot>(this, UFlareTurretPilot::StaticClass());
@@ -312,7 +313,7 @@ bool UFlareTurret::IsCloseToAim() const
 	return (FVector::DotProduct(AimDirection, GetFireAxis()) > 0.999);
 }
 
-bool UFlareTurret::IsReacheableAxis(FVector TargetAxis) const
+bool UFlareTurret::IsReacheableAxis(FVector TargetAxis)// const
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurret_IsReacheableAxis);
 
@@ -362,25 +363,39 @@ static inline int PositiveModulo(int i, int n)
 	return (i % n + n) % n;
 }
 
-bool UFlareTurret::IsIgnoreManualAim() const
+bool UFlareTurret::IsIgnoreManualAim()// const
 {
-	FFlareSpacecraftDescription* Desc = Spacecraft->GetParent()->GetDescription();
+	if (IsIgnoreManualAimCached)
+	{
+		return IsIgnoreManualAimCache;
+	}
 
+	FFlareSpacecraftDescription* Desc = Spacecraft->GetParent()->GetDescription();
 	for (int32 i = 0; i < Desc->TurretSlots.Num(); i++)
 	{
-		// TODO optimize and store that in cache
 		if (Desc->TurretSlots[i].SlotIdentifier == ShipComponentData->ShipSlotIdentifier)
 		{
+			IsIgnoreManualAimCached = true;
+			IsIgnoreManualAimCache = Desc->TurretSlots[i].IgnoreManualAim;
 			return Desc->TurretSlots[i].IgnoreManualAim;
 		}
 	}
 
+	IsIgnoreManualAimCached = true;
+	IsIgnoreManualAimCache = false;
 	return false;
 }
 
-float UFlareTurret::GetMinLimitAtAngle(float Angle) const
+float UFlareTurret::GetMinLimitAtAngle(float Angle)// const
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurret_GetMinLimitAtAngle);
+
+//TODO optimize cache further by storing it not per turret but maybe in the turretcharacteristics or somewhere else to reduce memory size and overall TMap additions/resizing
+
+	if (BarrelsMinAngleCache.Contains(Angle))
+	{
+		return BarrelsMinAngleCache[Angle];
+	}
 
 	float BarrelsMinAngle = ComponentDescription->WeaponCharacteristics.TurretCharacteristics.BarrelsMinAngle;
 	FFlareSpacecraftDescription* Desc = Spacecraft->GetParent()->GetDescription();
@@ -388,17 +403,13 @@ float UFlareTurret::GetMinLimitAtAngle(float Angle) const
 	// Fine Local slot check
 	for (int32 i = 0; i < Desc->TurretSlots.Num(); i++)
 	{
-		// TODO optimize and store that in cache
 		if (Desc->TurretSlots[i].SlotIdentifier == ShipComponentData->ShipSlotIdentifier)
 		{
 			int LimitStepCount = Desc->TurretSlots[i].TurretBarrelsAngleLimit.Num();
 
-
 			if (LimitStepCount > 0)
 			{
 				float StepAngle = 360.f / (float) LimitStepCount;
-
-
 				float AngleInStep = Angle / StepAngle;
 				int NearestStep = FMath::FloorToInt(AngleInStep + 0.5f);
 				int SecondNearestStep;
@@ -421,6 +432,7 @@ float UFlareTurret::GetMinLimitAtAngle(float Angle) const
 		}
 
 	}
+	BarrelsMinAngleCache.Add(Angle, BarrelsMinAngle);
 	return BarrelsMinAngle;
 }
 

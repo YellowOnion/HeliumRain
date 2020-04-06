@@ -421,6 +421,8 @@ public:
 
 	float GetStationEfficiency();
 
+	int32 GetEquippedSalvagerCount();
+
 	int32 GetCombatPoints(bool ReduceByDamage);
 
 	bool IsDestroyed()

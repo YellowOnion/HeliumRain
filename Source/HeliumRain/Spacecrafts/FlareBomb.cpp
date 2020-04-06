@@ -563,6 +563,7 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 
 		if (OwnerCompany == PC->GetCompany())
 		{
+
 			FFlareMenuParameterData Data;
 			Data.Spacecraft = HitSpacecraft->GetParent();
 			PC->Notify(LOCTEXT("HeavyShipHarpooned", "Ship harpooned !"),

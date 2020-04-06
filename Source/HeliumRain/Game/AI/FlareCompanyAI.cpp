@@ -29,17 +29,8 @@
 #define AI_DEBUG_AUTOSCRAP 0
 
 #define STATION_CONSTRUCTION_PRICE_BONUS 1.2
-
-// TODO, make it depend on company's nature
 #define AI_MAX_SHIP_COUNT 200
 #define AI_MAX_SHIPYARD_COUNT 3
-
-//#define AI_CARGO_DIVERSITY_THRESHOLD 1
-//#define AI_CARGO_SIZE_DIVERSITY_THRESHOLD 5
-//#define AI_CARGO_SIZE_DIVERSITY_THRESHOLD_BASE 15
-//#define AI_MILITARY_DIVERSITY_THRESHOLD 1
-//#define AI_MILITARY_SIZE_DIVERSITY_THRESHOLD 5
-//#define AI_MILITARY_SIZE_DIVERSITY_THRESHOLD_BASE 5
 
 #define AI_MAX_SHIP_BEFORE_SCRAP  60
 #define AI_MIN_S_CARGO_SHIP_COUNT 10
@@ -103,7 +94,7 @@ void UFlareCompanyAI::Tick()
 	}
 }
 
-void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
+void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues)
 {
 	if (Game && Company != Game->GetPC()->GetCompany())
 	{
@@ -116,7 +107,6 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		UpdateDiplomacy(GlobalWar);
 
 		WorldStats = WorldHelper::ComputeWorldResourceStats(Game, true);
-//		Shipyards = FindShipyards();
 
 		Shipyards = GetGame()->GetGameWorld()->GetShipyards();
 
@@ -132,7 +122,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 			//DumpSectorResourceVariation(Sector, &Variation);
 		}
 
-		Behavior->Simulate();
+		Behavior->Simulate(SortedCompanyValues, SortedCompanyCombatValues);
 
 		if (!Behavior->FinishedResearch)
 		{
@@ -150,18 +140,76 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		}
 
 		// Check if at war
+		CompanyValue TotalValue = Company->GetCompanyValue();
+		int32 CompanyIndex = SortedCompanyCombatValues.IndexOfByKey(Company);
+		int32 CompanyCombatCurrent = Company->GetCompanyValue().ArmyCurrentCombatPoints;
+		int32 CompanyCombat = Company->GetCompanyValue().ArmyTotalCombatPoints;
+
 		if(Company->AtWar())
 		{
 			AIData.Pacifism += Behavior->PacifismIncrementRate;
 		}
-		else
+
+		else if(CompanyCombatCurrent > 0 && TotalValue.ArmyCurrentCombatPoints >= (TotalValue.ArmyTotalCombatPoints * 0.75))
 		{
-			AIData.Pacifism -= Behavior->PacifismDecrementRate;
+			float Multiplier = 1.f;
+			bool IsStrongest = false;
+
+			if((CompanyIndex + 1) >= Game->GetGameWorld()->GetCompanies().Num())
+			{
+				Multiplier += 0.50;
+				IsStrongest = true;
+			}
+
+			if (CompanyIndex > 0)
+			{
+				UFlareCompany* Lowercompany = SortedCompanyCombatValues[CompanyIndex-1];
+				if (Lowercompany)
+				{
+					int32 LowerCombat = Lowercompany->GetCompanyValue().ArmyTotalCombatPoints;
+					if (LowerCombat > 0)// && CompanyCombat > 0)
+					{
+						float RatioRequirement = 0.30;
+						float CombatRatio = LowerCombat / CompanyCombat;
+						if (IsStrongest)
+						{
+							RatioRequirement = 0.50;
+						}
+						if (CombatRatio < RatioRequirement)
+						//if next lowest has [RatioRequirement]% or lower of our military value, we're a bit more keen on war
+						{
+							Multiplier += 0.25;
+						}
+					}
+
+/*
+					GetGame()->GetPC()->Notify(
+						LOCTEXT("TestInfo", "Test Notification"),
+						FText::Format(
+							LOCTEXT("TestInfoFormat", "{0} has an war index of {1}\nLower is {2}. Ratio {3}"),
+							Company->GetCompanyName(),
+							CompanyIndex,
+							Lowercompany->GetCompanyName(),
+							CombatRatio),
+						"discover-sector",
+						EFlareNotification::NT_Info,
+						false);
+*/
+				}
+			}
+			AIData.Pacifism -= (Behavior->PacifismDecrementRate * Multiplier);
+		}
+
+		int32 MinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic)/2);
+
+		if (Company->GetMoney() < MinimumMoney)
+		{
+			AIData.Pacifism += Behavior->PacifismIncrementRate / 3;
 		}
 
 		if(IdleCargoCapacity == 0)
 		{
-			AIData.Pacifism += Behavior->PacifismIncrementRate/3;
+			AIData.Pacifism += Behavior->PacifismIncrementRate / 3;
 		}
 
 		for(UFlareSimulatedSpacecraft* Spacecraft : Company->GetCompanySpacecrafts())
@@ -1649,8 +1697,8 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 		}
 
 		Target.CapturingStation = false;
+		Target.CapturingShip = false;
 		TArray<UFlareSimulatedSpacecraft*>& Stations =  Sector->GetSectorStations();
-
 
 		if(Company->GetCaptureOrderCountInSector(Sector) > 0)
 		{
@@ -1667,10 +1715,12 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 					break;
 				}
 			}
-
 		}
 
-
+		if (Company->GetCaptureShipOrderCountInSector(Sector) > 0)
+		{
+			Target.CapturingShip = true;
+		}
 
 		if (Target.CombatPoints > 0 || Target.PrisonersKeeper != nullptr)
 		{
@@ -1778,8 +1828,7 @@ void AIWarContext::Generate()
 }
 
 void UFlareCompanyAI::UpdateWarMilitaryMovement()
-{
-
+{			
 	auto GenerateAlliesCode = [&](UFlareCompany* iCompany)
 	{
 		int32 AlliesCode = 0x0;
@@ -1876,7 +1925,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 				continue;
 			}
 
-			if (Target.EnemyArmyCombatPoints == 0 && Sector.CapturingStation)
+			if (Target.EnemyArmyCombatPoints == 0 && (Sector.CapturingStation || Sector.CapturingShip))
 			{
 				// Capturing station, don't move
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -2040,6 +2089,10 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 			FLOGV("army at %s won't move to defend: capturing station",
 				*Sector.Sector->GetSectorName().ToString());
 #endif
+			continue;
+		}
+		if (Sector.CapturingShip)
+		{
 			continue;
 		}
 
@@ -2262,7 +2315,7 @@ UFlareSimulatedSector* UFlareCompanyAI::FindNearestSectorWithUpgradePossible(AIW
 	return NearestSector;
 }
 
-bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize)
+bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager)
 {
 	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 
@@ -2294,36 +2347,53 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 				continue;
 			}
 
-			if (WeaponTargetSize == EFlarePartSize::L && Part->WeaponCharacteristics.AntiLargeShipValue < 0.5)
+			if (AllowSalvager)
+			{
+				if (Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage || Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage)
+				{
+					bool HasChance = FMath::FRand() < 0.7;
+					if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
+					{
+						BestWeapon = Part;
+					}
+				}
+			}
+
+			else if (WeaponTargetSize == EFlarePartSize::L && Part->WeaponCharacteristics.AntiLargeShipValue < 0.5)
 			{
 				continue;
 			}
 
-			if (WeaponTargetSize == EFlarePartSize::S && Part->WeaponCharacteristics.AntiSmallShipValue < 0.5)
+			else if (WeaponTargetSize == EFlarePartSize::S && Part->WeaponCharacteristics.AntiSmallShipValue < 0.5)
 			{
 				continue;
 			}
 
-
-			// Compatible target
-			bool HasChance = FMath::FRand() < 0.7;
-			if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
+			if (!AllowSalvager)
 			{
-				BestWeapon = Part;
+				// Compatible target
+				bool HasChance = FMath::FRand() < 0.7;
+				if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
+				{
+					BestWeapon = Part;
+				}
 			}
-
 		}
 
 		if (BestWeapon)
 		{
-			int32 WeaponGroupCount = Ship->GetDescription()->WeaponGroups.Num();
 			int64 TransactionCost = 0;
+			int32 WeaponGroupCount = Ship->GetDescription()->WeaponGroups.Num();
+			if (AllowSalvager)
+			{
+				WeaponGroupCount = 1;
+			}
+
 			for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
 			{
 				FFlareSpacecraftComponentDescription* OldWeapon = Ship->GetCurrentPart(EFlarePartType::Weapon, WeaponGroupIndex);
 				TransactionCost += Ship->GetUpgradeCost(BestWeapon, OldWeapon);
 			}
-
 
 			float CostSafetyMargin = Behavior->CostSafetyMarginMilitaryShip;
 			CompanyValue TotalValue = Company->GetCompanyValue();
@@ -2459,6 +2529,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 
 	// If upgrade possible
 	bool UpgradeFailed = false;
+	CompanyValue TotalValue = Company->GetCompanyValue();
 
 	//for each L ship
 	for (UFlareSimulatedSpacecraft* Ship : MovableShips)
@@ -2515,6 +2586,18 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 					*Ship->GetImmatriculation().ToString());
 #endif
 					UpgradeFailed = true;
+				}
+			}
+		}
+		else if(TotalValue.TotalShipCountMilitaryL > 0)
+		{
+			//good on firepower, now consider capture capability
+			float EquippedRatio = TotalValue.TotalShipCountMilitaryLSalvager / TotalValue.TotalShipCountMilitaryL;
+			if (EquippedRatio < Behavior->UpgradeMilitarySalvagerLRatio)
+			{
+				bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S, true);
+				if (Upgraded)
+				{
 				}
 			}
 		}
@@ -2576,6 +2659,18 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 					*Ship->GetImmatriculation().ToString());
 #endif
 					UpgradeFailed = true;
+				}
+			}
+		}
+		else if (TotalValue.TotalShipCountMilitaryS > 0)
+		{
+			//good on firepower, now consider capture capability
+			float EquippedRatio = TotalValue.TotalShipCountMilitarySSalvager / TotalValue.TotalShipCountMilitaryS;
+			if (EquippedRatio < Behavior->UpgradeMilitarySalvagerSRatio)
+			{
+				bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S, true);
+				if (Upgraded)
+				{
 				}
 			}
 		}

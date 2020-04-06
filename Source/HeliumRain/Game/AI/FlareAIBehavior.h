@@ -23,7 +23,7 @@ public:
 	/** Load the company behavior */
 	virtual void Load(UFlareCompany* ParentCompany);
 
-	virtual void Simulate();
+	virtual void Simulate(TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
 
 	void UpdateDiplomacy(bool GlobalWar);
 
@@ -129,6 +129,9 @@ public:
 	float BuildEfficientTradeChance;
 	float BuildEfficientMilitaryChanceSmall;
 	float BuildEfficientTradeChanceSmall;
+
+	float UpgradeMilitarySalvagerSRatio;
+	float UpgradeMilitarySalvagerLRatio;
 
 	bool ProposeTributeToPlayer = false;
 	bool FinishedResearch = false;

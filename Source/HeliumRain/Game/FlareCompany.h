@@ -52,7 +52,7 @@ public:
 		Gameplay
 	----------------------------------------------------*/
 
-	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources);
+	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
 
 	virtual void TickAI();
 
@@ -464,6 +464,8 @@ public:
 	bool WantCapture(UFlareSimulatedSpacecraft const* Station) const;
 
 	int32 GetCaptureOrderCountInSector(UFlareSimulatedSector const* Sector) const;
+
+	int32 GetCaptureShipOrderCountInSector(UFlareSimulatedSector* Sector);
 
 	UFlareSimulatedSpacecraft* FindChildStation(FName StationImmatriculation);
 

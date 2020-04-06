@@ -12,7 +12,6 @@
 #include "../Spacecrafts/FlareShell.h"
 #include "../Spacecrafts/FlareSpacecraft.h"
 
-
 /*----------------------------------------------------
 	Constructor
 ----------------------------------------------------*/
@@ -33,6 +32,8 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	DestroySector();
 	ParentSector = Parent;
 	LocalTime = Parent->GetData()->LocalTime;
+	CompanyShipsPerCompanyCache.Empty();
+	CompanySpacecraftsPerCompanyCache.Empty();
 
 	// Load asteroids
 	for (int i = 0 ; i < ParentSector->GetData()->AsteroidData.Num(); i++)
@@ -144,6 +145,8 @@ void UFlareSector::DestroySector()
 	SectorAsteroids.Empty();
 	SectorMeteorites.Empty();
 	SectorShells.Empty();
+	CompanyShipsPerCompanyCache.Empty();
+	CompanySpacecraftsPerCompanyCache.Empty();
 
 	IsDestroyingSector = false;
 }
@@ -606,14 +609,21 @@ void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Locatio
 TArray<AFlareSpacecraft*> UFlareSector::GetCompanyShips(UFlareCompany* Company)
 {
 	TArray<AFlareSpacecraft*> CompanyShips;
-	// TODO Cache
-
-	for (int i = 0 ; i < SectorShips.Num(); i++)
+	
+	if (CompanyShipsPerCompanyCache.Contains(Company))
 	{
-		if (SectorShips[i]->GetCompany() == Company)
+		CompanyShips = CompanyShipsPerCompanyCache[Company];
+	}
+	else
+	{
+		for (int i = 0; i < SectorShips.Num(); i++)
 		{
-			CompanyShips.Add(SectorShips[i]);
+			if (SectorShips[i]->GetCompany() == Company)
+			{
+				CompanyShips.Add(SectorShips[i]);
+			}
 		}
+		CompanyShipsPerCompanyCache.Add(Company, CompanyShips);
 	}
 	return CompanyShips;
 }
@@ -621,14 +631,21 @@ TArray<AFlareSpacecraft*> UFlareSector::GetCompanyShips(UFlareCompany* Company)
 TArray<AFlareSpacecraft*> UFlareSector::GetCompanySpacecrafts(UFlareCompany* Company)
 {
 	TArray<AFlareSpacecraft*> CompanySpacecrafts;
-	// TODO Cache
 
-	for (int i = 0 ; i < SectorSpacecrafts.Num(); i++)
+	if (CompanySpacecraftsPerCompanyCache.Contains(Company))
 	{
-		if (SectorSpacecrafts[i]->GetCompany() == Company)
+		CompanySpacecrafts = CompanySpacecraftsPerCompanyCache[Company];
+	}
+	else
+	{
+		for (int i = 0; i < SectorSpacecrafts.Num(); i++)
 		{
-			CompanySpacecrafts.Add(SectorSpacecrafts[i]);
+			if (SectorSpacecrafts[i]->GetCompany() == Company)
+			{
+				CompanySpacecrafts.Add(SectorSpacecrafts[i]);
+			}
 		}
+		CompanySpacecraftsPerCompanyCache.Add(Company, CompanySpacecrafts);
 	}
 	return CompanySpacecrafts;
 }

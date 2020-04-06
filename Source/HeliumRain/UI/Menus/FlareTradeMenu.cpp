@@ -1344,7 +1344,6 @@ int32 SFlareTradeMenu::SetSliderQuantity(int32 Quantity)
 bool SFlareTradeMenu::RefreshTradeBlocks() const
 {
 	//USED to refresh tradeblocks when a ship with a local trade order (which goes to dock at a station) is finished, to stop any possible updates not having values not set properly afterwards
-	//TODO: Wanabe: not sure how to use from public scope to private scope properly
 
 	PriceBox->Hide();
 

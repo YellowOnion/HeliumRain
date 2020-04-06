@@ -223,11 +223,10 @@ FFlareCompanySave* UFlareCompany::Save()
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
+void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues)
 {
-	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
+	CompanyAI->Simulate(GlobalWar, TotalReservedResources, SortedCompanyValues, SortedCompanyCombatValues);
 }
-
 void UFlareCompany::TickAI()
 {
 	CompanyAI->Tick();
@@ -872,6 +871,11 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 	{
 		// Clamp
 		float MaxReputation = FMath::Max(Max, CompanyData.PlayerReputation);
+		float TechnologyBonus = this->IsTechnologyUnlocked("diplomacy") ? 0.5f : 1.f;
+		if (Amount < 0)
+		{
+			Amount *= TechnologyBonus;
+		}
 
 		CompanyData.PlayerReputation = FMath::Max(-100.f, CompanyData.PlayerReputation + Amount);
 		CompanyData.PlayerReputation = FMath::Min(MaxReputation, CompanyData.PlayerReputation);
@@ -880,14 +884,15 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 
 void UFlareCompany::GivePlayerReputationToOthers(float Amount)
 {
-	for (int32 CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	for (UFlareCompany* OtherCompany : this->GetOtherCompanies())
+//	for (int32 CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
-		UFlareCompany* OtherCompany = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+//		UFlareCompany* OtherCompany = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
 
-		if (OtherCompany != this)
-		{
-			OtherCompany->GivePlayerReputation(Amount);
-		}
+//		if (OtherCompany != this)
+//		{
+		OtherCompany->GivePlayerReputation(Amount);
+//		}
 	}
 }
 
@@ -1118,8 +1123,6 @@ int32 UFlareCompany::GetTransportCapacity()
 
 TArray<UFlareCompany*> UFlareCompany::GetOtherCompanies(bool Shuffle)
 {
-
-	// TODO Cache
 	if (!OtherCompaniesCache.Num())
 	{
 		TArray<UFlareCompany*> GameCompanies = GetGame()->GetGameWorld()->GetCompanies();
@@ -1743,6 +1746,8 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	CompanyValue.StationsValue = 0;
 	CompanyValue.TotalDailyProductionCost = 0;
 	CompanyValue.TotalShipCount = 0;
+	CompanyValue.TotalShipCountMilitaryLSalvager = 0;
+	CompanyValue.TotalShipCountMilitarySSalvager = 0;
 	CompanyValue.TotalShipCountMilitaryS = 0;
 	CompanyValue.TotalShipCountMilitaryL = 0;
 	CompanyValue.TotalShipCountTradeS = 0;
@@ -1799,13 +1804,22 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			CompanyValue.ArmyValue += SpacecraftPrice;
 			CompanyValue.ArmyTotalCombatPoints += Spacecraft->GetCombatPoints(false);
 			CompanyValue.ArmyCurrentCombatPoints += Spacecraft->GetCombatPoints(true);
+
 			if (Spacecraft->GetSize() == EFlarePartSize::S)
 			{
 				CompanyValue.TotalShipCountMilitaryS++;
+				if (Spacecraft->GetEquippedSalvagerCount())
+				{
+					CompanyValue.TotalShipCountMilitarySSalvager++;
+				}
 			}
 			else
 			{
 				CompanyValue.TotalShipCountMilitaryL++;
+				if (Spacecraft->GetEquippedSalvagerCount())
+				{
+					CompanyValue.TotalShipCountMilitaryLSalvager++;
+				}
 			}
 		}
 		else if (Spacecraft->GetSize() == EFlarePartSize::S)
@@ -1991,6 +2005,20 @@ int32 UFlareCompany::GetCaptureOrderCountInSector(UFlareSimulatedSector const* S
 	for(UFlareSimulatedSpacecraft const* Station: Sector->GetSectorStations())
 	{
 		if(WantCapture(Station))
+		{
+			++Orders;
+		}
+	}
+	return Orders;
+}
+
+int32 UFlareCompany::GetCaptureShipOrderCountInSector(UFlareSimulatedSector* Sector)
+{
+	int32 Orders = 0;
+	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorShips())
+	{
+		FFlareSpacecraftSave& Data = Ship->GetData();
+		if (Data.HarpoonCompany==this->GetIdentifier())
 		{
 			++Orders;
 		}

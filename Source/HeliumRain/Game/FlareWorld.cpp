@@ -417,6 +417,16 @@ bool UFlareWorld::CheckIntegrity()
 	return Integrity;
 }
 
+inline static bool CompanyValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
+{
+	return ip1.GetCompanyValue().TotalValue < ip2.GetCompanyValue().TotalValue;
+}
+
+inline static bool CompanyTotalCombatValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
+{
+	return ip1.GetCompanyValue().ArmyTotalCombatPoints < ip2.GetCompanyValue().ArmyTotalCombatPoints;
+}
+
 void UFlareWorld::Simulate()
 {
 	double StartTs = FPlatformTime::Seconds();
@@ -687,12 +697,17 @@ void UFlareWorld::Simulate()
 		}
 	}
 
-	TArray<UFlareCompany*> CompaniesToSimulateAI = Companies;
+	TArray<UFlareCompany*> SortedCompanyValues = GetCompanies();
+	TArray<UFlareCompany*> SortedCompanyCombatValues = GetCompanies();
 
+	SortedCompanyValues.Sort(&CompanyValueComparator);
+	SortedCompanyCombatValues.Sort(&CompanyTotalCombatValueComparator);
+
+	TArray<UFlareCompany*> CompaniesToSimulateAI = Companies;
 	while(CompaniesToSimulateAI.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
-		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources);
+		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources, SortedCompanyValues, SortedCompanyCombatValues);
 		CompaniesToSimulateAI.RemoveAt(Index);
 	}
 
@@ -940,7 +955,6 @@ void UFlareWorld::Simulate()
 		Company->InvalidateCompanyValueCache();
 	}
 
-	
 	double EndTs = FPlatformTime::Seconds();
 	FLOGV("** Simulate day %d done in %.6fs", WorldData.Date-1, EndTs- StartTs);
 

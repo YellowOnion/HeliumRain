@@ -49,22 +49,16 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 	}
 }
 
-inline static bool CompanyValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
-{
-	return ip1.GetCompanyValue().TotalValue < ip2.GetCompanyValue().TotalValue;
-}
-
-
-void UFlareAIBehavior::Simulate()
+void UFlareAIBehavior::Simulate(TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareAIBehavior_Simulate);
 
 	// See how the player is doing
 
-	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
-	SortedCompany.Sort(&CompanyValueComparator);
-	int32 PlayerCompanyIndex = SortedCompany.IndexOfByKey(GetGame()->GetPC()->GetCompany());
+//	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
+//	SortedCompany.Sort(&CompanyValueComparator);
 
+	int32 PlayerCompanyIndex = SortedCompanyValues.IndexOfByKey(GetGame()->GetPC()->GetCompany());
 	int32 PlayerArmy = GetGame()->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints;
 	int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
 
@@ -184,7 +178,9 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 			}
 		}
 	}
+
 	else if (Company->GetAI()->GetData()->Pacifism <= 0)
+
 	{
 		//Want war
 
@@ -261,7 +257,8 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 
 				UFlareCompany* TargetCompany = Target.Key;
 				float Skipchance = 0.2f;
-				if (TargetCompany== PlayerCompany)
+
+				if (TargetCompany == PlayerCompany)
 				{
 					//if looking at player, increase the random chance factor to declare war
 					int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
@@ -315,6 +312,10 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 						Skipchance = 0.60f;
 						break;
 					}
+
+					//and because reputation is a player only mechanic, we chuck in a diplomacy modifier to the skip chance of the target
+					float TechnologyBonus = TargetCompany->IsTechnologyUnlocked("diplomacy") ? 1.5f : 1.f;
+					Skipchance *= TechnologyBonus;
 				}
 
 				//FLOGV("Target for %s: %s", *Company->GetCompanyName().ToString(), *TargetCompany->GetCompanyName().ToString());
@@ -413,6 +414,9 @@ void UFlareAIBehavior::GenerateAffilities()
 	// Pirate base
 	SetSectorAffility(ST->Boneyard, 0.f);
 
+	UpgradeMilitarySalvagerSRatio = 0.10;
+	UpgradeMilitarySalvagerLRatio = 0.10;
+
 	BuildMilitaryDiversitySize = 5;
 	BuildTradeDiversitySize = 5;
 	BuildMilitaryDiversitySizeBase = 5;
@@ -481,6 +485,8 @@ void UFlareAIBehavior::GenerateAffilities()
 
 		BuildEfficientMilitaryChance = 0.0125;
 		BuildEfficientMilitaryChanceSmall = 0.025;
+		UpgradeMilitarySalvagerSRatio = 0.25;
+		UpgradeMilitarySalvagerLRatio = 0.25;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("flak");

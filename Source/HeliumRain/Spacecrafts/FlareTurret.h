@@ -39,9 +39,9 @@ public:
 	/** Are we close to the target ? */
 	virtual bool IsCloseToAim() const;
 
-	virtual bool IsReacheableAxis(FVector TargetAxis) const;
+	virtual bool IsReacheableAxis(FVector TargetAxis);// const;
 
-	virtual float GetMinLimitAtAngle(float Angle) const;
+	virtual float GetMinLimitAtAngle(float Angle);// const;
 
 	virtual void GetBoundingSphere(FVector& Location, float& Radius) override;
 
@@ -49,7 +49,6 @@ public:
 
 
 protected:
-
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
@@ -68,7 +67,9 @@ protected:
 
 	// General data
 	FVector  								         AimDirection;
-
+	bool											 IsIgnoreManualAimCached;
+	bool											 IsIgnoreManualAimCache;
+	TMap<float, float>								 BarrelsMinAngleCache;
 
 public:
 
@@ -81,6 +82,6 @@ public:
 		return Pilot;
 	}
 
-	bool IsIgnoreManualAim() const;
+	bool IsIgnoreManualAim();// const;
 
 };
