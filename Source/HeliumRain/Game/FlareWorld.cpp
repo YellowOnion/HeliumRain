@@ -316,13 +316,13 @@ bool UFlareWorld::CheckIntegrity()
 
 			UFlareSimulatedSector* ShipSector = Ship->GetCurrentSector();
 
-			if(ShipSector)
+			if(ShipSector&&ShipSector->IsValidLowLevel())
 			{
 				if (Ship->GetCurrentFleet() == NULL)
 				{
 					FLOGV("WARNING : World integrity failure : %s in %s is in no fleet",
-						  *Ship->GetImmatriculation().ToString(),
-						  *ShipSector->GetSectorName().ToString());
+						*Ship->GetImmatriculation().ToString(),
+						*ShipSector->GetSectorName().ToString());
 					Integrity = false;
 				}
 
@@ -697,8 +697,8 @@ void UFlareWorld::Simulate()
 		}
 	}
 
-	TArray<UFlareCompany*> SortedCompanyValues = GetCompanies();
-	TArray<UFlareCompany*> SortedCompanyCombatValues = GetCompanies();
+	SortedCompanyValues = GetCompanies();
+	SortedCompanyCombatValues = GetCompanies();
 
 	SortedCompanyValues.Sort(&CompanyValueComparator);
 	SortedCompanyCombatValues.Sort(&CompanyTotalCombatValueComparator);
@@ -707,7 +707,7 @@ void UFlareWorld::Simulate()
 	while(CompaniesToSimulateAI.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
-		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources, SortedCompanyValues, SortedCompanyCombatValues);
+		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources);
 		CompaniesToSimulateAI.RemoveAt(Index);
 	}
 

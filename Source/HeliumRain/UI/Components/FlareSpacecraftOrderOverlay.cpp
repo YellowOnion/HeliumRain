@@ -189,6 +189,15 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Complex, FNam
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->StationCatalog[SpacecraftIndex]->Data;
 			if (!Description->IsSubstation && MenuManager->GetPC()->GetCompany()->IsTechnologyUnlockedStation(Description))
 			{
+				if (Description->BuildableCompany.Num() > 0)
+				{
+					//buildable company has something, check if we're allowed to buy this in the first place
+					if (!Description->BuildableCompany.Contains(FName("PLAYER")))
+					{
+						continue;
+					}
+				}
+
 				UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->StationCatalog[SpacecraftIndex];
 				SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
 			}
@@ -218,6 +227,7 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Shipyard, boo
 
 	// Init ship list
 	SpacecraftList.Empty();
+	FFlareSpacecraftDescription* ShipyardDesc = TargetShipyard->GetDescription();
 	if (TargetShipyard && TargetShipyard->IsShipyard())
 	{
 		SpaceCraftData = TargetShipyard->GetData();
@@ -231,6 +241,38 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Shipyard, boo
 
 			if (!Description->IsSubstation)
 			{
+				if (ShipyardDesc->IsDroneCarrier != Description->IsDroneShip)
+				{
+					continue;
+				}
+
+				if (Description->BuyableCompany.Num() > 0)
+				{
+					//buildable company has something, check if we're allowed to buy this in the first place
+					if (!Description->BuyableCompany.Contains(FName("PLAYER")))
+					{
+						continue;
+					}
+				}
+
+				if (Description->BuildableCompany.Num() > 0)
+				{
+					//buildable company has something, check if shipyard owning faction is allowed to build this
+					if ((TargetShipyard->GetCompany() == MenuManager->GetPC()->GetCompany() && !Description->BuildableCompany.Contains(FName("PLAYER"))) || !Description->BuildableCompany.Contains(TargetShipyard->GetCompany()->GetDescription()->ShortName))
+					{
+						continue;
+					}
+				}
+
+				if (Description->BuildableShip.Num())
+				{
+					if (!Description->BuildableShip.Contains(ShipyardDesc->Identifier))
+					{
+						continue;
+					}
+				}
+
+
 				// Filter by spacecraft size and add
 				if(IsConfig)
 				{
@@ -272,6 +314,15 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSector* Sector, FOrderDel
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->StationCatalog[SpacecraftIndex]->Data;
 			if (!Description->IsSubstation && MenuManager->GetPC()->GetCompany()->IsTechnologyUnlockedStation(Description))
 			{
+				if (Description->BuildableCompany.Num() > 0)
+				{
+					//buildable company has something, check if we're allowed to buy this in the first place
+					if (!Description->BuildableCompany.Contains(FName("PLAYER")))
+					{
+						continue;
+					}
+				}
+
 				UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->StationCatalog[SpacecraftIndex];
 				SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
 			}
@@ -364,18 +415,37 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 					SpaceCraftData = TargetShipyard->GetData();
 					if (SpaceCraftData.ShipyardOrderExternalConfig.Find(Desc->Identifier) != INDEX_NONE)
 					{
-						ConfirmText->SetText(FText::Format(LOCTEXT("ConfigEnabledInfo", "Disable remote company access to {0}?"),
+						if (TargetShipyard->GetDescription()->IsDroneCarrier)
+						{
+							ConfirmText->SetText(FText::Format(LOCTEXT("CarrierEnabledInfo", "Disable carrier building of {0}?"),
 							Desc->Name));
+							ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisableCarrier", "Disable carrier building"));
+						}
+						else
+						{
+							ConfirmText->SetText(FText::Format(LOCTEXT("ConfigEnabledInfo", "Disable remote company access to {0}?"),
+								Desc->Name));
+							ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Disable remote company access"));
+						}
 						ConfirmButton->SetText(LOCTEXT("ConfigEnabled", "Disable"));
 						ConfirmedState = false;
-						ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Disable remote company access"));
+
 					}
 					else
 					{
-						ConfirmText->SetText(FText::Format(LOCTEXT("ConfigDisabledInfo", "Enable remote company access to {0}?"),
-						Desc->Name));
+						if (TargetShipyard->GetDescription()->IsDroneCarrier)
+						{
+							ConfirmText->SetText(FText::Format(LOCTEXT("CarrierDisabledInfo", "Enable carrier building of {0}?"),
+								Desc->Name));
+							ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoEnableCarrier", "Enable carrier building"));
+						}
+						else
+						{
+							ConfirmText->SetText(FText::Format(LOCTEXT("ConfigDisabledInfo", "Enable remote company access to {0}?"),
+							Desc->Name));
+							ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Enable remote company access"));
+						}
 						ConfirmButton->SetText(LOCTEXT("ConfigDisabled", "Enable"));
-						ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoDisable", "Enable remote company access"));
 						ConfirmedState = true;
 					}
 				}
@@ -452,7 +522,11 @@ FText SFlareSpacecraftOrderOverlay::GetWindowTitle() const
 	{
 		if (OrderIsConfig)
 		{
-			return LOCTEXT("SpacecraftConfigTitle", "Configure external orders");
+			if (TargetShipyard->GetDescription()->IsDroneCarrier)
+			{
+				return LOCTEXT("SpacecraftConfigTitleCarrier", "Configure carrier construction");
+			}
+			return LOCTEXT("SpacecraftConfigTitleConfig", "Configure external orders");
 		}
 		else
 		{

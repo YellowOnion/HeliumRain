@@ -422,7 +422,14 @@ void SFlareSpacecraftInfo::SetSpacecraft(UFlareSimulatedSpacecraft* Target)
 		// Set "details" 
 		if (Target->IsShipyard())
 		{
-			InspectButton->SetText(LOCTEXT("InspectShipyard", "BUY SHIP"));
+			if (Target->GetCompany() == PC->GetCompany())
+			{
+				InspectButton->SetText(LOCTEXT("InspectOwnedShipyard", "BUILD SHIP"));
+			}
+			else
+			{
+				InspectButton->SetText(LOCTEXT("InspectShipyard", "BUY SHIP"));
+			}
 			InspectButton->SetHelpText(LOCTEXT("InspectShipyardInfo", "Order ships or manage ships production."));
 		}
 		else
@@ -544,7 +551,17 @@ void SFlareSpacecraftInfo::Show()
 		DockButton->SetVisibility(CanDock ?                                      EVisibility::Visible : EVisibility::Collapsed);
 		UndockButton->SetVisibility(Owned && IsDocked && !IsOutsidePlayerFleet ? EVisibility::Visible : EVisibility::Collapsed);
 		ScrapButton->SetVisibility(Owned ?                                       EVisibility::Visible : EVisibility::Collapsed);
-		
+
+		if (TargetSpacecraft->GetShipMaster() != NULL)
+		{
+			UpgradeButton->SetVisibility(EVisibility::Collapsed);
+			TradeButton->SetVisibility(EVisibility::Collapsed);
+			FlyButton->SetVisibility(EVisibility::Collapsed);
+			DockButton->SetVisibility(EVisibility::Collapsed);
+			UndockButton->SetVisibility(EVisibility::Collapsed);
+			ScrapButton->SetVisibility(EVisibility::Collapsed);
+		}
+
 		// Flyable ships : disable when not flyable
 		FText Reason;
 		if (!TargetSpacecraft->CanBeFlown(Reason))
@@ -693,6 +710,7 @@ void SFlareSpacecraftInfo::Hotkey(int32 Index)
 			{
 				OnTrade();
 			}
+			break;
 		case 5:
 			if (DockButton->IsButtonAvailable())
 			{
@@ -1234,9 +1252,32 @@ FText SFlareSpacecraftInfo::GetCombatValue() const
 	{
 		if (TargetSpacecraft->GetCombatPoints(true) > 0 || TargetSpacecraft->GetCombatPoints(false) > 0)
 		{
-			Result = FText::Format(LOCTEXT("GetCombatValueFormat", "{0}/{1}"),
-				FText::AsNumber(TargetSpacecraft->GetCombatPoints(true)),
-				FText::AsNumber(TargetSpacecraft->GetCombatPoints(false)));
+			if (TargetSpacecraft->GetShipChildren().Num() > 0)
+			{
+				int32 Childrencombat = 0;
+				int32 Childrencombatmax = 0;
+
+				for (UFlareSimulatedSpacecraft* OwnedShips : TargetSpacecraft->GetShipChildren())
+				{
+					Childrencombat += OwnedShips->GetCombatPoints(true);
+					Childrencombatmax += OwnedShips->GetCombatPoints(false);
+				}
+
+				Result = FText::Format(LOCTEXT("GetCombatValueFormat", "{0}/{1}\n{2}/{3} ({4}/{5})"),
+					FText::AsNumber(TargetSpacecraft->GetCombatPoints(true)),
+					FText::AsNumber(TargetSpacecraft->GetCombatPoints(false)),
+					FText::AsNumber(Childrencombat),
+					FText::AsNumber(Childrencombatmax),
+					FText::AsNumber(TargetSpacecraft->GetShipChildren().Num()),
+					FText::AsNumber(TargetSpacecraft->GetDescription()->DroneMaximum)
+					);
+			}
+			else
+			{
+				Result = FText::Format(LOCTEXT("GetCombatValueFormat", "{0}/{1}"),
+					FText::AsNumber(TargetSpacecraft->GetCombatPoints(true)),
+					FText::AsNumber(TargetSpacecraft->GetCombatPoints(false)));
+			}
 		}
 		else
 		{

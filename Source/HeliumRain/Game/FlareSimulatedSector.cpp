@@ -222,7 +222,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationCla
 	return Station;
 }
 
-UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition)
+UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition, UFlareSimulatedSpacecraft* BuiltBy)
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(ShipClass);
 
@@ -233,7 +233,14 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FName ShipCla
 
 	if (Desc)
 	{
-		return CreateSpacecraft(Desc, Company, TargetPosition);
+		if (BuiltBy != NULL)
+		{
+			return CreateSpacecraft(Desc, Company, TargetPosition, FRotator::ZeroRotator,NULL,0,false,NAME_None,BuiltBy);
+		}
+		else
+		{
+			return CreateSpacecraft(Desc, Company, TargetPosition);
+		}
 	}
 	else
 	{
@@ -244,7 +251,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FName ShipCla
 }
 
 UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetPosition, FRotator TargetRotation,
-	FFlareSpacecraftSave* CapturedSpacecraft, bool SafeSpawnAtLocation, bool UnderConstruction, FName AttachComplexStationName)
+	FFlareSpacecraftSave* CapturedSpacecraft, int32 SpawnLocation, bool UnderConstruction, FName AttachComplexStationName, UFlareSimulatedSpacecraft* BuiltBy)
 {
 	UFlareSimulatedSpacecraft* Spacecraft = NULL;
 
@@ -256,7 +263,17 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.Rotation = TargetRotation;
 	ShipData.LinearVelocity = FVector::ZeroVector;
 	ShipData.AngularVelocity = FVector::ZeroVector;
-	ShipData.SpawnMode = SafeSpawnAtLocation ? EFlareSpawnMode::Safe : EFlareSpawnMode::Spawn;
+//	ShipData.SpawnMode = SafeSpawnAtLocation ? EFlareSpawnMode::Safe : EFlareSpawnMode::Spawn;
+	switch (SpawnLocation)
+	{
+		case 0:
+			ShipData.SpawnMode = EFlareSpawnMode::Spawn;
+			break;
+		case 1:
+			ShipData.SpawnMode = EFlareSpawnMode::Safe;
+			break;
+	}
+
 	Game->Immatriculate(Company, ShipDescription->Identifier, &ShipData, AttachComplexStationName != NAME_None);
 	ShipData.Identifier = ShipDescription->Identifier;
 	ShipData.Heat = 600 * ShipDescription->HeatCapacity;
@@ -265,13 +282,16 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.DynamicComponentStateIdentifier = NAME_None;
 	ShipData.DynamicComponentStateProgress = 0.f;
 	ShipData.IsTrading = false;
+	ShipData.TradingReason = 0;
 	ShipData.IsIntercepted = false;
 	ShipData.RepairStock = 0;
 	ShipData.RefillStock = 0;
 	ShipData.IsReserve = false;
 	ShipData.AllowExternalOrder = true;
+	ShipData.AllowAutoConstruction = true;
 	ShipData.Level = 1;
 	ShipData.HarpoonCompany = NAME_None;
+	ShipData.OwnerShipName = NAME_None;
 	ShipData.DynamicComponentStateIdentifier = FName("idle");
 	ShipData.AttachComplexStationName = AttachComplexStationName;
 
@@ -447,6 +467,17 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 
 	if (!Spacecraft->IsStation())
 	{
+		if (BuiltBy != NULL)
+		{
+			FFlareSpacecraftDescription* BuiltByDescription = BuiltBy->GetDescription();
+			if (BuiltByDescription->IsDroneCarrier && ShipDescription->IsDroneShip)
+			{
+				Spacecraft->SetOwnerShip(BuiltBy);
+				UFlareFleet* JoiningFleet = BuiltBy->GetCurrentFleet();
+				JoiningFleet->AddShip(Spacecraft);
+				return Spacecraft;
+			}
+		}
 		// Add to player fleet if possible
 		UFlareFleet* PlayerFleet = Game->GetPC()->GetPlayerFleet();
 
@@ -660,6 +691,16 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 			OutReasons.Add(FText::Format(LOCTEXT("BuildRequiresMoney", "Not enough credits ({0} / {1})"),
 				FText::AsNumber(UFlareGameTools::DisplayMoney(Company->GetMoney())),
 				FText::AsNumber(UFlareGameTools::DisplayMoney(GetStationConstructionFee(StationDescription->CycleCost.ProductionCost, Company)))));
+			Result = false;
+		}
+	}
+
+	if (StationDescription->BuildableCompany.Num() > 0)
+	{
+		//buildable company has something, check if shipyard owning faction is allowed to build this
+		if ((Company == Game->GetPC()->GetCompany() && !StationDescription->BuildableCompany.Contains(FName("PLAYER"))) || !StationDescription->BuildableCompany.Contains(Company->GetDescription()->ShortName))
+		{
+			OutReasons.Add(LOCTEXT("BuildableCompanyRequired", "This station cannot be built by your company"));
 			Result = false;
 		}
 	}
@@ -1168,7 +1209,7 @@ void UFlareSimulatedSector::SaveResourcePrices()
 
 FText UFlareSimulatedSector::GetSectorName()
 {
-	if (SectorData.GivenName.ToString().Len())
+	if (!SectorData.GivenName.IsEmptyOrWhitespace() && SectorData.GivenName.ToString().Len())
 	{
 		return SectorData.GivenName;
 	}

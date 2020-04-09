@@ -213,28 +213,41 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot()
 						.AutoWidth()
 						[
-						SNew(SFlareButton)
-						.Width(7)
-						.Text(LOCTEXT("ExternalInfoConfiguration", "External Info Configuration"))
-						.HelpText(LOCTEXT("ExternalInfoConfigurationInfo", "Enable or disable specific ships from being bought from other companies"))
-						.OnClicked(this, &SFlareShipMenu::OnOpenExternalConfig)
-						.Visibility(this, &SFlareShipMenu::GetShipyardAllowExternalOrderVisibility)
+							SAssignNew(ExternalOrdersConfigurationButton,SFlareButton)
+							.Width(7)
+							.Text(this, &SFlareShipMenu::GetConfigurationText)
+							.HelpText(this, &SFlareShipMenu::GetConfigurationHelp)
+							.OnClicked(this, &SFlareShipMenu::OnOpenExternalConfig)
+							.Visibility(this, &SFlareShipMenu::GetShipyardAllowExternalOrderConfigurationVisibility)
 						]
-
-
 					// Allow external
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
 						SAssignNew(AllowExternalOrdersButton, SFlareButton)
 						.Width(7)
-						.Text(LOCTEXT("AllowExternal", "Allow external orders"))
-						.HelpText(LOCTEXT("AllowExternalInfo", "Allow other companies to order ships here"))
+						.Text(this, &SFlareShipMenu::GetExternalordersText)
+						.HelpText(this, &SFlareShipMenu::GetExternalOrdersHelp)
 						.OnClicked(this, &SFlareShipMenu::OnToggleAllowExternalOrders)
 						.Visibility(this, &SFlareShipMenu::GetShipyardAllowExternalOrderVisibility)
 						.Toggle(true)
 					]
-				]
+
+					// Allow external
+					+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SAssignNew(AllowAutoConstructionButton, SFlareButton)
+							.Width(7)
+						.Text(this, &SFlareShipMenu::GetAutoConstructionText)
+						.HelpText(this, &SFlareShipMenu::GetAutoConstructionHelp)
+						.OnClicked(this, &SFlareShipMenu::OnToggleAllowAutoConstruction)
+						.Visibility(this, &SFlareShipMenu::GetAutoConstructionVisibility)
+						.Toggle(true)
+						]
+
+					
+]
 
 				// Shipyard list
 				+ SVerticalBox::Slot()
@@ -252,7 +265,6 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 				[
 					SAssignNew(FactoryList, SVerticalBox)
 				]
-
 				// Factory box
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -401,11 +413,23 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 
 				// Object list
 				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(OwnedList, SFlareList)
+						.MenuManager(MenuManager)
+						.ShowOwnedShips(true)
+					.Title(LOCTEXT("OwnedShips", "Owned ships"))
+					]
+
+				// Object list
+				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Left)
 				[
 					SAssignNew(ShipList, SFlareList)
 					.MenuManager(MenuManager)
+					.ShowOwnedShips(true)
 					.Title(LOCTEXT("DockedShips", "Docked ships"))
 				]
 			]
@@ -413,6 +437,59 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 	];
 }
 
+FText SFlareShipMenu::GetConfigurationText() const
+{
+	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	{
+		return LOCTEXT("CarrierConfiguration", "Carrier Configuration");
+	}
+
+	return LOCTEXT("ExternalInfoConfiguration", "External Info Configuration");
+
+}
+
+FText SFlareShipMenu::GetConfigurationHelp() const
+{
+	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	{
+		return LOCTEXT("CarrierConfigurationInfo", "Enable or disable specific ships which this carrier will build");
+	}
+
+	return LOCTEXT("ExternalInfoConfigurationInfo", "Enable or disable specific ships from being bought from other companies");
+}
+
+FText SFlareShipMenu::GetExternalordersText() const
+{
+	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	{
+		return LOCTEXT("AllowResupply", "Allow automatic ware resupply");
+	}
+
+	return LOCTEXT("AllowExternal", "Allow external orders");
+}
+
+FText SFlareShipMenu::GetExternalOrdersHelp() const
+{
+	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	{
+		return LOCTEXT("AllowResupplyInfo", "Allow this ship to automatically resupply from local sources");
+	}
+
+	return LOCTEXT("AllowExternalInfo", "Allow other companies to order ships here");
+}
+
+
+FText SFlareShipMenu::GetAutoConstructionText() const
+{
+//	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	return LOCTEXT("AllowAutoConstruction", "Allow automatic construction");
+}
+
+FText SFlareShipMenu::GetAutoConstructionHelp() const
+{
+//	if (TargetDescription&&TargetDescription->IsDroneCarrier)
+	return LOCTEXT("AllowAutoConstructionInfo", "Allow this ship to automatically queue up new build orders");
+}
 
 /*----------------------------------------------------
 	Interaction
@@ -424,6 +501,7 @@ void SFlareShipMenu::Setup()
 	SetVisibility(EVisibility::Collapsed);
 
 	TargetSpacecraft = NULL;
+	TargetDescription = NULL;
 	RCSDescription = NULL;
 	EngineDescription = NULL;
 }
@@ -438,6 +516,7 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	// Load data
 	CanEdit = IsEditable;
 	TargetSpacecraft = Target;
+	TargetDescription = TargetSpacecraft->GetDescription();
 	TargetSpacecraftData = Target->Save();
 	LoadTargetSpacecraft();
 
@@ -460,11 +539,11 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	{
 		DockSystem = TargetSpacecraft->GetActive()->GetDockingSystem();
 	}
-	
+
 	// Fill the docking list if it is visible
 	if (TargetSpacecraft->IsStation() && DockSystem && DockSystem->GetDockCount() > 0)
 	{
-		ShipList->SetVisibility(EVisibility::Visible);
+//		ShipList->SetVisibility(EVisibility::Visible);
 
 		TArray<AFlareSpacecraft*> DockedShips = DockSystem->GetDockedShips();
 		for (int32 i = 0; i < DockedShips.Num(); i++)
@@ -487,6 +566,30 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	{
 		ShipList->SetVisibility(EVisibility::Collapsed);
 	}
+
+	//fill the subordinates list if neccessary
+	TArray<UFlareSimulatedSpacecraft*> ShipChildren = TargetSpacecraft->GetShipChildren();
+	if (ShipChildren.Num() > 0)
+	{
+//		OwnedList->SetVisibility(EVisibility::Visible);
+
+		for (int32 i = 0; i < ShipChildren.Num(); i++)
+		{
+			UFlareSimulatedSpacecraft* Spacecraft = ShipChildren[i];
+			if (Spacecraft)
+			{
+				if (Spacecraft->GetDamageSystem()->IsAlive())
+				{
+					OwnedList->AddShip(ShipChildren[i]);
+				}
+			}
+			OwnedList->RefreshList();
+		}
+	}
+	else
+	{
+		OwnedList->SetVisibility(EVisibility::Collapsed);
+	}
 }
 
 void SFlareShipMenu::Exit()
@@ -497,12 +600,16 @@ void SFlareShipMenu::Exit()
 	ShipList->Reset();
 	ShipList->SetVisibility(EVisibility::Collapsed);
 
+	OwnedList->Reset();
+	OwnedList->SetVisibility(EVisibility::Collapsed);
+
 	ComplexList->ClearChildren();
 	ShipyardList->ClearChildren();
 	FactoryList->ClearChildren();
 	UpgradeBox->ClearChildren();
 
 	TargetSpacecraft = NULL;
+	TargetDescription = NULL;
 	RCSDescription = NULL;
 	EngineDescription = NULL;
 
@@ -524,18 +631,43 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 			ObjectActionMenu->SetSpacecraft(TargetSpacecraft);
 			ObjectActionMenu->Show();
 		}
+
 		ObjectName->SetVisibility(EVisibility::Visible);
 		ShipPartCustomizationBox->SetVisibility(EVisibility::Collapsed);
 		PartCharacteristicBox->SetVisibility(EVisibility::Collapsed);
 		ShipCustomizationBox->SetVisibility(EVisibility::Visible);
 		ShipList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 
-		// Renaming
-		bool CanRename = TargetSpacecraft->GetCompany()->IsPlayerCompany() && !TargetSpacecraft->IsStation() && !CanEdit;
-		RenameBox->SetVisibility(CanRename ? EVisibility::Visible : EVisibility::Collapsed);
-		if (CanRename)
+		OwnedList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+		FactoryList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+		ShipyardList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+
+		if (TargetSpacecraft->GetCompany()->IsPlayerCompany())
 		{
-			ShipName->SetText(TargetSpacecraft->GetNickName());
+			if (TargetSpacecraft->IsShipyard())
+			{
+				ExternalOrdersConfigurationButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+
+				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+				{
+					if (TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
+					{
+						AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+					}
+				}
+				else
+				{
+					AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+				}
+			}
+
+			// Renaming
+			bool CanRename = !TargetSpacecraft->IsStation() && !CanEdit;
+			RenameBox->SetVisibility(CanRename ? EVisibility::Visible : EVisibility::Collapsed);
+			if (CanRename)
+			{
+				ShipName->SetText(TargetSpacecraft->GetNickName());
+			}
 		}
 
 		// Get the description data
@@ -545,7 +677,19 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		{
 			// Name
 			FText Prefix = TargetSpacecraft->IsStation() ? LOCTEXT("Station", "Station") : LOCTEXT("Ship", "Ship");
-			ObjectName->SetText(TargetSpacecraft->IsStation() ? LOCTEXT("Station", "Station") : LOCTEXT("Ship", "Ship"));
+			FText Suffix;
+			FText NameText;
+
+			if (TargetSpacecraft->GetShipMaster())
+			{
+				Suffix = FText::Format(LOCTEXT("ShipMaster", "\n\nMaster ship: {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft->GetShipMaster()));
+			}
+
+			NameText = FText::Format(LOCTEXT("NameText", "{0}{1}"), Prefix, Suffix);
+			ObjectName->SetText(NameText);
+
+//			ObjectName->SetText(TargetSpacecraft->IsStation() ? LOCTEXT("Station", "Station") : LOCTEXT("Ship", "Ship"));
+
 			ObjectClassName->SetText(ShipDesc->Name);
 
 			// Description
@@ -637,12 +781,18 @@ void SFlareShipMenu::LoadPart(FName InternalName)
 	// Make the right box visible
 	ObjectActionMenu->Hide();
 	ShipList->SetVisibility(EVisibility::Collapsed);
+	OwnedList->SetVisibility(EVisibility::Collapsed);
 	ObjectName->SetVisibility(EVisibility::Collapsed);
 	ObjectDescription->SetVisibility(EVisibility::Visible);
 	ShipPartCustomizationBox->SetVisibility(EVisibility::Visible);
 	PartCharacteristicBox->SetVisibility(EVisibility::Visible);
 	ShipCustomizationBox->SetVisibility(EVisibility::Collapsed);
 	CantUpgradeReason->SetVisibility(EVisibility::Collapsed);
+
+	ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
+	AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
+	FactoryList->SetVisibility(EVisibility::Collapsed);
+	ShipyardList->SetVisibility(EVisibility::Collapsed);
 
 	// Boxes depending on edit mode
 	UpgradeTitle->SetVisibility(CanEdit ? EVisibility::Visible : EVisibility::Collapsed);
@@ -1227,6 +1377,7 @@ void SFlareShipMenu::UpdateShipyardList()
 		}
 
 		AllowExternalOrdersButton->SetActive(TargetSpacecraft->IsAllowExternalOrder());
+		AllowAutoConstructionButton->SetActive(TargetSpacecraft->IsAllowAutoConstruction());
 	}
 }
 
@@ -1234,6 +1385,11 @@ EVisibility SFlareShipMenu::GetShipyardVisibility() const
 {
 	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
 	{
+		if (TargetDescription && TargetDescription->IsDroneCarrier)
+		{
+			return EVisibility::Collapsed;
+		}
+
 		AFlarePlayerController* PC = MenuManager->GetPC();
 		if (PC)
 		{
@@ -1251,7 +1407,7 @@ EVisibility SFlareShipMenu::GetShipyardVisibility() const
 	return EVisibility::Collapsed;
 }
 
-EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderVisibility() const
+EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderConfigurationVisibility() const
 {
 	if (TargetSpacecraft && TargetSpacecraft->IsShipyard() && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
 	{
@@ -1261,6 +1417,33 @@ EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderVisibility() const
 	return EVisibility::Collapsed;
 }
 
+EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderVisibility() const
+{
+	if (TargetSpacecraft && TargetSpacecraft->IsShipyard() && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
+	{
+		if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+		{
+			if(TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
+			{
+				return EVisibility::Visible;
+			}
+			return EVisibility::Collapsed;
+		}
+		return EVisibility::Visible;
+	}
+
+	return EVisibility::Collapsed;
+}
+
+EVisibility SFlareShipMenu::GetAutoConstructionVisibility() const
+{
+	if (TargetSpacecraft && TargetSpacecraft->IsShipyard() && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany() && TargetSpacecraft->GetDescription()->IsDroneCarrier)
+	{
+		return EVisibility::Visible;
+	}
+
+	return EVisibility::Collapsed;
+}
 
 bool SFlareShipMenu::IsShipSSelectorDisabled() const
 {
@@ -1430,6 +1613,16 @@ void SFlareShipMenu::OnToggleAllowExternalOrders()
 		UpdateShipyard();
 	}
 }
+
+void SFlareShipMenu::OnToggleAllowAutoConstruction()
+{
+	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
+	{
+		bool NewStatus = AllowAutoConstructionButton->IsActive();
+		TargetSpacecraft->SetAllowAutoConstruction(NewStatus);
+	}
+}
+
 
 
 void SFlareShipMenu::OnOpenExternalConfig()

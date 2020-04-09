@@ -163,6 +163,7 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 
 		]
 	];
+	ClearCaches();
 }
 TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 {
@@ -201,6 +202,14 @@ TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 	return CurrentBox;
 }
 
+void SFlareSectorButton::ClearCaches()
+{
+	CachedFleets = false;
+	EnemyStations = -1;
+	EnemyShips = -1;
+//	FLOGV("Clear caches recieved in %s", *Sector->GetSectorName().ToString());
+}
+
 void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	// Tick parent
@@ -214,27 +223,27 @@ void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double In
 	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
 	{
 		DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+	}
+/*
 		bool FFWDACT = MenuManager->GetOrbitMenu()->GetFastForwardActive();
 		if(FFWDACT)
 		{
 			int32 TimeSince = MenuManager->GetOrbitMenu()->GetTimeSinceFFWD();
 			if (TimeSince <= 0)
 			{
-				CachedFleets = false;
-				EnemyStations = -1;
-				EnemyShips = -1;
+				ClearCaches();
 			}
 		}
 	}
-
+*/
 	// Draw fleet info
 
 	if (Sector)
 	{
-
 		bool ActiveSector = false;
 		if (MenuManager->GetGame()->GetActiveSector())
 		{
+			//TODO better way of getting active server comparison?
 			if (Sector->GetIdentifier() == MenuManager->GetGame()->GetActiveSector()->GetSimulatedSector()->GetIdentifier())
 			{
 				ActiveSector = true;
@@ -251,7 +260,6 @@ void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double In
 
 		if (DisplayMode == EFlareOrbitalMode::Fleets)
 		{
-			//TODO better way of getting active server comparison?
 			if(!CachedFleets || ActiveSector)
 			{
 				FleetBoxOne->ClearChildren();
@@ -404,7 +412,7 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 	SWidget::OnMouseEnter(MyGeometry, MouseEvent);
 
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-	if (MenuManager && Sector)
+	if (MenuManager && Sector && Sector->IsValidLowLevel())
 	{
 		FText SectorStatus = Sector->GetSectorFriendlynessText(PlayerCompany);
 		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), Sector->GetSectorName(), SectorStatus);

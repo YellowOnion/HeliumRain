@@ -69,6 +69,21 @@ bool UFlareFleet::IsTrading() const
 	return GetTradingShipCount() > 0;
 }
 
+bool UFlareFleet::IsAlive()
+{
+	if (GetShips().Num() > 0)
+	{
+		for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+		{
+			if (Ship->GetDamageSystem()->IsAlive())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 
 bool UFlareFleet::CanTravel(UFlareSimulatedSector* TargetSector)
 {
@@ -190,7 +205,18 @@ int32 UFlareFleet::GetTransportCapacity()
 
 uint32 UFlareFleet::GetShipCount() const
 {
-	return FleetShips.Num();
+//TODO: Add int in fleet that tracks fleet size, get rid of this loop
+	uint32 Count = 0;
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
+		{
+			continue;
+		}
+		Count++;
+	}
+	return Count;
+//	return FleetShips.Num();
 }
 
 uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
@@ -199,6 +225,11 @@ uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
 
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
+		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
+		{
+			continue;
+		}
+
 		if (FleetShips[ShipIndex]->GetDescription()->Size == Size && FleetShips[ShipIndex]->IsMilitary())
 		{
 			Count++;
@@ -314,19 +345,18 @@ void UFlareFleet::RemoveImmobilizedShips()
 
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
-		if (!FleetShips[ShipIndex]->CanTravel() && FleetShips[ShipIndex] != Game->GetPC()->GetPlayerShip())
+		UFlareSimulatedSpacecraft* RemovingShip = FleetShips[ShipIndex];
+		if (RemovingShip && !RemovingShip->CanTravel() && RemovingShip != Game->GetPC()->GetPlayerShip())
 		{
+			if (RemovingShip->GetShipMaster()&&RemovingShip->GetDescription()->IsDroneShip)
+			{
+				RemovingShip->TryMigrateDrones();
+//				RemovingShip->GetCompany()->DestroySpacecraft(RemovingShip);
+				continue;
+			}
 			ShipToRemove.Add(FleetShips[ShipIndex]);
 		}
 	}
-
-	RemoveShips(ShipToRemove);
-/*
-	for (int ShipIndex = 0; ShipIndex < ShipToRemove.Num(); ShipIndex++)
-	{
-		RemoveShip(ShipToRemove[ShipIndex]);
-	}
-*/
 }
 
 void UFlareFleet::SetFleetColor(FLinearColor Color)
@@ -405,7 +435,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 {
 	if (IsTraveling())
 	{
-		FLOGV("Fleet Disband fail: '%s' is travelling", *GetFleetName().ToString());
+		FLOGV("Fleet add fail: '%s' is travelling", *GetFleetName().ToString());
 		return;
 	}
 
@@ -422,7 +452,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	UFlareFleet* OldFleet = Ship->GetCurrentFleet();
 	if (OldFleet)
 	{
-		OldFleet->RemoveShip(Ship);
+		OldFleet->RemoveShip(Ship, false, false);
 	}
 
 	FleetData.ShipImmatriculations.Add(Ship->GetImmatriculation());
@@ -433,8 +463,15 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	{
 		GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("add-ship-to-fleet"));
 	}
-}
 
+	if (Ship->GetShipChildren().Num() > 0)
+	{
+		for (UFlareSimulatedSpacecraft* OwnedShips : Ship->GetShipChildren())
+		{
+			this->AddShip(OwnedShips);
+		}
+	}
+}
 
 void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 {
@@ -473,7 +510,7 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 	}
 }
 
-void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed)
+void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed, bool reformfleet)
 {
 	if (IsTraveling())
 	{
@@ -487,7 +524,10 @@ void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed)
 
 	if (!destroyed)
 	{
-		Ship->GetCompany()->CreateAutomaticFleet(Ship);
+		if (reformfleet)
+		{
+			Ship->GetCompany()->CreateAutomaticFleet(Ship);
+		}
 	}
 
 	if(FleetShips.Num() == 0)

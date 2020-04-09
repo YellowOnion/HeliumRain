@@ -261,10 +261,10 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		Companymoneymultiplier = 1.40;
 		Populationmultiplier = 1.30;
 	case 3: // Maturing
-		Companymoneymultiplier = 1.80;
+		Companymoneymultiplier = 1.60;
 		Populationmultiplier = 1.45;
 	case 4:  // Accomplished
-		Companymoneymultiplier = 2.20;
+		Companymoneymultiplier = 2.00;
 		Populationmultiplier = 1.60;
 	}
 
@@ -277,20 +277,20 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		case 0: // Normal
 			break;
 		case 1: // Hard
-			Companymoneymultiplier += 0.10;
+			Companymoneymultiplier += 0.05;
 			Playermoneymultiplier = 0.75;
 			break;
 		case 2: // Very Hard
-			Companymoneymultiplier += 0.20;
+			Companymoneymultiplier += 0.10;
 			Playermoneymultiplier = 0.50;
 			break;
 		case 3: // Expert
-			Companymoneymultiplier += 0.40;
+			Companymoneymultiplier += 0.20;
 			Playermoneymultiplier = 0.25;
 			StationLevelBonus += 1;
 			break;
 		case 4: // Unfair
-			Companymoneymultiplier += 0.60;
+			Companymoneymultiplier += 0.30;
 			Playermoneymultiplier = 0.10;
 			StationLevelBonus += 2;
 			break;
@@ -313,9 +313,14 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	Quantalium->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 	AxisSupplies->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 
+	FFlareStationSpawnParameters SpawnParameters;
 /*
 	//for testing
-//	PlayerCompany->GiveMoney(99999009, FFlareTransactionLogEntry::LogInitialMoney());
+	CreateShips("ship-carrier", PlayerCompany, FirstLight, 2);
+	CreateShips(ShipInvader, PlayerCompany, FirstLight, 1);
+	CreateShips(ShipDragon, PlayerCompany, FirstLight, 1);
+//	CreateStations("station-shipyard", PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	PlayerCompany->GiveMoney(99999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 	{
 		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
@@ -392,8 +397,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		BlueShores->GetPeople()->GiveBirth(1000 * Populationmultiplier);
 	}
 	
-	FFlareStationSpawnParameters SpawnParameters;
-
 	// The Depths (ice mines)
 	
 	CreateStations(StationIceMine, MiningSyndicate, TheDepths, 4,1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);

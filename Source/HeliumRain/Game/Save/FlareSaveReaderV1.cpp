@@ -436,12 +436,14 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	LoadFName(Object, "DynamicComponentStateIdentifier", &Data->DynamicComponentStateIdentifier);
 	LoadFloat(Object, "DynamicComponentStateProgress", &Data->DynamicComponentStateProgress);
 	LoadFName(Object, "HarpoonCompany", &Data->HarpoonCompany);
+	LoadFName(Object, "OwnerShipName", &Data->OwnerShipName);
 	LoadFName(Object, "AttachActorName", &Data->AttachActorName);
 	LoadFName(Object, "AttachComplexStationName", &Data->AttachComplexStationName);
 	LoadFName(Object, "AttachComplexConnectorName", &Data->AttachComplexConnectorName);
 
 		// LEGACY alpha 3
 	Data->IsTrading = false;
+	Data->TradingReason = 0;
 	Data->IsIntercepted = false;
 	Data->RefillStock = 0;
 	Data->RepairStock = 0;
@@ -449,8 +451,10 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	// LEGACY early access
 	Data->AllowExternalOrder = true;
+	Data->AllowAutoConstruction = true;
 	Data->DockedAngle = 0.f;
 
+	LoadInt32(Object, "TradingReason", &Data->TradingReason);
 	Object->TryGetBoolField(TEXT("IsTrading"), Data->IsTrading);
 	Object->TryGetBoolField(TEXT("IsIntercepted"), Data->IsIntercepted);
 	LoadFloat(Object, "RefillStock", &Data->RefillStock);
@@ -471,6 +475,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	Object->TryGetBoolField(TEXT("IsReserve"), Data->IsReserve);
 	Object->TryGetBoolField(TEXT("AllowExternalOrder"), Data->AllowExternalOrder);
+	Object->TryGetBoolField(TEXT("AllowAutoConstruction"), Data->AllowAutoConstruction);
 
 	LoadInt32(Object, "Level", &Data->Level);
 	if (Data->Level == 0)
@@ -594,12 +599,18 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	LoadFNameArray(Object, "SalesExcludedResources", &Data->SalesExcludedResources);
 
-	const TArray<TSharedPtr<FJsonValue>>* TempArray;
-	if (Object->TryGetArrayField("ShipyardOrderExternalConfig", TempArray))
+	const TArray<TSharedPtr<FJsonValue>>* ShipyardOrderExternalConfig;
+	if (Object->TryGetArrayField("ShipyardOrderExternalConfig", ShipyardOrderExternalConfig))
 	{
 		LoadFNameArray(Object, "ShipyardOrderExternalConfig", &Data->ShipyardOrderExternalConfig);
 	}
 
+	const TArray<TSharedPtr<FJsonValue>>* OwnedShipNames;
+	if (Object->TryGetArrayField("OwnedShipNames", OwnedShipNames))
+	{
+		LoadFNameArray(Object, "OwnedShipNames", &Data->OwnedShipNames);
+	}
+	
 	const TArray<TSharedPtr<FJsonValue>>* CapturePoints;
 	if(Object->TryGetArrayField("CapturePoints", CapturePoints))
 	{

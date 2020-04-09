@@ -255,65 +255,77 @@ void UFlareSpacecraftDamageSystem::UpdatePower()
 	}
 }
 
-void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed()
+void UFlareSpacecraftDamageSystem::SetDead()
+{
+	UFlareSimulatedSpacecraft* SimmedVersion = Spacecraft->GetParent();
+	if (SimmedVersion)
+	{
+		SimmedVersion->GetDamageSystem()->SetDead(true);
+	}
+}
+
+void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
 {
 	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 
 	// Lost player ship
-	if (Spacecraft == PC->GetShipPawn())
+	if (!SuppressMessages)
 	{
-		if (LastDamageCause.Spacecraft)
+		if (Spacecraft == PC->GetShipPawn())
 		{
-			if(LastDamageCause.Spacecraft->IsStation())
+			if (LastDamageCause.Spacecraft)
 			{
-				PC->Notify(
-					LOCTEXT("PlayerShipDestroyedByStation", "Your ship has been destroyed"),
-					FText::Format(LOCTEXT("ShipDestroyedByStationFormat", "Your ship was destroyed by a {0}-class station"), LastDamageCause.Spacecraft->GetDescription()->Name),
-					FName("ship-destroyed"),
-					EFlareNotification::NT_Military,
-					false,
-					EFlareMenu::MENU_Company);
+				if (LastDamageCause.Spacecraft->IsStation())
+				{
+					PC->Notify(
+						LOCTEXT("PlayerShipDestroyedByStation", "Your ship has been destroyed"),
+						FText::Format(LOCTEXT("ShipDestroyedByStationFormat", "Your ship was destroyed by a {0}-class station"), LastDamageCause.Spacecraft->GetDescription()->Name),
+						FName("ship-destroyed"),
+						EFlareNotification::NT_Military,
+						false,
+						EFlareMenu::MENU_Company);
+				}
+				else
+				{
+					PC->Notify(
+						LOCTEXT("PlayerShipDestroyedByShip", "Your ship has been destroyed"),
+						FText::Format(LOCTEXT("ShipDestroyedByShipFormat", "Your ship was destroyed by a {0}-class ship"), LastDamageCause.Spacecraft->GetDescription()->Name),
+						FName("ship-destroyed"),
+						EFlareNotification::NT_Military,
+						false,
+						EFlareMenu::MENU_Company);
+				}
+
 			}
 			else
 			{
 				PC->Notify(
-					LOCTEXT("PlayerShipDestroyedByShip", "Your ship has been destroyed"),
-					FText::Format(LOCTEXT("ShipDestroyedByShipFormat", "Your ship was destroyed by a {0}-class ship"), LastDamageCause.Spacecraft->GetDescription()->Name),
-					FName("ship-destroyed"),
+					LOCTEXT("PlayerShipCrashedDestroyed", "Crash"),
+					LOCTEXT("ShipCrashedDestroyedFormat", "You crashed your ship"),
+					FName("ship-crashed"),
 					EFlareNotification::NT_Military,
 					false,
 					EFlareMenu::MENU_Company);
 			}
+		}
 
-		}
-		else
+		// Lost company ship
+		else if (Spacecraft->GetParent()->GetCompany() == PC->GetCompany())
 		{
-			PC->Notify(
-				LOCTEXT("PlayerShipCrashedDestroyed", "Crash"),
-				LOCTEXT("ShipCrashedDestroyedFormat", "You crashed your ship"),
-				FName("ship-crashed"),
-				EFlareNotification::NT_Military,
-				false,
-				EFlareMenu::MENU_Company);
-		}
-	}
-
-	// Lost company ship
-	else if (Spacecraft->GetParent()->GetCompany() == PC->GetCompany())
-	{
-		if(!Spacecraft->IsStation())
-		{
-			PC->Notify(LOCTEXT("ShipDestroyedCompany", "You lost a ship"),
-				FText::Format(LOCTEXT("ShipDestroyedCompanyFormat", "Your {0}-class ship was destroyed"), Spacecraft->GetParent()->GetDescription()->Name),
-				FName("ship-killed"),
-				EFlareNotification::NT_Military);
-		}
-		else
-		{
-			PC->Notify(LOCTEXT("StationDestroyedCompany", "You lost a station"),
-				FText::Format(LOCTEXT("StationDestroyedCompanyFormat", "Your {0}-class station was destroyed"), Spacecraft->GetParent()->GetDescription()->Name),
-				FName("station-killed"),
-				EFlareNotification::NT_Military);
+			if (!Spacecraft->IsStation())
+			{
+				PC->Notify(LOCTEXT("ShipDestroyedCompany", "You lost a ship"),
+					FText::Format(LOCTEXT("ShipDestroyedCompanyFormat", "Your {0}-class ship was destroyed"), Spacecraft->GetParent()->GetDescription()->Name),
+					FName("ship-killed"),
+					EFlareNotification::NT_Military);
+			}
+			else
+			{
+				PC->Notify(LOCTEXT("StationDestroyedCompany", "You lost a station"),
+					FText::Format(LOCTEXT("StationDestroyedCompanyFormat", "Your {0}-class station was destroyed"), Spacecraft->GetParent()->GetDescription()->Name),
+					FName("station-killed"),
+					EFlareNotification::NT_Military);
+			}
 		}
 	}
 
@@ -371,6 +383,23 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed()
 				EFlareNotification::NT_Military);
 
 			PC->SetAchievementProgression("ACHIEVEMENT_BETRAYAL", 1);
+		}
+	}
+
+	if (Spacecraft->GetParent())
+	{
+		TArray<UFlareSimulatedSpacecraft*> StepChildren = Spacecraft->GetParent()->GetShipChildren();
+		if (StepChildren.Num() > 0)
+		{
+			//migrate any subordinate ships (drones)
+			for (UFlareSimulatedSpacecraft* OwnedShips : StepChildren)
+			{
+				if (OwnedShips->GetShipMaster() == Spacecraft->GetParent())
+				{
+					OwnedShips->TryMigrateDrones();
+//					OwnedShips->GetDamageSystem()->SetDead(true);
+				}
+			}
 		}
 	}
 }

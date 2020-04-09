@@ -28,6 +28,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 	FleetList = InArgs._FleetList;
 	StationList = InArgs._StationList;
 	WidthAdjuster = InArgs._WidthAdjuster;
+	ShowOwnedShips = InArgs._ShowOwnedShips;
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
@@ -458,6 +459,11 @@ void SFlareList::RefreshList(bool DisableSort)
 				bool IsStation = IsStation = Object->SpacecraftPtr->IsStation();
 				bool IsMilitary = Object->SpacecraftPtr->IsMilitary();
 
+				if (!ShowOwnedShips && Object->SpacecraftPtr->GetShipMaster() != NULL)
+				{
+					continue;
+				}
+
 				if ((IsStation && ShowStationsButton->IsActive())
 					|| (IsMilitary && ShowMilitaryButton->IsActive())
 					|| (!IsStation && !IsMilitary && ShowFreightersButton->IsActive()))
@@ -465,7 +471,7 @@ void SFlareList::RefreshList(bool DisableSort)
 					UFlareFleet* ObjectFleet = Object->SpacecraftPtr->GetCurrentFleet();
 
 					// Create a new fleet pointer if we're grouping by fleets
-					if (GroupFleetsButton->IsActive() && !IsStation)
+					if (GroupFleetsButton->IsActive() && !IsStation && ObjectFleet->IsAlive())
 					{
 						if (FilteredFleets.Find(ObjectFleet) == INDEX_NONE)
 						{
@@ -486,7 +492,7 @@ void SFlareList::RefreshList(bool DisableSort)
 				UFlareFleet* ObjectFleet = Object->FleetPtr;
 				UFlareFleet* FleetToEdit = nullptr;
 
-				if (ObjectFleet && ObjectFleet->GetShips().Num())
+				if (ObjectFleet && ObjectFleet->IsAlive())
 				{
 					if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Fleet)
 					{
@@ -732,7 +738,6 @@ void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectI
 				StaticCastSharedRef<SFlareFleetInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(true);
 			}
 		}
-
 		PreviousWidget->SetSelected(false);
 	}
 

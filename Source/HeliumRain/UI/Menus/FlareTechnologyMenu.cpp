@@ -262,10 +262,26 @@ void SFlareTechnologyMenu::Enter()
 	// List all technologies
 	SelectedTechnology = NULL;
 	TArray<const FFlareTechnologyDescription*> Technologies;
-	for (auto& Entry : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
+//	for (auto& Entry : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
+	for (UFlareTechnologyCatalogEntry* Technology : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
 	{
-		Technologies.Add(&Entry->Data);
+		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
+		if (TechnologyData->ResearchableCompany.Num() > 0)
+		{
+			//buildable company has something, check if shipyard owning faction is allowed to build this
+			if (!TechnologyData->ResearchableCompany.Contains(FName("PLAYER")))
+			{
+				continue;
+			}
+		}
+		if (TechnologyData->AIOnly)
+		{
+			continue;
+		}
+
+		Technologies.Add(&Technology->Data);
 	}
+
 	Technologies.Sort(FSortByLevelCategoryAndCost());
 
 	// Add technologies to the tree

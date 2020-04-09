@@ -375,18 +375,16 @@ void SFlareCompanyInfo::SetCompany(UFlareCompany* NewCompany)
 
 FText SFlareCompanyInfo::GetCompanyName() const
 {
-	FText Result;
-
 	if (Company)
 	{
 		const FFlareCompanyDescription* Desc = Company->GetDescription();
 		if (Desc)
 		{
-			Result = Desc->Name;
+			return Desc->Name;
 		}
 	}
 
-	return Result;
+	return FText();
 }
 
 FText SFlareCompanyInfo::GetCompanyCombatValue() const

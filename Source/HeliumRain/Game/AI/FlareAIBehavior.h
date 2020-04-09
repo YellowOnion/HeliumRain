@@ -23,7 +23,7 @@ public:
 	/** Load the company behavior */
 	virtual void Load(UFlareCompany* ParentCompany);
 
-	virtual void Simulate(TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
+	virtual void Simulate();
 
 	void UpdateDiplomacy(bool GlobalWar);
 

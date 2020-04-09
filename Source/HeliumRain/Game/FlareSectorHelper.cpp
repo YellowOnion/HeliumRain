@@ -313,8 +313,7 @@ int64 SectorHelper::GetBuyResourcePrice(UFlareSimulatedSector* Sector, FFlareRes
 	return MaxPrice;
 }
 
-
-int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice, UFlareTradeRoute* TradeRoute, bool IsDonation)
+int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice, UFlareTradeRoute* TradeRoute, bool IsDonation, int32 TradeReason)
 {
 	FText Unused;
 
@@ -418,12 +417,12 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 
 		if (SourceSpacecraft->GetCurrentFleet() != PlayerFleet && !SourceSpacecraft->IsStation())
 		{
-			SourceSpacecraft->SetTrading(true);
+			SourceSpacecraft->SetTrading(true, TradeReason);
 		}
 
 		if (DestinationSpacecraft->GetCurrentFleet() != PlayerFleet && !DestinationSpacecraft->IsStation())
 		{
-			DestinationSpacecraft->SetTrading(true);
+			DestinationSpacecraft->SetTrading(true, TradeReason);
 		}
 
 		if(PC->GetPlayerShip() == SourceSpacecraft || PC->GetPlayerShip() == DestinationSpacecraft)

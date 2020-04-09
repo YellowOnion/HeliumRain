@@ -20,7 +20,7 @@
 
 #include "AI/FlareCompanyAI.h"
 #include "AI/FlareAIBehavior.h"
-
+#include "../Game/FlareSectorHelper.h"
 
 #define LOCTEXT_NAMESPACE "FlareCompany"
 
@@ -223,10 +223,230 @@ FFlareCompanySave* UFlareCompany::Save()
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues)
+void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 {
-	CompanyAI->Simulate(GlobalWar, TotalReservedResources, SortedCompanyValues, SortedCompanyCombatValues);
+	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
+
+	AFlarePlayerController* PC = Cast<AFlarePlayerController>(Game->GetWorld()->GetFirstPlayerController());
+
+	TArray<UFlareSimulatedSpacecraft*> CompanyCarriersLocal = CompanyCarriers;//this->GetCompanyCarriers();
+
+	//	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	while (CompanyCarriersLocal.Num())
+	{
+		int32 Index = FMath::RandRange(0, CompanyCarriersLocal.Num() - 1);
+		UFlareSimulatedSpacecraft* Ship = CompanyCarriersLocal[Index];
+
+		if (!Ship->GetDamageSystem()->IsAlive())
+		{
+			CompanyCarriersLocal.RemoveAt(Index);
+			continue;
+		}
+
+		FFlareSpacecraftSave& ShipData = Ship->GetData();
+		int32 CurrentCount = Ship->GetShipChildren().Num();
+		TArray<FFlareResourceDescription*> InputResources;
+		TArray<UFlareFactory*> Shipyards = Ship->GetShipyardFactories();
+
+		int32 ActiveShipyards = 1;
+		for (UFlareFactory* Shipyard : Shipyards)
+		{
+			if (Shipyard->IsProducing())
+			{
+				ActiveShipyards++;
+			}
+			for (int32 ResourceIndex = 0; ResourceIndex < Shipyard->GetInputResourcesCount(); ResourceIndex++)
+			{
+				FFlareResourceDescription* Resource = Shipyard->GetInputResource(ResourceIndex);
+				InputResources.AddUnique(Resource);
+			}
+
+		}
+
+		if (Ship->IsAllowAutoConstruction())
+			// automatic construction of new ships
+		{
+			bool CheckingOrders = true;
+			while (1)
+			{
+				if (CurrentCount + ActiveShipyards > Ship->GetDescription()->DroneMaximum)
+				{
+					break;
+				}
+
+				FName SelectedName;
+				if (ShipData.ShipyardOrderExternalConfig.Num() > 0)
+				{
+					int32 RandomIndex = FMath::RandRange(0, ShipData.ShipyardOrderExternalConfig.Num() - 1);
+					SelectedName = ShipData.ShipyardOrderExternalConfig[RandomIndex];
+				}
+				else
+				{
+					break;
+				}
+
+				if (!Ship->ShipyardOrderShip(this, SelectedName, false))
+				{
+					break;
+				}
+			}
+		}
+
+		if (Ship->IsAllowExternalOrder() && (this == this->GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != this->GetGame()->GetPC()->GetCompany())
+// auto resupply, player needs auto trade technology for it to work, AI Company main method is to "accidently" resupply the carrier, haphazardly with whatever is at hand locally.
+		{
+			UFlareFleet* Fleet = Ship->GetCurrentFleet();
+			if (Fleet && !Fleet->IsTraveling())
+			{
+				UFlareSimulatedSector* LocalSector = Fleet->GetCurrentSector();
+				if (LocalSector && !LocalSector->GetSectorBattleState(Fleet->GetFleetCompany()).HasDanger)
+				{
+					FFlareResourceDescription* LowestResource = NULL;
+					int32 LowestResourceQuantity = 0;
+					int32 MaximumCargoSlotCapacity = Ship->GetActiveCargoBay()->GetSlotCapacity();
+
+					for (int32 CargoIndex = 0; CargoIndex < InputResources.Num(); CargoIndex++)
+					{
+						FFlareResourceDescription* Resource = InputResources[CargoIndex];
+						bool FoundLocal = false;
+
+						for (UFlareSimulatedSpacecraft* BuyingStation : LocalSector->GetSectorStations())
+						{
+							if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(this))
+							{
+								continue;
+							}
+
+							if (BuyingStation->GetActiveCargoBay()->WantSell(Resource, this, true))
+							{
+								FoundLocal = true;
+								break;
+							}
+						}
+
+						if (FoundLocal)
+						{
+							int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, this);
+							if ((!LowestResource || TakenResourceSpace < LowestResourceQuantity) && TakenResourceSpace < MaximumCargoSlotCapacity)
+							{
+								LowestResource = Resource;
+								LowestResourceQuantity = TakenResourceSpace;
+							}
+						}
+					}
+
+					if (LowestResource)
+					{
+						UFlareSimulatedSpacecraft* BestStation = NULL;
+						int32 BestStationQuantity = 0;
+
+						UFlareSimulatedSpacecraft* BestCompanyStation = NULL;
+						int32 BestStationCompanyQuantity = 0;
+
+						for (UFlareSimulatedSpacecraft* BuyingStation : LocalSector->GetSectorStations())
+						{
+							if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(this))
+							{
+								continue;
+							}
+
+							if (BuyingStation->GetActiveCargoBay()->WantSell(LowestResource, this, true))
+							{
+								int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
+								int32 AvailableResourceSpace = MaximumCargoSlotCapacity - TakenResourceSpace;//Ship->GetActiveCargoBay()->GetFreeSpaceForResource(LowestResource, this);
+								int32 Stock = BuyingStation->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
+								if (Stock > AvailableResourceSpace)
+								{
+									Stock = AvailableResourceSpace;
+								}
+
+								if (BuyingStation->GetCompany() == this)
+								{
+									if (!BestCompanyStation || Stock > BestStationCompanyQuantity)
+									{
+										BestCompanyStation = BuyingStation;
+										BestStationCompanyQuantity = Stock;
+										//								FLOGV("Found Company station");
+									}
+								}
+								else if (!BestStation || Stock > BestStationQuantity)
+								{
+									BestStation = BuyingStation;
+									BestStationQuantity = Stock;
+									//							FLOGV("Found Best Station");
+								}
+							}
+						}
+
+						//				FLOGV("After main loop...checking statements");
+						if (BestCompanyStation && !BestStation && BestStationCompanyQuantity > 0)
+						{
+							//					FLOGV("Dealing to company station");
+							int32 Quantity = SectorHelper::Trade(BestCompanyStation,
+								Ship,
+								LowestResource,
+								BestStationCompanyQuantity,
+								0,
+								NULL,
+								false,
+								1);
+						}
+						else if (BestCompanyStation && BestStation)
+						{
+							//					FLOGV("Dealing to...");
+							int32 ResourcePrice = LocalSector->GetTransfertResourcePrice(BestStation, Ship, LowestResource);
+							int32 MaxAffordableQuantity = FMath::Max(0, int32(this->GetMoney() / ResourcePrice));
+							BestStationQuantity = FMath::Min(BestStationQuantity, MaxAffordableQuantity);
+
+							float Ratio = BestStationCompanyQuantity / BestStationQuantity;
+
+							if (Ratio >= 0.50f)
+							{
+								//						FLOGV("Company");
+														//trade company
+								int32 Quantity = SectorHelper::Trade(BestCompanyStation,
+									Ship,
+									LowestResource,
+									BestStationCompanyQuantity,
+									0,
+									NULL,
+									false,
+									1);
+							}
+							else
+							{
+								//						FLOGV("Other");
+														//trade other
+								int32 Quantity = SectorHelper::Trade(BestStation,
+									Ship,
+									LowestResource,
+									BestStationQuantity,
+									0,
+									NULL,
+									false,
+									1);
+							}
+						}
+						else if (BestStation && BestStationQuantity > 0)
+						{
+							//					FLOGV("Dealing to best station");
+							int32 Quantity = SectorHelper::Trade(BestStation,
+								Ship,
+								LowestResource,
+								BestStationQuantity,
+								0,
+								NULL,
+								false,
+								1);
+						}
+					}
+				}
+			}
+		}
+		CompanyCarriersLocal.RemoveAt(Index);
+	}
 }
+
 void UFlareCompany::TickAI()
 {
 	CompanyAI->Tick();
@@ -673,6 +893,11 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 			}
 			else
 			{
+				if (Spacecraft->GetDescription()->IsDroneCarrier)
+				{
+					CompanyCarriers.AddUnique((Spacecraft));
+				}
+
 				CompanyShips.AddUnique((Spacecraft));
 			}
 
@@ -709,6 +934,27 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	CompanyStations.Remove(Spacecraft);
 	CompanyChildStations.Remove(Spacecraft);
 	CompanyShips.Remove(Spacecraft);
+
+	if (Spacecraft->GetDescription()->IsDroneCarrier)
+	{
+		CompanyCarriers.Remove(Spacecraft);
+	}
+
+	TArray<UFlareSimulatedSpacecraft*> StepChildren = Spacecraft->GetShipChildren();
+	if (StepChildren.Num() > 0)
+	{
+		//try to migrate any subordinate ships (drones)
+		for (UFlareSimulatedSpacecraft* OwnedShips : StepChildren)
+		{
+			if (OwnedShips->GetShipMaster() == Spacecraft)
+			{
+ 				OwnedShips->TryMigrateDrones();
+//				DestroySpacecraft(OwnedShips);
+			}
+		}
+		StepChildren.Empty();
+	}
+
 	if (Spacecraft->GetCurrentFleet())
 	{
 		Spacecraft->GetCurrentFleet()->RemoveShip(Spacecraft, true);
@@ -721,7 +967,6 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	GetGame()->GetGameWorld()->ClearFactories(Spacecraft);
 	CompanyAI->DestroySpacecraft(Spacecraft);
 	Spacecraft->SetDestroyed(true);
-
 	CompanyDestroyedSpacecrafts.Add(Spacecraft);
 }
 

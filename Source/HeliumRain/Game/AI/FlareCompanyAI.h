@@ -53,7 +53,6 @@ struct DefenseSector
 	}
 };
 
-
 UCLASS()
 class HELIUMRAIN_API UFlareCompanyAI : public UObject
 {
@@ -75,7 +74,7 @@ public:
 	virtual void Tick();
 
 	/** Simulate a day */
-	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
+	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();

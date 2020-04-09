@@ -74,12 +74,18 @@ void UFlareSimulatedSpacecraftDamageSystem::TickSystem()
 {
 }
 
+void UFlareSimulatedSpacecraftDamageSystem::SetDead(bool Set)
+{
+	IsDeadOverride = Set;
+}
+
 bool UFlareSimulatedSpacecraftDamageSystem::IsAlive() const
 {
 	if(Spacecraft->GetDescription()->IsSubstation)
 	{
 		return true;
 	}
+	if (IsDeadOverride) return false;
 	return GetSubsystemHealth(EFlareSubsystem::SYS_LifeSupport) > 0;
 }
 

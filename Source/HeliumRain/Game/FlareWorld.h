@@ -205,6 +205,8 @@ protected:
 	AFlareGame*                          Game;
 
 	bool WorldMoneyReferenceInit;
+	TArray<UFlareCompany*> SortedCompanyValues;
+	TArray<UFlareCompany*> SortedCompanyCombatValues;
 
 public:
 	int64 WorldMoneyReference;
@@ -242,6 +244,16 @@ public:
 	inline TArray<UFlareSimulatedSpacecraft*>& GetShipyards()
 	{
 		return Shipyards;
+	}
+
+	inline TArray<UFlareCompany*>& GetSortedCompanyValues()
+	{
+		return SortedCompanyValues;
+	}
+
+	inline TArray<UFlareCompany*>& GetSortedCompanyCombatValues()
+	{
+		return SortedCompanyCombatValues;
 	}
 
 	inline TArray<UFlareTravel*>& GetTravels()

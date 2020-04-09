@@ -163,6 +163,16 @@ struct FFlareTechnologyDescription
 
 	UPROPERTY(EditAnywhere, Category = Content)
 	TEnumAsByte<EFlareTechnologyCategory::Type> Category;
+
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool PlayerOnly;
+
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool AIOnly;
+
+	/** Companies that can unlock this research. Company ShortName, or PLAYER*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> ResearchableCompany;
+
 };
 
 /** Scannable description */
@@ -453,6 +463,9 @@ struct FFlareCompanyDescription
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 CustomizationPatternIndex;
 
+	/** Passive daily research generating ability for this company */
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 PassiveResearchGeneration;
 };
 
 /** Incoming event description */

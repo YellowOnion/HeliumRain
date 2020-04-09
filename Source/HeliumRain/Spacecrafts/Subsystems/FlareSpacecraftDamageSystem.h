@@ -72,7 +72,7 @@ protected:
 
 
 	/** The ship was destroyed */
-	void OnSpacecraftDestroyed();
+	void OnSpacecraftDestroyed(bool SuppressMessages=false);
 
 	virtual void CheckRecovery();
 
@@ -105,4 +105,7 @@ public:
 	{
 		return TimeSinceLastExternalDamage;
 	}
+
+	/** Force the ship to die*/
+	void SetDead();
 };

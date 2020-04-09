@@ -90,7 +90,7 @@ public:
 
 	int32 InterceptShips();
 
-	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed = false);
+	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed = false, bool reformfleet = true);
 
 	/**Remove multiple ships simultaniously, moving them all to the same fleet*/
 	virtual void RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove);
@@ -105,6 +105,10 @@ public:
 	bool IsTraveling() const;
 
 	bool IsTrading() const;
+
+	//is at least one ship in the fleet alive?
+	bool IsAlive();
+
 
 	/** Tell us if we can travel */
 	bool CanTravel(UFlareSimulatedSector* TargetSector = nullptr);
@@ -161,9 +165,7 @@ protected:
 	UFlareTravel*                          CurrentTravel;
 	UFlareTradeRoute*                      CurrentTradeRoute;
 
-
 public:
-
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/

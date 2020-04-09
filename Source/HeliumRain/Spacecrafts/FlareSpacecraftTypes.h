@@ -484,6 +484,27 @@ namespace EFlareBuildConstraint
 	};
 }
 
+UENUM()
+namespace CompanyShortNames
+{
+	enum Type
+	{
+		PLAYER,
+		MSY,
+		HFR,
+		SUN,
+		GWS,
+		ION,
+		UFC,
+		PIR,
+		NHW,
+		AXS,
+		BRM,
+		IFO,
+		QNT
+	};
+}
+
 /** Factory input or output resource */
 USTRUCT()
 struct FFlareFactoryResource
@@ -652,6 +673,24 @@ struct FFlareSpacecraftDescription
 	/** Build constraints for stations */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<TEnumAsByte<EFlareBuildConstraint::Type>> BuildConstraint;
+
+	/** Companies that can buy this ship. Company ShortName, or PLAYER*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> BuyableCompany;
+	
+	/** Companies that can build this ship. Company ShortName, or PLAYER*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> BuildableCompany;
+
+	/** Ships and Stations that can build this ship*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> BuildableShip;
+
+	/** Drone carriers require at least one shipyard factory to be able to build their ships*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneCarrier;
+
+	/** Maximum amount of drones the carrier can have built at once*/
+	UPROPERTY(EditAnywhere, Category = Content) int32 DroneMaximum;
+
+	/** If this is a drone it is not buildable via shipyards and has a different method*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
 
 	/** Size of the ship components */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -874,6 +913,9 @@ struct FFlareSpacecraftSave
 	/** Is a trade in progress */
 	bool IsTrading;
 
+	/** Simple number to represent the reason for trading. A value of 1 is reserved for carriers automatically trading for their resources*/
+	int32 TradingReason;
+
 	/** Is ship intercepted */
 	bool IsIntercepted;
 
@@ -909,6 +951,9 @@ struct FFlareSpacecraftSave
 	/** Allow other company to order ships */
 	bool AllowExternalOrder;
 
+	/* Allow autoconstruction capability**/
+	bool AllowAutoConstruction;
+
 	/** List of ship order */
 	TArray<FFlareShipyardOrderSave> ShipyardOrderQueue;
 
@@ -918,6 +963,14 @@ struct FFlareSpacecraftSave
 	//	/** List of ship order */
 	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FName> ShipyardOrderExternalConfig;
+
+	/** Ship that is our owner (IE for carriers)*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName OwnerShipName;
+
+	/** Ships that are our subordinates (IE for carriers)*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FName> OwnedShipNames;
 };
 
 struct SpacecraftHelper

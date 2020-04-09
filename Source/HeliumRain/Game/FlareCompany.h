@@ -52,7 +52,7 @@ public:
 		Gameplay
 	----------------------------------------------------*/
 
-	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources, TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues);
+	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources);
 
 	virtual void TickAI();
 
@@ -245,6 +245,7 @@ protected:
 	TMap<FName, FFlareTechnologyDescription*> UnlockedTechnologies;
 
 	TArray<UFlareCompany*>					OtherCompaniesCache;
+	TArray<UFlareSimulatedSpacecraft*>      CompanyCarriers;
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
@@ -352,6 +353,11 @@ public:
 		return CompanyFleets;
 	}
 
+	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyCarriers()
+	{
+		return CompanyCarriers;
+	}
+	
 	inline TArray<UFlareTradeRoute*>& GetCompanyTradeRoutes()
 	{
 		return CompanyTradeRoutes;

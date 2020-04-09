@@ -373,15 +373,18 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetStringField("DynamicComponentStateIdentifier", Data->DynamicComponentStateIdentifier.ToString());
 	SaveFloat(JsonObject,"DynamicComponentStateProgress", Data->DynamicComponentStateProgress);
 	JsonObject->SetStringField("Level", FormatInt32(Data->Level));
+	JsonObject->SetStringField("TradingReason", FormatInt32(Data->TradingReason));
 	JsonObject->SetBoolField("IsTrading", Data->IsTrading);
 	JsonObject->SetBoolField("IsIntercepted", Data->IsIntercepted);
 	SaveFloat(JsonObject,"RefillStock", Data->RefillStock);
 	SaveFloat(JsonObject,"RepairStock", Data->RepairStock);
 	JsonObject->SetBoolField("IsReserve", Data->IsReserve);
 	JsonObject->SetBoolField("AllowExternalOrder", Data->AllowExternalOrder);
+	JsonObject->SetBoolField("AllowAutoConstruction", Data->AllowAutoConstruction);
 	JsonObject->SetObjectField("Pilot", SavePilot(&Data->Pilot));
 	JsonObject->SetObjectField("Asteroid", SaveAsteroid(&Data->AsteroidData));
 	JsonObject->SetStringField("HarpoonCompany", Data->HarpoonCompany.ToString());
+	JsonObject->SetStringField("OwnerShipName", Data->OwnerShipName.ToString());
 	JsonObject->SetStringField("AttachActorName", Data->AttachActorName.ToString());
 	JsonObject->SetStringField("AttachComplexStationName", Data->AttachComplexStationName.ToString());
 	JsonObject->SetStringField("AttachComplexConnectorName", Data->AttachComplexConnectorName.ToString());
@@ -441,6 +444,14 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 		ShipyardOrderExternalConfig.Add(MakeShareable(new FJsonValueString(Data->ShipyardOrderExternalConfig[i].ToString())));
 	}
 	JsonObject->SetArrayField("ShipyardOrderExternalConfig", ShipyardOrderExternalConfig);
+
+	TArray< TSharedPtr<FJsonValue> > OwnedShipNames;
+	OwnedShipNames.Reserve(Data->OwnedShipNames.Num());
+	for (int i = 0; i < Data->OwnedShipNames.Num(); i++)
+	{
+		OwnedShipNames.Add(MakeShareable(new FJsonValueString(Data->OwnedShipNames[i].ToString())));
+	}
+	JsonObject->SetArrayField("OwnedShipNames", OwnedShipNames);
 
 	TArray< TSharedPtr<FJsonValue> > ConnectedStations;
 	ConnectedStations.Reserve(Data->ConnectedStations.Num());

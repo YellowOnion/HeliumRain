@@ -372,6 +372,7 @@ void SFlareOrbitalMenu::Tick(const FGeometry& AllottedGeometry, const double InC
 			{
 				MenuManager->GetGame()->GetGameWorld()->FastForward();
 				TimeSinceFastForward = 0;
+				ClearSectorButtonCaches();
 			}
 
 			// Stop request
@@ -453,6 +454,7 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 	KnownSectors.Sort(FSortByAltitudeAndPhase());
 
 	// Add the sectors
+	SectorButtons.Reserve(KnownSectors.Num());
 	for (int32 SectorIndex = 0; SectorIndex < KnownSectors.Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = KnownSectors[SectorIndex];
@@ -462,12 +464,16 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 		.Altitude(Sector->GetOrbitParameters()->Altitude)
 		.Phase(Sector->GetOrbitParameters()->Phase)
 		[
-			SNew(SFlareSectorButton)
+			SAssignNew(CurrentSectorButton, SFlareSectorButton)
+//			SNew(SFlareSectorButton)
 			.Sector(Sector)
 			.PlayerCompany(MenuManager->GetPC()->GetCompany())
 			.OnClicked(this, &SFlareOrbitalMenu::OnOpenSector, IndexPtr)
 		];
+		SectorButtons.AddUnique(CurrentSectorButton);
 	}
+	CurrentSectorButton = NULL;
+	ClearSectorButtonCaches();
 }
 
 EFlareOrbitalMode::Type SFlareOrbitalMenu::GetDisplayMode() const
@@ -494,6 +500,22 @@ bool SFlareOrbitalMenu::IsCurrentDisplayMode(EFlareOrbitalMode::Type Mode) const
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
+
+void SFlareOrbitalMenu::ClearSectorButtonCaches()
+{
+//	FLOGV("Orbital Buttons");
+	for (TSharedPtr<SFlareSectorButton> Button : SectorButtons)
+	{
+		if (Button.IsValid())
+		{
+			Button->ClearCaches();
+		}
+		else
+		{
+			SectorButtons.RemoveSwap(Button);
+		}
+	}
+}
 
 FText SFlareOrbitalMenu::GetFastForwardText() const
 {
@@ -717,6 +739,7 @@ void SFlareOrbitalMenu::OnFastForwardConfirmed(bool Automatic)
 	else
 	{
 		MenuManager->GetPC()->SimulateConfirmed();
+		ClearSectorButtonCaches();
 	}
 }
 

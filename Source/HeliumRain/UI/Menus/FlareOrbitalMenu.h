@@ -4,6 +4,7 @@
 #include "../Components/FlarePlanetaryBox.h"
 #include "../../Game/FlareSimulatedSector.h"
 #include "../Components/FlareButton.h"
+#include "../Components/FlareSectorButton.h"
 #include "../Components/FlareTradeRouteInfo.h"
 
 class AFlareMenuManager;
@@ -71,6 +72,8 @@ public:
 
 	/** Set Shipyard Open var */
 	void SetShipyardOpen(bool ShipyardOpen);
+
+	void ClearSectorButtonCaches();
 
 protected:
 
@@ -164,4 +167,7 @@ protected:
 	TSharedPtr<SFlarePlanetaryBox>              AdenaBox;
 	TSharedPtr<SFlareButton>                    FastForwardAuto;
 	TSharedPtr<SFlareTradeRouteInfo>            TradeRouteInfo;
+
+	TSharedPtr<SFlareSectorButton>              CurrentSectorButton;
+	TArray<TSharedPtr<SFlareSectorButton>>		SectorButtons;
 };

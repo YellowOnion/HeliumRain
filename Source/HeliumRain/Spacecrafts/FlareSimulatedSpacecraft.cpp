@@ -19,6 +19,7 @@
 #include "../Data/FlareSpacecraftComponentsCatalog.h"
 
 #include "Subsystems/FlareSpacecraftDockingSystem.h"
+#include "Subsystems/FlareSpacecraftDamageSystem.h"
 #include "Subsystems/FlareSimulatedSpacecraftDamageSystem.h"
 #include "Subsystems/FlareSimulatedSpacecraftWeaponsSystem.h"
 
@@ -275,8 +276,60 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 			for (auto& CatalogEntry : Game->GetSpacecraftCatalog()->ShipCatalog)
 			{
 				const FFlareSpacecraftDescription* Description = &CatalogEntry->Data;
-				SpacecraftData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+				if (!Description->IsDroneShip)
+				{
+					if (Description->BuildableShip.Num())
+					{
+						if (Description->BuildableShip.Contains(this->GetDescription()->Identifier))
+						{
+							SpacecraftData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+						}
+					}
+					else
+					{
+						SpacecraftData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+					}
+				}
 			}
+		}
+	}
+	else if (SpacecraftDescription->IsDroneCarrier)
+	{
+		if (SpacecraftData.ShipyardOrderExternalConfig.Num() <= 0)
+			//if num below 0 it's probably from an old savegame
+		{
+			SpacecraftData.ShipyardOrderExternalConfig.Reserve(Game->GetSpacecraftCatalog()->ShipCatalog.Num());
+			for (auto& CatalogEntry : Game->GetSpacecraftCatalog()->ShipCatalog)
+			{
+				const FFlareSpacecraftDescription* Description = &CatalogEntry->Data;
+				if (Description->IsDroneShip)
+				{
+					SpacecraftData.ShipyardOrderExternalConfig.Add(Description->Identifier);
+				}
+			}
+		}
+	}
+
+	if (SpacecraftData.OwnedShipNames.Num() > 0)
+	{
+		for (FName OwnedShips : SpacecraftData.OwnedShipNames)
+		{
+			UFlareSimulatedSpacecraft* ChildShip = Company->FindSpacecraft(OwnedShips);
+			if (ChildShip)
+			{
+				AddShipChildren(ChildShip);
+			}
+		}
+	}
+
+	//adding to "master" shipchildren too, depends on load order. subordinates probably almost always load after the master ship
+
+	if (SpacecraftData.OwnerShipName != NAME_None)
+	{
+		UFlareSimulatedSpacecraft* OwnerShip = Company->FindSpacecraft(SpacecraftData.OwnerShipName);
+		if (OwnerShip)
+		{
+			OwnerShip->AddShipChildren(this);
 		}
 	}
 
@@ -440,6 +493,49 @@ void UFlareSimulatedSpacecraft::SetCurrentSector(UFlareSimulatedSector* Sector)
 	}
 }
 
+void UFlareSimulatedSpacecraft::TryMigrateDrones()
+{
+	UFlareSimulatedSector* CurrentSector = this->GetCurrentSector();
+	if (CurrentSector)
+	{
+		for (UFlareSimulatedSpacecraft* SectorShip : CurrentSector->GetSectorShips())
+		{
+			if (SectorShip == this || !SectorShip->GetDescription()->IsDroneCarrier || SectorShip->GetCompany() != this->GetCompany() || !SectorShip->GetDamageSystem()->IsAlive() || this->ShipMaster == SectorShip)
+			{
+				continue;
+			}
+
+			int32 ActiveShipyards = SectorShip->GetShipChildren().Num();
+			for (UFlareFactory* Shipyard : SectorShip->GetShipyardFactories())
+			{
+				if (Shipyard->IsProducing())
+				{
+					ActiveShipyards++;
+				}
+			}
+
+			if (ActiveShipyards < SectorShip->GetDescription()->DroneMaximum)
+			{
+				this->SetOwnerShip(SectorShip);
+				SectorShip->GetCurrentFleet()->AddShip(this);
+				return;
+			}
+		}
+	}
+
+	AFlareSpacecraft* ActiveShip =  this->GetActive();
+	if (ActiveShip)
+	{
+		UFlareSpacecraftDamageSystem* Damagesystem = ActiveShip->GetDamageSystem();
+		if (Damagesystem)
+		{
+			// for possible localized explosion effects or something
+			ActiveShip->GetDamageSystem()->SetDead();
+			return;
+		}
+	}
+	this->GetDamageSystem()->SetDead(true);
+}
 
 /*----------------------------------------------------
 	Resources
@@ -885,7 +981,7 @@ void UFlareSimulatedSpacecraft::ForceUndock()
 	SpacecraftData.DockedAt = -1;
 }
 
-void UFlareSimulatedSpacecraft::SetTrading(bool Trading)
+void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason)
 {
 	if (IsStation())
 	{
@@ -898,7 +994,8 @@ void UFlareSimulatedSpacecraft::SetTrading(bool Trading)
 		&& SpacecraftData.IsTrading
 		&& GetCompany() == GetGame()->GetPC()->GetCompany()
 		&& (GetCurrentTradeRoute() == NULL || GetCurrentTradeRoute()->IsPaused())
-		&& !GetCurrentFleet()->IsAutoTrading())
+		&& !GetCurrentFleet()->IsAutoTrading()
+		&& SpacecraftData.TradingReason != 1)
 	{
 		FFlareMenuParameterData Data;
 		Data.Spacecraft = this;
@@ -914,6 +1011,7 @@ void UFlareSimulatedSpacecraft::SetTrading(bool Trading)
 	}
 
 	SpacecraftData.IsTrading = Trading;
+	SpacecraftData.TradingReason = TradeReason;
 }
 
 void UFlareSimulatedSpacecraft::SetIntercepted(bool Intercepted)
@@ -1123,6 +1221,40 @@ void UFlareSimulatedSpacecraft::SetHarpooned(UFlareCompany* OwnerCompany)
 	else
 	{
 		SpacecraftData.HarpoonCompany = NAME_None;
+	}
+}
+
+void UFlareSimulatedSpacecraft::SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShip)
+{
+	if (OwnerShip)
+	{
+		if (SpacecraftData.OwnerShipName != OwnerShip->GetImmatriculation())
+		{
+			if (this->ShipMaster != NULL && OwnerShip!=this->ShipMaster)
+			{
+				UFlareSimulatedSpacecraft* OldOwnerShip = this->ShipMaster;
+				FFlareSpacecraftSave& OldOwnerData = OldOwnerShip->GetData();
+				OldOwnerShip->AddShipChildren(this,true);
+				if (OldOwnerData.OwnedShipNames.Find(this->GetImmatriculation()) == INDEX_NONE)
+				{
+					OldOwnerData.OwnedShipNames.Remove(this->GetImmatriculation());
+				}
+			}
+
+			OwnerShip->AddShipChildren(this);
+//			SetShipMaster(OwnerShip);
+
+			SpacecraftData.OwnerShipName = OwnerShip->GetImmatriculation();
+			FFlareSpacecraftSave& NewOwnerData = OwnerShip->GetData();
+			if (NewOwnerData.OwnedShipNames.Find(this->GetImmatriculation()) == INDEX_NONE)
+			{
+				NewOwnerData.OwnedShipNames.Add(this->GetImmatriculation());
+			}
+		}
+	}
+	else
+	{
+		SpacecraftData.OwnerShipName = NAME_None;
 	}
 }
 
@@ -1541,11 +1673,11 @@ void UFlareSimulatedSpacecraft::UnregisterComplexElement(UFlareSimulatedSpacecra
 	Shipyards
 ----------------------------------------------------*/
 
-bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, FName ShipIdentifier)
+bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, FName ShipIdentifier, bool LimitedQueues)
 {
 	FFlareSpacecraftDescription* ShipDescription = GetGame()->GetSpacecraftCatalog()->Get(ShipIdentifier);
 
-	if (!ShipDescription || !CanOrder(ShipDescription, OrderCompany))
+	if (!ShipDescription || !CanOrder(ShipDescription, OrderCompany, LimitedQueues))
 	{
 		return false;
 	}
@@ -1797,10 +1929,10 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 			Factory->StartShipBuilding(Order);
 			IndexToRemove.Add(Index);
 		}
-		else
-		{
-			FLOG("- No factory");
-		}
+//		else
+//		{
+//			FLOG("- No factory");
+//		}
 		Index++;
 	}
 
@@ -1810,7 +1942,7 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 	}
 }
 
-bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* ShipDescription, UFlareCompany* OrderCompany)
+bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* ShipDescription, UFlareCompany* OrderCompany, bool LimitedQueues)
 {
 	if(!IsShipyard())
 	{
@@ -1838,48 +1970,90 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		{
 			return false;
 		}
-
 	}
 
-	if(OrderCompany == PlayerCompany)
+	if (SpacecraftDescription->IsDroneCarrier != ShipDescription->IsDroneShip)
 	{
-		for (FFlareShipyardOrderSave& Order : SpacecraftData.ShipyardOrderQueue)
-		{
-			if (Order.Company == PlayerCompany->GetIdentifier())
-			{
-				FFlareSpacecraftDescription* OrderShip = GetGame()->GetSpacecraftCatalog()->Get(Order.ShipClass);
+		return false;
+	}
 
-				if(OrderShip->Size == ShipDescription->Size)
-				{
-					return false;
-				}
-			}
+	if (ShipDescription->BuildableShip.Num())
+	{
+		if (!ShipDescription->BuildableShip.Contains(this->GetDescription()->Identifier))
+		{
+			return false;
 		}
 	}
-	else
-	{
-		if(SpacecraftData.ShipyardOrderQueue.Num() > 0)
-		{
-			for(int i = SpacecraftData.ShipyardOrderQueue.Num()-1; i >=0 ; i--)
-			{
-				FFlareShipyardOrderSave& Order = SpacecraftData.ShipyardOrderQueue[i];
 
-				FFlareSpacecraftDescription* OrderShip = GetGame()->GetSpacecraftCatalog()->Get(Order.ShipClass);
-				if(OrderShip->Size == ShipDescription->Size)
+	if (ShipDescription->BuyableCompany.Num() > 0)
+	{
+		//buyable company has something, check if we're allowed to buy this in the first place
+		if ((OrderCompany == PlayerCompany && !ShipDescription->BuyableCompany.Contains(FName("PLAYER"))) || !ShipDescription->BuyableCompany.Contains(OrderCompany->GetDescription()->ShortName))
+		{
+			return false;
+		}
+	}
+
+	if (ShipDescription->BuildableCompany.Num() > 0)
+	{
+		//buildable company has something, check if shipyard owning faction is allowed to build this
+		if ((Company == PlayerCompany && !ShipDescription->BuildableCompany.Contains(FName("PLAYER"))) || !ShipDescription->BuildableCompany.Contains(Company->GetDescription()->ShortName))
+		{
+			return false;
+		}
+	}
+
+	if (LimitedQueues)
+	{
+		if (OrderCompany == PlayerCompany)
+		{
+			for (FFlareShipyardOrderSave& Order : SpacecraftData.ShipyardOrderQueue)
+			{
+				if (Order.Company == PlayerCompany->GetIdentifier())
 				{
-					if(Order.Company == PlayerCompany->GetIdentifier())
-					{
-						return true;
-					}
-					else
+					FFlareSpacecraftDescription* OrderShip = GetGame()->GetSpacecraftCatalog()->Get(Order.ShipClass);
+
+					if (OrderShip->Size == ShipDescription->Size)
 					{
 						return false;
 					}
 				}
 			}
 		}
+		else
+		{
+			TArray<FFlareShipyardOrderSave> CurrentOrders = this->GetOngoingProductionList();
+			if (CurrentOrders.Num() >= this->GetShipyardFactoriesCount())
+			{
+				return false;
+			}
+		}
 	}
 
+	else if (SpacecraftData.ShipyardOrderQueue.Num() > 0)
+	{
+		int32 Index = 0;
+		UFlareSpacecraftCatalog* SpacecraftCatalog = this->GetGame()->GetSpacecraftCatalog();
+
+		for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
+		{
+			if (Index >= GetShipyardOrderQueue().Num())
+			{
+				return false;
+			}
+
+			FFlareShipyardOrderSave& Order = this->GetShipyardOrderQueue()[Index];
+			FFlareSpacecraftDescription* OrderDescription = SpacecraftCatalog->Get(Order.ShipClass);
+
+			if (!OrderDescription)
+			{
+				return false;
+			}
+
+			Index++;
+		}
+		return false;
+	}
 	return true;
 }
 
@@ -2028,6 +2202,35 @@ bool UFlareSimulatedSpacecraft::IsAllowExternalOrder()
 	return SpacecraftData.AllowExternalOrder;
 }
 
+bool UFlareSimulatedSpacecraft::IsAllowAutoConstruction()
+{
+	return SpacecraftData.AllowAutoConstruction;
+}
+
+bool UFlareSimulatedSpacecraft::IsInExternalOrdersArray(const FName ShipDescription)
+{
+	if (SpacecraftData.ShipyardOrderExternalConfig.Find(ShipDescription) != INDEX_NONE)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool UFlareSimulatedSpacecraft::IsInExternalOrdersArray(const FFlareSpacecraftDescription* ShipDescription)
+{
+	if (SpacecraftData.ShipyardOrderExternalConfig.Find(ShipDescription->Identifier) != INDEX_NONE)
+	{
+		return true;
+	}
+	return false;
+}
+
+
+void UFlareSimulatedSpacecraft::SetAllowAutoConstruction(bool Allow)
+{
+	SpacecraftData.AllowAutoConstruction = Allow;
+}
+
 void UFlareSimulatedSpacecraft::SetAllowExternalOrder(bool Allow)
 {
 	SpacecraftData.AllowExternalOrder = Allow;
@@ -2168,6 +2371,34 @@ TArray<UFlareFactory*>& UFlareSimulatedSpacecraft::GetFactories()
 	return Factories;
 }
 
+TArray<UFlareFactory*> UFlareSimulatedSpacecraft::GetShipyardFactories()
+{
+	TArray<UFlareFactory*> Shipyards;
+
+	for (UFlareFactory* Factory : GetFactories())
+	{
+		if (Factory->IsShipyard())
+		{
+			Shipyards.Add(Factory);
+		}
+	}
+	return Shipyards;
+}
+
+int32 UFlareSimulatedSpacecraft::GetShipyardFactoriesCount()
+{
+	int32 Count = 0;
+	for (UFlareFactory* Factory : GetFactories())
+	{
+		if (Factory->IsShipyard())
+		{
+			Count++;
+		}
+	}
+	return Count;
+}
+
+
 UFlareCargoBay* UFlareSimulatedSpacecraft::GetActiveCargoBay() const
 {
 	if(IsComplexElement())
@@ -2195,6 +2426,40 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSpacecraft::GetComplexMaster() const
 TArray<UFlareSimulatedSpacecraft*> const& UFlareSimulatedSpacecraft::GetComplexChildren() const
 {
 	return ComplexChildren;
+}
+
+UFlareSimulatedSpacecraft* UFlareSimulatedSpacecraft::GetShipMaster() const
+{
+	return ShipMaster;
+}
+
+TArray<UFlareSimulatedSpacecraft*> UFlareSimulatedSpacecraft::GetShipChildren() const
+{
+	return ShipChildren;
+}
+
+void UFlareSimulatedSpacecraft::AddShipChildren(UFlareSimulatedSpacecraft* ShipToAdd, bool Removing)
+{
+	if (ShipToAdd)
+	{
+		if (Removing)
+		{
+			ShipChildren.Remove(ShipToAdd);
+		}
+		else
+		{
+			ShipChildren.AddUnique(ShipToAdd);
+			ShipToAdd->SetShipMaster(this);
+		}
+	}
+}
+
+void UFlareSimulatedSpacecraft::SetShipMaster(UFlareSimulatedSpacecraft* NewMasterShip)
+{
+	if (NewMasterShip)
+	{
+		ShipMaster = NewMasterShip;
+	}
 }
 
 int32 UFlareSimulatedSpacecraft::GetCapturePoint(UFlareCompany* OtherCompany) const

@@ -100,11 +100,12 @@ protected:
 	TSharedPtr<SHorizontalBox>     FleetBoxOne;
 	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
 	TSharedPtr<SHorizontalBox>     FleetBoxThree;
-
-public:
 	bool							CachedFleets;
 	int32							EnemyShips;
 	int32							EnemyStations;
 	int32							CurrentCount;
 	int32							TotalCount;
+
+public:
+	void	ClearCaches();
 };

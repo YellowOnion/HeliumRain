@@ -560,13 +560,17 @@ void UFlareFactory::PerformCreateShipAction(const FFlareFactoryAction* Action)
 		for (uint32 Index = 0; Index < Action->Quantity; Index++)
 		{
 			// Get data
-			UFlareSimulatedSpacecraft* Spacecraft = Parent->GetCurrentSector()->CreateSpacecraft(ShipDescription, Company, SpawnPosition);
+			UFlareSimulatedSpacecraft* ParentTypecast = Parent;
+
+//			UFlareSimulatedSpacecraft* Spacecraft = Parent->GetCurrentSector()->CreateSpacecraft(ShipDescription, Company, SpawnPosition);
+			UFlareSimulatedSpacecraft* Spacecraft = Parent->GetCurrentSector()->CreateSpacecraft(ShipDescription, Company, SpawnPosition, FRotator::ZeroRotator, NULL, 0, false, NAME_None, Parent);	
 			AFlarePlayerController* PC = Parent->GetGame()->GetPC();
 			FFlareMenuParameterData Data;
 			Data.Spacecraft = Spacecraft;
 
+
 			// Notify PC
-			if (PC && Spacecraft && Spacecraft->GetCompany() == PC->GetCompany())
+			if (PC && Spacecraft && Spacecraft->GetCompany() == PC->GetCompany() && !Spacecraft->GetDescription()->IsDroneShip)
 			{
 				PC->Notify(LOCTEXT("ShipBuilt", "Ship production complete"),
 					FText::Format(LOCTEXT("ShipBuiltFormat", "Your ship {0} is ready to use !"), UFlareGameTools::DisplaySpacecraftName(Spacecraft)),

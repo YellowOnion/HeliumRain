@@ -122,6 +122,7 @@ public:
 
 	void NotifyDamage();
 
+
 protected:
 
 	/*----------------------------------------------------
@@ -156,6 +157,7 @@ protected:
 	bool                                            AmmoDirty;
 	bool											WasAlive;
 	bool											WasControllable;
+	bool											IsDeadOverride;
 	DamageCause 			                        LastDamageCause;
 
 public:
@@ -183,4 +185,5 @@ public:
 
 	static float GetArmor(FFlareSpacecraftComponentDescription* ComponentDescription);
 
+	void SetDead(bool Set);
 };

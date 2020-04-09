@@ -390,11 +390,12 @@ public:
 		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters());
 
     /** Create a ship in the level  for a specific company */
-	UFlareSimulatedSpacecraft* CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition);
+	UFlareSimulatedSpacecraft* CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition, UFlareSimulatedSpacecraft* BuiltBy = NULL);
 
 	/** Create a ship or station in the level  for a specific company. No null parameter accepted */
 	UFlareSimulatedSpacecraft* CreateSpacecraft(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetLocation, FRotator TargetRotation = FRotator::ZeroRotator,
-		FFlareSpacecraftSave* CapturedSpacecraft = NULL, bool SafeSpawnAtLocation = false, bool UnderConstruction = false, FName AttachComplexStationName = NAME_None);
+		FFlareSpacecraftSave* CapturedSpacecraft = NULL, int32 SpawnLocation = 0, bool UnderConstruction = false, FName AttachComplexStationName = NAME_None,
+		UFlareSimulatedSpacecraft* BuiltBy = NULL);
 
 //	/* Checks if station has a shipyard factory, if so add to shipyard array*/
 //	UFlareSimulatedSpacecraft* CheckIsShipyard(UFlareSimulatedSpacecraft* Spacecraft)

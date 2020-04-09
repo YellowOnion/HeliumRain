@@ -49,13 +49,15 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 	}
 }
 
-void UFlareAIBehavior::Simulate(TArray<UFlareCompany*> SortedCompanyValues, TArray<UFlareCompany*> SortedCompanyCombatValues)
+void UFlareAIBehavior::Simulate()
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareAIBehavior_Simulate);
 
 	// See how the player is doing
 
-//	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
+	TArray<UFlareCompany*> SortedCompanyValues = Game->GetGameWorld()->GetSortedCompanyValues();
+	
+	//	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
 //	SortedCompany.Sort(&CompanyValueComparator);
 
 	int32 PlayerCompanyIndex = SortedCompanyValues.IndexOfByKey(GetGame()->GetPC()->GetCompany());

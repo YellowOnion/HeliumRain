@@ -65,6 +65,8 @@ public:
 
 	virtual void SetCurrentSector(UFlareSimulatedSector* Sector);
 
+	void TryMigrateDrones();
+
 	virtual void SetCurrentFleet(UFlareFleet* Fleet)
 	{
 		CurrentFleet = Fleet;
@@ -100,7 +102,7 @@ public:
 
 	void ForceUndock();
 
-	void SetTrading(bool Trading);
+	void SetTrading(bool Trading, int32 TradeReason = 0);
 
 	void SetIntercepted(bool Intercept);
 
@@ -116,6 +118,9 @@ public:
 
 	/** This ship was harpooned */
 	void SetHarpooned(UFlareCompany* OwnerCompany);
+
+	/** This ship was created by another ship */
+	void SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShip);
 
 	bool IsHarpooned()
 	{
@@ -184,6 +189,14 @@ public:
 
 	TArray<UFlareSimulatedSpacecraft*> const& GetComplexChildren() const;
 
+	UFlareSimulatedSpacecraft* GetShipMaster() const;
+
+	TArray<UFlareSimulatedSpacecraft*>GetShipChildren() const;
+
+	void AddShipChildren(UFlareSimulatedSpacecraft* ShipToAdd, bool Removing=false);
+
+	void SetShipMaster(UFlareSimulatedSpacecraft* NewMasterShip);
+
 	void RegisterComplexMaster(UFlareSimulatedSpacecraft* master);
 
 	/** Is this slot usable for special complex elements ? */
@@ -208,7 +221,7 @@ public:
 		Shipyard
 	----------------------------------------------------*/
 
-	bool ShipyardOrderShip(UFlareCompany* OrderCompany, FName ShipIdentifier);
+	bool ShipyardOrderShip(UFlareCompany* OrderCompany, FName ShipIdentifier, bool LimitedQueues = true);
 
 	void CancelShipyardOrder(int32 OrderIndex);
 
@@ -222,7 +235,7 @@ public:
 
 	void UpdateShipyardProduction();
 
-	bool CanOrder(const FFlareSpacecraftDescription* ShipDescription, UFlareCompany* OrderCompany);
+	bool CanOrder(const FFlareSpacecraftDescription* ShipDescription, UFlareCompany* OrderCompany, bool LimitedQueues = true);
 
 	const FFlareProductionData& GetCycleDataForShipClass(FName ShipIdentifier);
 
@@ -235,8 +248,13 @@ public:
 	FText GetShipCost(FName ShipIdentifier);
 
 	bool IsAllowExternalOrder();
+	bool IsAllowAutoConstruction();
 	void SetAllowExternalOrder(bool Allow);
+	void SetAllowAutoConstruction(bool Allow);
 	void AddRemoveExternalOrderArray(const FName ShipDescription);
+
+	bool IsInExternalOrdersArray(const FName ShipDescription);
+	bool IsInExternalOrdersArray(const FFlareSpacecraftDescription* ShipDescription);
 
 	const FFlareProductionData* GetNextOrderShipProductionData(EFlarePartSize::Type Size);
 
@@ -285,6 +303,10 @@ protected:
 
 	UFlareSimulatedSpacecraft*								ComplexMaster;
 	TArray<UFlareSimulatedSpacecraft*>						ComplexChildren;
+
+	/**Used for carrier stuffs*/
+	UFlareSimulatedSpacecraft*								ShipMaster;
+	TArray<UFlareSimulatedSpacecraft*>						ShipChildren;
 
 public:
 
@@ -359,6 +381,10 @@ public:
 
 	TArray<UFlareFactory*>& GetFactories();
 
+	TArray<UFlareFactory*> GetShipyardFactories();
+	int32 GetShipyardFactoriesCount();
+
+
 	inline FVector GetSpawnLocation() const
 	{
 		return SpacecraftData.Location;
@@ -373,6 +399,13 @@ public:
 	{
 		return SpacecraftData.IsTrading;
 	}
+
+	inline int32 GetTradingReason() const
+	{
+		return SpacecraftData.TradingReason;
+	}
+
+	
 
 	inline bool IsIntercepted() const
 	{

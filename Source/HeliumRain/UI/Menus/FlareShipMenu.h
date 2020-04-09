@@ -97,8 +97,14 @@ protected:
 	/** Visibility of the ship-building interface */
 	EVisibility GetShipyardVisibility() const;
 
+	/** Visibility of the configure order button */
+	EVisibility GetShipyardAllowExternalOrderConfigurationVisibility() const;
+
 	/** Visibility of the allow external order button */
 	EVisibility GetShipyardAllowExternalOrderVisibility() const;
+
+	/** Visibility of the allow auto construction button */
+	EVisibility GetAutoConstructionVisibility() const;
 
 	/** Visibility of the S ship selector */
 	bool IsShipSSelectorDisabled() const;
@@ -118,6 +124,22 @@ protected:
 	/** Get the status text for next order */
 	FText GetShipOrderStatus(int32 Index) const;
 
+	/** Get the text for configuration button */
+	FText GetConfigurationText() const;
+
+	/** Get the text for configuration button */
+	FText GetConfigurationHelp() const;
+
+	/** Get the text for externalorders button */
+	FText GetExternalordersText() const;
+	/** Get the text for externalorders button */
+	FText GetExternalOrdersHelp() const;
+
+	/** Get the text for autoconstruction button */
+	FText GetAutoConstructionText() const;
+	/** Get the text for autoconstruction button */
+	FText GetAutoConstructionHelp() const;
+
 	/** Order a spacecraft */
 	void OnOpenSpacecraftOrder(bool IsHeavy);
 
@@ -130,6 +152,8 @@ protected:
 	/** Toggle external orders */
 	void OnToggleAllowExternalOrders();
 
+	/** Toggle automatic construction */
+	void OnToggleAllowAutoConstruction();
 
 	/*----------------------------------------------------
 		Content callbacks
@@ -240,6 +264,8 @@ protected:
 	TSharedPtr<STextBlock>                          ObjectDescription;
 	TSharedPtr<SFlareSpacecraftInfo>                ObjectActionMenu;
 	TSharedPtr<SFlareList>                          ShipList;
+	TSharedPtr<SFlareList>                          OwnedList;
+	
 	TSharedPtr<SVerticalBox>                        ShipCustomizationBox;
 	TSharedPtr<SHorizontalBox>                      WeaponButtonBox;
 	TSharedPtr<SHorizontalBox>                      RenameBox;
@@ -247,6 +273,7 @@ protected:
 
 	// Spacecraft data
 	UFlareSimulatedSpacecraft*                      TargetSpacecraft;
+	FFlareSpacecraftDescription*					TargetDescription;
 	FFlareSpacecraftSave*                           TargetSpacecraftData;
 	FFlareSpacecraftComponentDescription*           RCSDescription;
 	FFlareSpacecraftComponentDescription*           EngineDescription;
@@ -279,6 +306,8 @@ protected:
 	TSharedPtr<SVerticalBox>                        FactoryList;
 	TSharedPtr<SVerticalBox>                        UpgradeBox;
 	TSharedPtr<SFlareButton>                        AllowExternalOrdersButton;
+	TSharedPtr<SFlareButton>                        AllowAutoConstructionButton;
+	TSharedPtr<SFlareButton>						ExternalOrdersConfigurationButton;
 	TSharedPtr<SImage>                              ComplexLayout;
 
 	// Complex data

@@ -124,7 +124,6 @@ UFlareSimulatedSpacecraft* AITradeHelper::FindBestMasterShip(int32& UsableShipCo
 
 void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSector*, SectorVariation>& WorldResourceVariation)
 {
-
 	if(Fleet->IsTrading() || Fleet->IsTraveling())
 	{
 		// Wait next day
@@ -1048,7 +1047,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 		}
 
 		bool IsConstruction = Station->IsUnderConstruction();
-		bool IsShipyard = Station->IsUnderConstruction();
+		bool IsShipyard = Station->IsShipyard();
 		UFlareScenarioTools* ST = Game->GetScenarioTools();
 
 		for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
@@ -1715,6 +1714,10 @@ void AITradeHelper::GenerateIdleShips(AITradeIdleShips& Ships, UFlareWorld* Worl
 					continue;
 				}
 				else if (Ship->GetActiveCargoBay()->GetCapacity() < 1)
+				{
+					continue;
+				}
+				else if (Ship->GetDescription()->IsDroneCarrier || Ship->GetDescription()->IsDroneShip)
 				{
 					continue;
 				}
