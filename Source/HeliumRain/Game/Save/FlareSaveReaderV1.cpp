@@ -430,6 +430,8 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	LoadVector(Object, "AngularVelocity", &Data->AngularVelocity);
 	LoadFName(Object, "DockedTo", &Data->DockedTo);
 	LoadInt32(Object, "DockedAt", &Data->DockedAt);
+	LoadFName(Object, "DockedAtInternally", &Data->DockedAtInternally);
+	
 	LoadFloat(Object, "Heat", &Data->Heat);
 	LoadFloat(Object, "PowerOutageDelay", &Data->PowerOutageDelay);
 	LoadFloat(Object, "PowerOutageAcculumator", &Data->PowerOutageAcculumator);

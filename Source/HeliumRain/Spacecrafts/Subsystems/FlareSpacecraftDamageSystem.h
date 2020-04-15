@@ -56,6 +56,8 @@ public:
 	/** Update power status for all components */
 	virtual void UpdatePower();
 
+	virtual void CalculateInitialHeat();
+
 	/** Method call if a electric component had been damaged */
 	virtual void OnElectricDamage(float DamageRatio);
 
@@ -63,7 +65,8 @@ public:
 
 	virtual void ApplyDamage(float Energy, float Radius, FVector Location, EFlareDamage::Type DamageType, UFlareSimulatedSpacecraft* DamageSource, FString DamageCauser);
 
-
+	virtual void NotifyHeatProductionChange(float HeatProductionChange);
+	virtual void NotifyHeatSinkChange(float HeatSinkChange);
 
 protected:
 
@@ -95,7 +98,12 @@ protected:
 	float											TimeSinceLastExternalDamage;
 
 	DamageCause                                     LastDamageCause;
+	AFlarePlayerController*							PC;
 
+	float											TotalHeatProduction;
+	float											TotalHeatSink;
+	float											TotalHeatAfterSun;
+	bool											HeatChange;
 
 public:
 	/*----------------------------------------------------

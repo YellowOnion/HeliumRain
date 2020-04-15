@@ -121,6 +121,10 @@ public:
 
 	FVector GetAngularVelocityToAlignAxis(FVector TargetAxis, float AngularAcceleration, float DeltaSeconds) const;
 
+	virtual void SafeDestroy();
+
+	virtual void FinishSafeDestroy();
+
 protected:
 
 	/*----------------------------------------------------
@@ -161,6 +165,11 @@ protected:
 	FVector LastLocation;
 	FVector LastTargetLocation;
 	float BombLockedInCollision;
+	bool										   IsSafeDestroyingRunning;
+	bool										   SafeDestroyed;
+	UFlareSector*								   LocalSector;
+
+
 public:
 
 	/*----------------------------------------------------

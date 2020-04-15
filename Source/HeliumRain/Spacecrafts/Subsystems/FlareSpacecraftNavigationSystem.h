@@ -228,6 +228,8 @@ public:
 
 	virtual AFlareSpacecraft* GetNearestShip(AFlareSpacecraft* DockingStation) const;
 
+	virtual void OnControlLost();
+
 	/*----------------------------------------------------
 		Internal attitude control
 	----------------------------------------------------*/
@@ -245,7 +247,7 @@ public:
 	bool UpdateAngularBraking(float DeltaSeconds);
 
 	/** Return the angular velocity need to align the local ship axis to the target axis */
-	virtual FVector GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FVector TargetAxis, FVector TargetAngularVelocity, float DeltaSeconds) const;
+	virtual FVector GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FVector TargetAxis, FVector TargetAngularVelocity, float DeltaSeconds);
 
 
 	/*----------------------------------------------------
@@ -310,6 +312,9 @@ protected:
 	UFlareSimulatedSpacecraft*			     TransactionDestinationDock;
 	bool								     TransactionDonation;
 
+	TMap<FVector, TMap<bool, float>>		 MaxTorqueCache;
+	float									 MaxTorqueCacheClearTime;
+
 public:
 
 	/*----------------------------------------------------
@@ -339,7 +344,7 @@ public:
 	 * TorqueDirection : Axis of the torque
 	 * WithDamages : if true, use current thrust value and not theorical thrust value
 	 */
-	float GetTotalMaxTorqueInAxis(TArray<UActorComponent*>& Engines, FVector TorqueDirection, bool WithDamages) const;
+	float GetTotalMaxTorqueInAxis(TArray<UActorComponent*>& Engines, FVector TorqueDirection, bool WithDamages);
 
 
 	/*----------------------------------------------------

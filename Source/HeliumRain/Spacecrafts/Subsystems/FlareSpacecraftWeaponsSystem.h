@@ -124,6 +124,7 @@ protected:
 	----------------------------------------------------*/
 
 	// Weapon components and descriptions
+	UPROPERTY()
 	TArray <UFlareWeapon*>                           WeaponList;
 	TArray <FFlareSpacecraftComponentDescription*>   WeaponDescriptionList;
 	TArray <FFlareWeaponGroup*>                      WeaponGroupList;

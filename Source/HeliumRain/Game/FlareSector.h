@@ -32,6 +32,11 @@ public:
 	/** Destroy the sector */
 	virtual void DestroySector();
 
+	/** Remove spacecraft from sector */
+	virtual void RemoveSpacecraft(AFlareSpacecraft* Spacecraft);
+
+	/** Add dead spacecraft to our dead array*/
+	virtual void AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft);
 
 	/*----------------------------------------------------
 		Gameplay
@@ -53,11 +58,17 @@ public:
 
 	void UnregisterShell(AFlareShell* Shell);
 
+	void RegisterCachedShell(AFlareShell* Shell);
+
+	AFlareShell* RetrieveCachedShell();
+	
 	virtual void SetPause(bool Pause);
 
 	AActor* GetNearestBody(FVector Location, float* NearestDistance, bool IncludeSize = true, AActor* ActorToIgnore = NULL);
 
-	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location);
+	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, float RandomLocationRadiusIncrement = 100000, bool RandomLocRadiusBoost = true, float InitialLocationRadius = 100000, bool MultiplyLocationOrAdd = true);
+
+	void AddReinforcingShip(UFlareSimulatedSpacecraft* Ship);
 
 protected:
 
@@ -86,21 +97,40 @@ protected:
 	TArray<AFlareBomb*>            SectorBombs;
 	UPROPERTY()
 	TArray<AFlareShell*>           SectorShells;
-
+	UPROPERTY()
+	TArray<AFlareShell*>           SectorCachedShells;
+	
 	int64						   LocalTime;
 	bool						   SectorRepartitionCache;
 	bool                           IsDestroyingSector;
 	FVector                        SectorCenter;
 	float                          SectorRadius;
+
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
-	
+//	TMap<FName*, AFlareSpacecraft*> SectorSpacecraftsCache;
+
 
 public:
 
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	inline TArray<AFlareBomb*> GetSectorBombs() const
+	{
+		return SectorBombs;
+	}
+
+	inline TArray<AFlareShell*> GetSectorCachedShells() const
+	{
+		return SectorCachedShells;
+	}
+
+	inline TArray<AFlareShell*> GetSectorShells() const
+	{
+		return SectorShells;
+	}
 
 	inline AFlareGame* GetGame()
 	{

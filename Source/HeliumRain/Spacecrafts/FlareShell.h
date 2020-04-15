@@ -33,17 +33,31 @@ public:
 
 	virtual float ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* ImpactComponent, FVector ImpactLocation,  FVector ImpactAxis,  FVector ImpactNormal, float ImpactPower, float ImpactRadius, EFlareDamage::Type DamageType);
 
-	virtual void Destroyed() override;
+//	virtual void Destroyed() override;
+
+	FTraceHandle RequestTrace(const FVector& Start, const FVector& End);
+	void OnTraceCompleted(const FTraceHandle& Handle, FTraceDatum& Data);
+	void DoWorkWithTraceResults(const FTraceDatum& TraceData);
 
 	virtual void SetFuzeTimer(float TargetSecureTime, float TargetActiveTime);
 
 	virtual void CheckFuze(FVector ActorLocation, FVector NextActorLocation);
+
+	virtual void SafeDestroy();
+
+	virtual void FinishSafeDestroy();
+	virtual void UnsetSafeDestroyed();
 
 protected:
 
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
+
+	FTraceHandle LastTraceHandle;
+	FTraceDelegate TraceDelegate;
+
+	FHitResult								PreviousHitResult;
 
 	/** Impact sound */
 	UPROPERTY()
@@ -70,6 +84,7 @@ protected:
 	UParticleSystem*                         FlightEffectsTemplate;
 
 	// Flight effects
+	UPROPERTY()
 	UParticleSystemComponent*                FlightEffects;
 
 	/** Burn mark decal */
@@ -91,8 +106,13 @@ protected:
 	float                                          ActiveTime;
 
 	// References
+	UPROPERTY()
 	class UFlareWeapon*                            ParentWeapon;
+
 	class AFlarePlayerController*                  PC;
 	bool                                           ManualTurret;
+	UFlareSector*								   LocalSector;
 
+	bool										   IsSafeDestroyingRunning;
+	bool										   SafeDestroyed;
 };

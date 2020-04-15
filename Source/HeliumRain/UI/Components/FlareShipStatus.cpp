@@ -272,11 +272,11 @@ FSlateColor SFlareShipStatus::GetIconColor(EFlareSubsystem::Type Type) const
 
 EVisibility SFlareShipStatus::GetRefillingVisibility() const
 {
-
 	if (TargetShip && TargetShip->IsValidLowLevel())
 	{
 		//FLOGV("%s need refill ? %d stock : %f", *TargetShip->GetImmatriculation().ToString(), TargetShip->NeedRefill(), TargetShip->GetRefillStock());
 		if (TargetShip->GetRefillStock() > 0 && TargetShip->NeedRefill())
+			//note NeedRefill() crashed once on the return value in GetShipPartsCatalog() 
 		{
 			return EVisibility::Visible;
 		}

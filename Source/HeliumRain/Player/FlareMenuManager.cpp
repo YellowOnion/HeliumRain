@@ -356,7 +356,9 @@ void AFlareMenuManager::OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrder
 	}
 	else if (Data.Skirmish)
 	{
-		SpacecraftOrder->Open(GetGame()->GetSkirmishManager(), Data.OrderForPlayer, ConfirmationCallback);
+//		SpacecraftOrder->Open(GetGame()->GetSkirmishManager(), Data.OrderForPlayer, ConfirmationCallback);
+		SpacecraftOrder->Open(GetGame()->GetSkirmishManager(), Data.CompanyShortName, ConfirmationCallback);
+//
 	}
 }
 
@@ -809,6 +811,7 @@ bool AFlareMenuManager::LoadGame()
 	CurrentShip = PC->GetPlayerShip();
 	if (CurrentShip)
 	{
+		PC->GetPlayerShip()->GetCurrentSector()->UpdateReserveShips();
 		// Activate sector
 		FLOGV("AFlareMenuManager::LoadGame : found player ship '%s'", *CurrentShip->GetImmatriculation().ToString());
 		PC->GetGame()->ActivateCurrentSector();

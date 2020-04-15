@@ -13,14 +13,12 @@
 
 #include "Components/StaticMeshComponent.h"
 
-
 DECLARE_CYCLE_STAT(TEXT("PilotHelper CheckFriendlyFire"), STAT_PilotHelper_CheckFriendlyFire, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper Anticollision"), STAT_PilotHelper_AnticollisionCorrection, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper Anticollision Avoidance"), STAT_PilotHelper_AnticollisionCorrection_Avoidance, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper GetBestTarget"), STAT_PilotHelper_GetBestTarget, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper GetBestTargetComponent"), STAT_PilotHelper_GetBestTargetComponent, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper CheckRelativeDangerosity"), STAT_PilotHelper_CheckRelativeDangerosity, STATGROUP_Flare);
-
 
 bool PilotHelper::CheckFriendlyFire(UFlareSector* Sector, UFlareCompany* MyCompany, FVector FireBaseLocation, FVector FireBaseVelocity , float AmmoVelocity, FVector FireAxis, float MaxDelay, float AimRadius)
 {
@@ -345,6 +343,11 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 	for (AFlareSpacecraft* ShipCandidate :Ship->GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
+		if (!IsValid(ShipCandidate) || ShipCandidate->IsPendingKill() || ShipCandidate->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+
 		if (Preferences.IgnoreList.Contains(PilotTarget(ShipCandidate)))
 		{
 			continue;
@@ -741,6 +744,10 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 {
 	SCOPE_CYCLE_COUNTER(STAT_PilotHelper_GetBestTargetComponent);
 
+	if (!TargetSpacecraft)
+	{
+		return NULL;
+	}
 	// Is armed, target the gun
 	// Else if not stranger target the orbital
 	// else target the rsc
@@ -891,7 +898,6 @@ bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor,
 		return false;
 	}
 
-
 	float MinPointToHitPointDistance = FMath::Sqrt(FMath::Square(SizeSum) - FMath::Square(MinPointToCurrentPointDistance));
 	float DistanceToHit = TargetPointToMinPointDistance - MinPointToHitPointDistance;
 	float TimeToHit = DistanceToHit / DeltaVelocity.Size();
@@ -962,8 +968,25 @@ bool PilotHelper::PilotTarget::IsEmpty() const
 	return SpacecraftTarget == nullptr && MeteoriteTarget == nullptr && BombTarget == nullptr;
 }
 
-bool PilotHelper::PilotTarget::IsValid() const
+bool PilotHelper::PilotTarget::IsValid()
 {
+	if (SpacecraftTarget)
+	{
+		if (SpacecraftTarget->IsValidLowLevel())
+		{
+			if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeDestroying())
+			{
+				SpacecraftTarget = nullptr;
+				return false;
+			}
+		}
+		else
+		{
+			SpacecraftTarget = nullptr;
+			return false;
+		}
+	}
+
 	return SpacecraftTarget != nullptr || MeteoriteTarget != nullptr || BombTarget != nullptr;
 }
 
@@ -1029,17 +1052,17 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 
 FVector PilotHelper::PilotTarget::GetLinearVelocity() const
 {
-	if(SpacecraftTarget)
+	if(SpacecraftTarget != nullptr)
 	{
 		return SpacecraftTarget->Airframe->GetPhysicsLinearVelocity();
 	}
 
-	if(BombTarget)
+	if(BombTarget != nullptr)
 	{
 		return Cast<UPrimitiveComponent>(BombTarget->GetRootComponent())->GetPhysicsLinearVelocity();
 	}
 
-	if(MeteoriteTarget)
+	if(MeteoriteTarget != nullptr)
 	{
 		return Cast<UPrimitiveComponent>(MeteoriteTarget->GetRootComponent())->GetPhysicsLinearVelocity();
 	}

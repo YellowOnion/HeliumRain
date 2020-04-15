@@ -60,6 +60,8 @@ protected:
 
 	FText GetPlayerFleetTitle() const;
 
+	FText GetTotalShipCount() const;
+
 	FText GetEnemyFleetTitle() const;
 
 	TSharedRef<ITableRow> OnGenerateSpacecraftLine(TSharedPtr<FFlareSkirmishSpacecraftOrder> Item, const TSharedRef<STableViewBase>& OwnerTable);	
@@ -75,6 +77,10 @@ protected:
 	FText GetAddToPlayerFleetText() const;
 
 	FText GetAddToEnemyFleetText() const;
+
+	FText GetCopyHelpText() const;
+
+	bool IsCopyButtonDisabled() const;
 
 	bool IsAddToPlayerFleetDisabled() const;
 

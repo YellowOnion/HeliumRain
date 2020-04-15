@@ -663,11 +663,19 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 			// Renaming
 			bool CanRename = !TargetSpacecraft->IsStation() && !CanEdit;
-			RenameBox->SetVisibility(CanRename ? EVisibility::Visible : EVisibility::Collapsed);
 			if (CanRename)
 			{
+				RenameBox->SetVisibility(EVisibility::Visible);
 				ShipName->SetText(TargetSpacecraft->GetNickName());
 			}
+			else
+			{
+				RenameBox->SetVisibility(EVisibility::Collapsed);
+			}
+		}
+		else
+		{
+			RenameBox->SetVisibility(EVisibility::Collapsed);
 		}
 
 		// Get the description data

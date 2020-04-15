@@ -272,7 +272,6 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Shipyard, boo
 					}
 				}
 
-
 				// Filter by spacecraft size and add
 				if(IsConfig)
 				{
@@ -333,12 +332,12 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSector* Sector, FOrderDel
 	ConfirmText->SetText(FText());
 }
 
-void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, bool ForPlayer, FOrderDelegate ConfirmationCallback)
+void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, FName ForCompany, FOrderDelegate ConfirmationCallback)
 {
 	SetVisibility(EVisibility::Visible);
 	TargetSkirmish = Skirmish;
 	OnConfirmedCB = ConfirmationCallback;
-	OrderForPlayer = ForPlayer;
+//	OrderForPlayer = ForPlayer;
 	OrderIsConfig = false;
 
 	CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
@@ -353,8 +352,18 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, bool Fo
 		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftCatalog->ShipCatalog.Num(); SpacecraftIndex++)
 		{
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->ShipCatalog[SpacecraftIndex]->Data;
-			if (!Description->IsSubstation && Description->IsMilitary())
+			if (!Description->IsSubstation && Description->IsMilitary() && !Description->IsDroneShip)
 			{
+
+				if (Description->BuildableCompany.Num() > 0)
+				{
+					//buildable company has something, check if shipyard owning faction is allowed to build this
+					if (!Description->BuildableCompany.Contains(ForCompany))
+					{
+						continue;
+					}
+				}
+
 				UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->ShipCatalog[SpacecraftIndex];
 				SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
 			}

@@ -3798,6 +3798,7 @@ void AITradeSourcesByResourceLocation::ConsumeSource(AITradeSource* Source)
 
 AITradeIdleShips::AITradeIdleShips(UFlareWorld* World)
 {
+	ShipsPerSector.Reserve(World->GetSectors().Num());
 	for(UFlareSimulatedSector* Sector : World->GetSectors())
 	{
 		ShipsPerSector.Add(Sector, AITradeIdleShipsByLocation(World));

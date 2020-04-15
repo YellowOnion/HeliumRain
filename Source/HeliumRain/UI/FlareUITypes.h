@@ -86,6 +86,7 @@ struct FFlareMenuParameterData
 		, SpacecraftOrderHeavy(false)
 		, SpacecraftOrderConfig(false)
 		, ComplexConnectorName(NAME_None)
+		, CompanyShortName(NAME_None)
 	{}
 
 	class UFlareCompany*                        Company;
@@ -111,6 +112,7 @@ struct FFlareMenuParameterData
 	bool                                        SpacecraftOrderHeavy;
 	bool                                        SpacecraftOrderConfig;
 	FName                                       ComplexConnectorName;
+	FName										CompanyShortName;
 };
 
 

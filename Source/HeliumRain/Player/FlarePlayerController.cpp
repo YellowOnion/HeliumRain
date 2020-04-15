@@ -1094,7 +1094,7 @@ bool AFlarePlayerController::SwitchToNextShip(bool Instant)
 					OffsetIndex = (ShipIndex + QuickSwitchOffset) % CompanyShips.Num();
 					AFlareSpacecraft* Candidate = CompanyShips[OffsetIndex];
 
-					if (Candidate && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons) && Candidate->GetParent()->CanFight())
+					if (Candidate && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons) && Candidate->GetParent()->CanFight() && !Candidate->GetDescription()->IsDroneShip)
 					{
 						SeletedCandidate = Candidate;
 						break;

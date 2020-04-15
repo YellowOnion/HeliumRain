@@ -205,17 +205,7 @@ int32 UFlareFleet::GetTransportCapacity()
 
 uint32 UFlareFleet::GetShipCount() const
 {
-//TODO: Add int in fleet that tracks fleet size, get rid of this loop
-	uint32 Count = 0;
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
-		{
-			continue;
-		}
-		Count++;
-	}
-	return Count;
+	return FleetCount;
 //	return FleetShips.Num();
 }
 
@@ -351,7 +341,6 @@ void UFlareFleet::RemoveImmobilizedShips()
 			if (RemovingShip->GetShipMaster()&&RemovingShip->GetDescription()->IsDroneShip)
 			{
 				RemovingShip->TryMigrateDrones();
-//				RemovingShip->GetCompany()->DestroySpacecraft(RemovingShip);
 				continue;
 			}
 			ShipToRemove.Add(FleetShips[ShipIndex]);
@@ -457,6 +446,10 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 
 	FleetData.ShipImmatriculations.Add(Ship->GetImmatriculation());
 	FleetShips.AddUnique(Ship);
+	if (!Ship->GetDescription()->IsDroneShip)
+	{
+		FleetCount++;
+	}
 	Ship->SetCurrentFleet(this);
 
 	if (FleetCompany == GetGame()->GetPC()->GetCompany() && GetGame()->GetQuestManager())
@@ -492,6 +485,10 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 
 		FleetData.ShipImmatriculations.Remove(Ship->GetImmatriculation());
 		FleetShips.Remove(Ship);
+		if (!Ship->GetDescription()->IsDroneShip)
+		{
+			FleetCount--;
+		}
 		Ship->SetCurrentFleet(NULL);
 
 		if (NewFleet == nullptr)
@@ -521,6 +518,11 @@ void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed, bo
 	FleetData.ShipImmatriculations.Remove(Ship->GetImmatriculation());
 	FleetShips.Remove(Ship);
 	Ship->SetCurrentFleet(NULL);
+
+	if (!Ship->GetDescription()->IsDroneShip)
+	{
+		FleetCount--;
+	}
 
 	if (!destroyed)
 	{
@@ -628,7 +630,18 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 	InitShipList();
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
-		FleetShips[ShipIndex]->SetSpawnMode(EFlareSpawnMode::Travel);
+		UFlareSimulatedSpacecraft* FleetShip = FleetShips[ShipIndex];
+		if (FleetShip)
+		{
+			if (FleetShip->GetShipMaster())
+			{
+				FleetShip->SetInternalDockedTo(FleetShip->GetShipMaster());
+			}
+			else
+			{
+				FleetShip->SetSpawnMode(EFlareSpawnMode::Travel);
+			}
+		}
 	}
 }
 
@@ -652,6 +665,10 @@ void UFlareFleet::InitShipList()
 			}
 			Ship->SetCurrentFleet(this);
 			FleetShips.Add(Ship);
+			if (!Ship->GetDescription()->IsDroneShip)
+			{
+				FleetCount++;
+			}
 		}
 	}
 }

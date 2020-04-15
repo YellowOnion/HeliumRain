@@ -318,8 +318,11 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	//for testing
 	CreateShips("ship-carrier", PlayerCompany, FirstLight, 2);
 	CreateShips(ShipInvader, PlayerCompany, FirstLight, 1);
-	CreateShips(ShipDragon, PlayerCompany, FirstLight, 1);
-//	CreateStations("station-shipyard", PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateShips(ShipGhoul, PlayerCompany, FirstLight, 40);
+	CreateShips(ShipSolen, PlayerCompany, FirstLight, 30);
+	CreateShips(ShipOrca, MiningSyndicate, FirstLight, 35);
+
+	//	CreateStations("station-shipyard", PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	PlayerCompany->GiveMoney(99999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 	{

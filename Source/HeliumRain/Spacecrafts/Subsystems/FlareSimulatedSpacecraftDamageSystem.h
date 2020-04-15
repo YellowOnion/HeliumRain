@@ -80,7 +80,7 @@ public:
 
 	/** Is this ship unable to manoeuver at all ? */
 	virtual bool IsUncontrollable() const;
-
+	
 	/** Is this ship unable to fight ? */
 	virtual bool IsDisarmed() const;
 
@@ -185,5 +185,5 @@ public:
 
 	static float GetArmor(FFlareSpacecraftComponentDescription* ComponentDescription);
 
-	void SetDead(bool Set);
+	void SetDead();
 };

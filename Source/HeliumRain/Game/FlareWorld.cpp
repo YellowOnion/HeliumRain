@@ -667,6 +667,11 @@ void UFlareWorld::Simulate()
 		{
 			for (UFlareCompany* OtherCompany : GetCompanies())
 			{
+				if (OtherCompany == GetGame()->GetPC()->GetCompany())
+				{
+					continue;
+				}
+
 				if (MaxCombatPointCompany != OtherCompany && OtherCompany->GetCompanyValue().ArmyCurrentCombatPoints > 0)
 				{
 					if (OtherCompany->GetWarState(MaxCombatPointCompany) != EFlareHostility::Hostile)
@@ -905,7 +910,10 @@ void UFlareWorld::Simulate()
 			{
 				// Undock
 				Ship->ForceUndock();
-				Ship->SetSpawnMode(EFlareSpawnMode::Travel);
+				if (!Ship->GetShipMaster())
+				{
+					Ship->SetSpawnMode(EFlareSpawnMode::Travel);
+				}
 			}
 		}
 	}
@@ -936,11 +944,8 @@ void UFlareWorld::Simulate()
 	}
 	
 	// Update reserve ships
-	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
-	{
-		Sectors[SectorIndex]->UpdateReserveShips();
-	}
-
+	UpdateReserveShips();
+	
 	// Update storage station reservation
 	UpdateStorageLocks();
 
@@ -1034,6 +1039,14 @@ void UFlareWorld::Simulate()
 	 {
 		 GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_ALL_SHIPS", 1);
 	 }
+}
+
+void UFlareWorld::UpdateReserveShips()
+{
+	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
+	{
+		Sectors[SectorIndex]->UpdateReserveShips();
+	}
 }
 
 void UFlareWorld::CheckAIBattleState()
@@ -1874,12 +1887,9 @@ void UFlareWorld::AddFactory(UFlareFactory* Factory)
 {
 	Factories.Add(Factory);
 
-	if (Factory->GetParent()->IsShipyard())
+	if (Factory->GetParent()->IsShipyard() && !Factory->GetParent()->GetDescription()->IsDroneCarrier)
 	{
-		if (Shipyards.Find(Factory->GetParent()) == INDEX_NONE)
-		{
-			Shipyards.Add(Factory->GetParent());
-		}
+		Shipyards.AddUnique(Factory->GetParent());
 	}
 }
 

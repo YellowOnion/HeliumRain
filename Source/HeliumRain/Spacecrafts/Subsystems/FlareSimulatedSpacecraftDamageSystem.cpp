@@ -74,9 +74,16 @@ void UFlareSimulatedSpacecraftDamageSystem::TickSystem()
 {
 }
 
-void UFlareSimulatedSpacecraftDamageSystem::SetDead(bool Set)
+void UFlareSimulatedSpacecraftDamageSystem::SetDead()
 {
-	IsDeadOverride = Set;
+	IsDeadOverride = true;
+	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
+	for (FFlareSpacecraftComponentSave& ComponentData : Spacecraft->GetData().Components)
+	{
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData.ComponentIdentifier);
+		ComponentData.Damage = GetMaxHitPoints(ComponentDescription);
+	}
+//	UpdateSubsystemsHealth();
 }
 
 bool UFlareSimulatedSpacecraftDamageSystem::IsAlive() const
@@ -134,7 +141,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed() const
 		return true;
 	}
 
-	if(Spacecraft->IsStation())
+	if(Spacecraft->IsStation() && !Spacecraft->GetDescription()->TurretSlots.Num())
 	{
 		return true;
 	}
@@ -305,8 +312,6 @@ float UFlareSimulatedSpacecraftDamageSystem::Refill(FFlareSpacecraftComponentDes
 {
 	float RefillCost = 0.f;
 	float MaxAffordableRatio = MaxFS / (float) GetRefillCost(ComponentDescription);
-
-
 
 	if(ComponentDescription->Type != EFlarePartType::Weapon)
 	{
@@ -613,7 +618,6 @@ float UFlareSimulatedSpacecraftDamageSystem::GetSubsystemHealthInternal(EFlareSu
 		break;
 		case EFlareSubsystem::SYS_LifeSupport:
 		{
-
 			// No cockpit mean no destructible
 			Health = 1.0f;
 			for (int32 ComponentIndex = 0; ComponentIndex < Data->Components.Num(); ComponentIndex++)

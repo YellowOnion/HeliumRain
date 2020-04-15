@@ -50,7 +50,8 @@ public:
 	void Open(UFlareSimulatedSector* Sector, FOrderDelegate ConfirmationCallback);
 
 	/** Show the overlay for a skirmish */
-	void Open(UFlareSkirmishManager* Skirmish, bool ForPlayer, FOrderDelegate ConfirmationCallback);
+	void Open(UFlareSkirmishManager* Skirmish, FName ForCompany, FOrderDelegate ConfirmationCallback);
+//	void Open(UFlareSkirmishManager* Skirmish, bool ForPlayer, FOrderDelegate ConfirmationCallback);
 
 	/** Is this open */
 	bool IsOpen() const;

@@ -39,6 +39,17 @@ UFlareSpacecraftDamageSystem::UFlareSpacecraftDamageSystem(const class FObjectIn
 	Gameplay events
 ----------------------------------------------------*/
 
+void UFlareSpacecraftDamageSystem::NotifyHeatProductionChange(float HeatProductionChange)
+{
+	TotalHeatProduction += HeatProductionChange;
+	HeatChange = true;
+}
+void UFlareSpacecraftDamageSystem::NotifyHeatSinkChange(float HeatSinkChange)
+{
+	TotalHeatSink += HeatSinkChange;
+	HeatChange = true;
+}
+
 void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareDamageSystem_Tick);
@@ -46,7 +57,7 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	Parent->TickSystem();
 
 	// Apply heat variation : add producted heat then substract radiated heat.
-
+/*
 	// Get the to heat production and heat sink surface
 	float HeatProduction = 0.f;
 	float HeatSinkSurface = 0.f;
@@ -61,15 +72,40 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	// Add a part of sun radiation to ship heat production
 	// Sun flow is 3.094KW/m^2 and keep only 10 % and modulate 90% by sun occlusion
 	HeatProduction += HeatSinkSurface * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
+*/
+	if (HeatChange)
+	{
+		TotalHeatAfterSun = (TotalHeatProduction) + TotalHeatSink * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
+		HeatChange = false;
+/*
+		if (Spacecraft->IsPlayerControlled())
+		{
+			float HeatProduction = 0.f;
+			float HeatSinkSurface = 0.f;
 
-	// Heat up
-	Data->Heat += HeatProduction * DeltaSeconds;
-	// Radiate: Stefan-Boltzmann constant=5.670373e-8
+			for (int32 i = 0; i < Components.Num(); i++)
+			{
+				UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[i]);
+				HeatProduction += Component->GetHeatProduction();
+				HeatSinkSurface += Component->GetHeatSinkSurface();
+			}
+			float HeatProductionOldSun = (HeatProduction)+HeatSinkSurface * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
+			FLOGV("Total heat changed. production: %f (%f) sink: %f (%f) sun: %f (%f)", TotalHeatProduction, HeatProduction, TotalHeatSink, HeatSinkSurface, TotalHeatAfterSun, HeatProductionOldSun);
+		} 
+*/
+	}
+
+// Heat up
+//	Data->Heat += HeatProduction * DeltaSeconds;
+	Data->Heat += TotalHeatAfterSun * DeltaSeconds;
+
+// Radiate: Stefan-Boltzmann constant=5.670373e-8
 	float Temperature = Data->Heat / Description->HeatCapacity;
 	float HeatRadiation = 0.f;
 	if (Temperature > 0)
 	{
-		HeatRadiation = HeatSinkSurface * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
+//		HeatRadiation = HeatSinkSurface * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
+		HeatRadiation = TotalHeatSink * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
 	}
 	// Don't radiate too much energy : negative temperature is not possible
 	Data->Heat -= FMath::Min(HeatRadiation * DeltaSeconds, Data->Heat);
@@ -88,83 +124,87 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	bool MakeUncontrolableDestroyed = false;
 
 	// Update uncontrollable status
-	if (WasControllable && Parent->IsUncontrollable())
+	if (WasControllable)
 	{
-		AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-		MakeUncontrolableDestroyed = true;
-
-		// Player kill
-		if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
+		if (Parent->IsUncontrollable())
 		{
-			if(Parent->IsAlive())
+			//		SetDead();//for testing stability with lots of ship removal
+			AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
+			MakeUncontrolableDestroyed = true;
+
+			// Player kill
+			if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
 			{
-				PC->Notify(LOCTEXT("TargetShipUncontrollable", "Enemy disabled"),
-					FText::Format(LOCTEXT("TargetShipUncontrollableFormat", "You rendered a ship uncontrollable ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
-					FName("ship-uncontrollable"),
-					EFlareNotification::NT_Info);
+				if (Parent->IsAlive())
+				{
+					PC->Notify(LOCTEXT("TargetShipUncontrollable", "Enemy disabled"),
+						FText::Format(LOCTEXT("TargetShipUncontrollableFormat", "You rendered a ship uncontrollable ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
+						FName("ship-uncontrollable"),
+						EFlareNotification::NT_Info);
+				}
 			}
-		}
 
-		// Company kill
-		else if (PC && LastDamageCause.Company && PC->GetCompany() == LastDamageCause.Company)
-		{
-			if(Parent->IsAlive())
+			// Company kill
+			else if (PC && LastDamageCause.Company && PC->GetCompany() == LastDamageCause.Company)
 			{
-				PC->Notify(LOCTEXT("TargetShipUncontrollableCompany", "Enemy disabled"),
-					FText::Format(LOCTEXT("TargetShipUncontrollableCompanyFormat", "Your {0}-class ship rendered a ship uncontrollable ({1}-class)"),
-						LastDamageCause.Spacecraft->GetDescription()->Name,
-						Spacecraft->GetParent()->GetDescription()->Name),
-					FName("ship-uncontrollable"),
-					EFlareNotification::NT_Info);
+				if (Parent->IsAlive())
+				{
+					PC->Notify(LOCTEXT("TargetShipUncontrollableCompany", "Enemy disabled"),
+						FText::Format(LOCTEXT("TargetShipUncontrollableCompanyFormat", "Your {0}-class ship rendered a ship uncontrollable ({1}-class)"),
+							LastDamageCause.Spacecraft->GetDescription()->Name,
+							Spacecraft->GetParent()->GetDescription()->Name),
+						FName("ship-uncontrollable"),
+						EFlareNotification::NT_Info);
+				}
 			}
+
+			WasControllable = false;
+			OnControlLost();
 		}
-
-		WasControllable = false;
-
-		OnControlLost();
 	}
 
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-
 	// Update alive status
-	if (WasAlive && !Parent->IsAlive())
+	if (WasAlive)
 	{
-		MakeUncontrolableDestroyed = true;
-
-		// Player kill
-		if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
+		if (!Parent->IsAlive())
 		{
-			PC->Notify(LOCTEXT("TargetShipKilled", "Enemy destroyed"),
-				FText::Format(LOCTEXT("TargetShipKilledFormat", "You destroyed a ship ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
-				FName("ship-killed"),
-				EFlareNotification::NT_Info);
-		}
+			MakeUncontrolableDestroyed = true;
 
-		// Company kill
-		else if (PC && LastDamageCause.Spacecraft && PC->GetCompany() == LastDamageCause.Company)
-		{
-			if(Spacecraft->IsStation())
+			// Player kill
+			if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
 			{
-				PC->Notify(LOCTEXT("TargetStationKilledCompany", "Enemy destroyed"),
-					FText::Format(LOCTEXT("TargetStationKilledCompanyFormat", "Your {0}-class ship destroyed a station ({1}-class)"),
-						LastDamageCause.Spacecraft->GetDescription()->Name,
-						Spacecraft->GetParent()->GetDescription()->Name),
-					FName("station-killed"),
-					EFlareNotification::NT_Info);
-			}
-			else
-			{
-				PC->Notify(LOCTEXT("TargetShipKilledCompany", "Enemy destroyed"),
-					FText::Format(LOCTEXT("TargetShipKilledCompanyFormat", "Your {0}-class ship destroyed a ship ({1}-class)"),
-						LastDamageCause.Spacecraft->GetDescription()->Name,
-						Spacecraft->GetParent()->GetDescription()->Name),
+				PC->Notify(LOCTEXT("TargetShipKilled", "Enemy destroyed"),
+					FText::Format(LOCTEXT("TargetShipKilledFormat", "You destroyed a ship ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
 					FName("ship-killed"),
 					EFlareNotification::NT_Info);
 			}
-		}
 
-		WasAlive = false;
-		OnSpacecraftDestroyed();
+			// Company kill
+			else if (PC && LastDamageCause.Spacecraft && PC->GetCompany() == LastDamageCause.Company)
+			{
+				if (Spacecraft->IsStation())
+				{
+					PC->Notify(LOCTEXT("TargetStationKilledCompany", "Enemy destroyed"),
+						FText::Format(LOCTEXT("TargetStationKilledCompanyFormat", "Your {0}-class ship destroyed a station ({1}-class)"),
+							LastDamageCause.Spacecraft->GetDescription()->Name,
+							Spacecraft->GetParent()->GetDescription()->Name),
+						FName("station-killed"),
+						EFlareNotification::NT_Info);
+				}
+				else
+				{
+					PC->Notify(LOCTEXT("TargetShipKilledCompany", "Enemy destroyed"),
+						FText::Format(LOCTEXT("TargetShipKilledCompanyFormat", "Your {0}-class ship destroyed a ship ({1}-class)"),
+							LastDamageCause.Spacecraft->GetDescription()->Name,
+							Spacecraft->GetParent()->GetDescription()->Name),
+						FName("ship-killed"),
+						EFlareNotification::NT_Info);
+				}
+			}
+
+			WasAlive = false;
+			OnSpacecraftDestroyed();
+		}
 	}
 
 	if(MakeUncontrolableDestroyed)
@@ -225,6 +265,7 @@ void UFlareSpacecraftDamageSystem::Initialize(AFlareSpacecraft* OwnerSpacecraft,
 	Description = Spacecraft->GetParent()->GetDescription();
 	Data = OwnerData;
 	Parent = Spacecraft->GetParent()->GetDamageSystem();
+	PC = Spacecraft->GetGame()->GetPC();
 }
 
 void UFlareSpacecraftDamageSystem::Start()
@@ -238,12 +279,29 @@ void UFlareSpacecraftDamageSystem::Start()
 	WasAlive = Parent->IsAlive();
 	TimeSinceLastExternalDamage = 10000;
 
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 }
 
 void UFlareSpacecraftDamageSystem::SetLastDamageCause(DamageCause Cause)
 {
 	LastDamageCause = Cause;
+}
+
+void UFlareSpacecraftDamageSystem::CalculateInitialHeat()
+{
+	TotalHeatProduction = 0;
+	TotalHeatSink = 0;
+	for (int32 i = 0; i < Components.Num(); i++)
+	{
+		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[i]);
+		float CompHeatProd = Component->GetHeatProduction();
+		float CompHeatsink = Component->GetHeatSinkSurface();
+
+		TotalHeatProduction += CompHeatProd;
+		TotalHeatSink += CompHeatsink;
+		Component->SetHeatProduction(CompHeatProd);
+		Component->SetHeatSinkSurface(CompHeatsink);
+	}
+	TotalHeatAfterSun = TotalHeatProduction + TotalHeatSink * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
 }
 
 void UFlareSpacecraftDamageSystem::UpdatePower()
@@ -260,7 +318,7 @@ void UFlareSpacecraftDamageSystem::SetDead()
 	UFlareSimulatedSpacecraft* SimmedVersion = Spacecraft->GetParent();
 	if (SimmedVersion)
 	{
-		SimmedVersion->GetDamageSystem()->SetDead(true);
+		SimmedVersion->GetDamageSystem()->SetDead();
 	}
 }
 
@@ -345,6 +403,11 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
 		Spacecraft->GetGame()->GetSkirmishManager()->ShipDestroyed(!IsPlayerShip);
 	}
 
+	if (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector())
+	{
+		PC->GetGame()->GetActiveSector()->AddDestroyedSpacecraft(Spacecraft);
+	}
+
 	UFlareCompany* PlayerCompany = PC->GetCompany();
 	UFlareSimulatedSpacecraft* PlayerShip = Spacecraft->GetGame()->GetPC()->GetPlayerShip();
 
@@ -397,7 +460,6 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
 				if (OwnedShips->GetShipMaster() == Spacecraft->GetParent())
 				{
 					OwnedShips->TryMigrateDrones();
-//					OwnedShips->GetDamageSystem()->SetDead(true);
 				}
 			}
 		}
@@ -453,6 +515,7 @@ void UFlareSpacecraftDamageSystem::OnControlLost()
 
 	Spacecraft->GetNavigationSystem()->Undock();
 	Spacecraft->GetNavigationSystem()->AbortAllCommands();
+	Spacecraft->GetNavigationSystem()->OnControlLost();
 
 	// Notify quest manager
 	if (Spacecraft->GetGame()->GetQuestManager())
@@ -817,8 +880,8 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 	FVector LocalLocation = Spacecraft->GetRootComponent()->GetComponentTransform().InverseTransformPosition(Location) / 100.f;
 	CombatLog::SpacecraftDamaged(Spacecraft->GetParent(), Energy, Radius, LocalLocation, DamageType, CompanyDamageSource, DamageCauser);
 
+/*
 #if! UE_BUILD_SHIPPING
-	
 	// Stations damaged by collisions with non-spacecrafts are highly suspicious
 	if (Spacecraft->IsStation() && DamageType == EFlareDamage::DAM_Collision && !DamageSource)
 	{
@@ -826,9 +889,8 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		//FCHECK(DamageSource);
 		//FCHECK(CompanyDamageSource);
 	}
-
 #endif
-
+*/
 	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
 	{
 		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);

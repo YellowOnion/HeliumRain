@@ -227,7 +227,7 @@ void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDe
 	FFlareSpacecraftComponentSave Data;
 	Data.Damage = 0;
 	Data.ComponentIdentifier = PartDesc->Identifier;
-	CurrentPart->Initialize(&Data, TargetCompany, this, true);
+	CurrentPart->Initialize(&Data, TargetCompany, this, true,nullptr);
 	CurrentPart->SetWorldScale3D(FVector(1, 1, 1));
 	float Scale = DisplaySize / CurrentPart->GetMeshScale();
 	CurrentPart->SetWorldScale3D(Scale * FVector(1, 1, 1));

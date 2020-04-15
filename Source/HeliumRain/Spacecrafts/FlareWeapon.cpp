@@ -48,10 +48,11 @@ UFlareWeapon::UFlareWeapon(const class FObjectInitializer& PCIP)
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareWeapon::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
+void UFlareWeapon::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualShip)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
-	
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualShip);
+	TraceDelegate.BindUObject(this, &UFlareWeapon::OnTraceCompleted);
+
 	// Destroy attached bombs
 	ClearBombs();
 
@@ -87,6 +88,7 @@ void UFlareWeapon::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany
 	// Additional properties
 	LastFiredGun = -1;
 	SetupFiringEffects();
+	TimeSinceLastShell = FiringPeriod+1;
 }
 
 void UFlareWeapon::SetupFiringEffects()
@@ -126,7 +128,21 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (LastTraceHandle._Data.FrameNumber != 0)
+	{
+		FTraceDatum OutData;
+		if (GetWorld()->QueryTraceData(LastTraceHandle, OutData))
+		{
+			// Clear out handle so next tick we don't enter
+			LastTraceHandle._Data.FrameNumber = 0;
+			// trace is finished, do stuff with results
+			DoWorkWithTraceResults(OutData);
+		}
+	}
+
 	TimeSinceLastShell += DeltaTime;
+	UpdateHeatProduction();
+	UpdateHeatSinkSurface();
 
 	if (Firing && IsReadyToFire() && GetUsableRatio() > 0.f && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 	{
@@ -260,11 +276,8 @@ FVector UFlareWeapon::ComputeParallaxCorrection(int GunIndex)
 
 					SetTarget(TargetCandidate->GetActorLocation(), CandidateRootComponent->GetPhysicsLinearVelocity() / 100.f);
 				}
-
 			}
 		}
-
-
 	}
 
 	if (HasParallaxTarget)
@@ -316,12 +329,25 @@ bool UFlareWeapon::FireGun(int GunIndex)
 	FVector FiringDirection = FMath::VRandCone(FiringAxis, Imprecision);
 	FVector FiringVelocity = Spacecraft->Airframe->GetPhysicsLinearVelocity();
 
-	// Create a shell
-	AFlareShell* Shell = GetWorld()->SpawnActor<AFlareShell>(
-		AFlareShell::StaticClass(),
-		FiringLocation,
-		FRotator::ZeroRotator,
-		ProjectileSpawnParams);
+	AFlareShell* Shell = Spacecraft->GetGame()->GetActiveSector()->RetrieveCachedShell();
+	if (Shell)
+	{
+		//retrieve a shell
+		Shell->UnsetSafeDestroyed();
+		FTransform Transform;
+		Transform.SetLocation(FiringLocation);
+		Transform.SetRotation(FQuat(FRotator::ZeroRotator));
+		Shell->SetActorTransform(Transform);
+	}
+	else
+	{
+		// Create a shell
+		Shell = GetWorld()->SpawnActor<AFlareShell>(
+			AFlareShell::StaticClass(),
+			FiringLocation,
+			FRotator::ZeroRotator,
+			ProjectileSpawnParams);
+	}
 
 	// Fire it. Tracer ammo every bullets
 	Shell->Initialize(this, ComponentDescription, FiringDirection, FiringVelocity, true);
@@ -541,11 +567,23 @@ void UFlareWeapon::FillBombs()
 	}
 }
 
+void UFlareWeapon::RemoveBomb(AFlareBomb* Removing)
+{
+	if (Removing)
+	{
+		Bombs.RemoveSwap(Removing);
+	}
+}
+
 void UFlareWeapon::ClearBombs()
 {
 	for (int i = 0; i < Bombs.Num(); i++)
 	{
-		Bombs[i]->Destroy();
+		if (Bombs[i])
+		{
+			Bombs[i]->SafeDestroy();
+//			Bombs[i]->Destroy();
+		}
 	}
 	Bombs.Empty();
 }
@@ -578,7 +616,7 @@ bool UFlareWeapon::IsTurret() const
 	return ComponentDescription->WeaponCharacteristics.TurretCharacteristics.IsTurret;
 }
 
-bool UFlareWeapon::IsSafeToFire(int GunIndex, AActor*& HitTarget) const
+bool UFlareWeapon::IsSafeToFire(int GunIndex, AActor*& HitTarget)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareWeapon_IsSafeToFire);
 
@@ -587,17 +625,88 @@ bool UFlareWeapon::IsSafeToFire(int GunIndex, AActor*& HitTarget) const
 	FVector FireTargetLocation = FiringLocation + FiringDirection * 100000;
 
 	FHitResult HitResult(ForceInit);
-	if (Trace(FiringLocation, FireTargetLocation, HitResult))
+
+	RequestTrace(FiringLocation, FiringDirection);
+
+//	if (Trace(FiringLocation, FireTargetLocation, HitResult))
+	if(PreviousTraceIsSafe)
 	{
 		if (HitResult.Actor.IsValid() && HitResult.Actor == Spacecraft)
 		{
-			HitTarget = HitResult.Actor.Get();
+			if (!HitResult.Actor->IsActorBeingDestroyed() && !HitResult.Actor->IsPendingKillPending())
+			{
+				HitTarget = HitResult.Actor.Get();
+			}
+			else
+			{
+				HitTarget = NULL;
+			}
 			return false;
 		}
 	}
 
-	HitTarget = HitResult.Actor.IsValid() ? HitResult.Actor.Get() : NULL;
+	if (HitResult.Actor.IsValid())
+	{
+		if (!HitResult.Actor->IsActorBeingDestroyed() && !HitResult.Actor->IsPendingKillPending())
+		{
+			HitTarget = HitResult.Actor.Get();
+		}
+		else
+		{
+			HitTarget = NULL;
+		}
+	}
+	else
+	{
+		HitTarget = NULL;
+	}
 	return true;
+}
+
+FTraceHandle UFlareWeapon::RequestTrace(const FVector& Start, const FVector& End)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return FTraceHandle();
+	}
+
+	ECollisionChannel CollisionChannel = (ECollisionChannel)(ECC_WorldStatic | ECC_WorldDynamic | ECC_Pawn);
+
+	bool bTraceComplex = false;
+	bool bIgnoreSelf = true;
+	TArray<AActor*> ActorsToIgnore;
+
+	FCollisionQueryParams TraceParams(FName(TEXT("Shell Trace")), true, NULL);
+	TraceParams.bTraceComplex = true;
+	TraceParams.bReturnPhysicalMaterial = false;
+
+	return World->AsyncLineTraceByChannel(EAsyncTraceType::Single,
+		Start, End,
+		CollisionChannel,
+		TraceParams,
+		FCollisionResponseParams::DefaultResponseParam,
+		&TraceDelegate);
+}
+
+void UFlareWeapon::DoWorkWithTraceResults(const FTraceDatum& TraceData)
+{
+	TArray< struct FHitResult > OutHits = TraceData.OutHits;
+	if (OutHits.Num())
+	{
+		PreviousTraceIsSafe = false;
+	}
+	else
+	{
+		PreviousTraceIsSafe = true;
+	}
+}
+
+void UFlareWeapon::OnTraceCompleted(const FTraceHandle& Handle, FTraceDatum& Data)
+{
+	ensure(Handle == LastTraceHandle);
+	DoWorkWithTraceResults(Data);
+	LastTraceHandle._Data.FrameNumber = 0; // reset it
 }
 
 bool UFlareWeapon::Trace(const FVector& Start, const FVector& End, FHitResult& HitOut) const

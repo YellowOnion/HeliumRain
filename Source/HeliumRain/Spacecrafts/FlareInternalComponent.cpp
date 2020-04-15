@@ -19,9 +19,9 @@ UFlareInternalComponent::UFlareInternalComponent(const class FObjectInitializer&
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareInternalComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
+void UFlareInternalComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualOwnerShip);
 	if (!ComponentDescription)
 	{
 		FLOGV("!!! Internal component %s is not correctly mapped :", *(this->GetReadableName()));

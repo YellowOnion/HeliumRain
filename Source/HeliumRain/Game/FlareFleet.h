@@ -164,6 +164,7 @@ protected:
 	UFlareSimulatedSector*                 CurrentSector;
 	UFlareTravel*                          CurrentTravel;
 	UFlareTradeRoute*                      CurrentTradeRoute;
+	uint32								   FleetCount;
 
 public:
 	/*----------------------------------------------------

@@ -31,14 +31,14 @@ AFlareShell::AFlareShell(const class FObjectInitializer& PCIP) : Super(PCIP)
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
 	ManualTurret = false;
 }
-
-
+ 
 /*----------------------------------------------------
 	Gameplay
 ----------------------------------------------------*/
 
 void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftComponentDescription* Description, FVector ShootDirection, FVector ParentVelocity, bool Tracer)
 {
+	TraceDelegate.BindUObject(this, &AFlareShell::OnTraceCompleted);
 	ShellDescription = Description;
 	TracerShell = Tracer;
 	ParentWeapon = Weapon;
@@ -55,6 +55,8 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	ImpactEffectTemplate = Description->WeaponCharacteristics.ImpactEffect;
 	ExplosionEffectScale = Description->WeaponCharacteristics.ExplosionEffectScale;
 	ImpactEffectScale = Description->WeaponCharacteristics.ImpactEffectScale;
+	
+	UParticleSystem* OldFlightEffectsTemplate = FlightEffectsTemplate;
 	FlightEffectsTemplate = Description->WeaponCharacteristics.GunCharacteristics.TracerEffect;
 
 	ExplosionEffectMaterial = Description->WeaponCharacteristics.GunCharacteristics.ExplosionMaterial;
@@ -70,14 +72,31 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	// Spawn the flight effects
 	if (TracerShell)
 	{
-		FlightEffects = UGameplayStatics::SpawnEmitterAttached(
-			FlightEffectsTemplate,
-			RootComponent,
-			NAME_None,
-			FVector(0,0,0),
-			FRotator(0,0,0),
-			EAttachLocation::KeepRelativeOffset,
-			true);
+		if (FlightEffects != NULL)
+		{
+			if (OldFlightEffectsTemplate!= NULL && OldFlightEffectsTemplate != FlightEffectsTemplate)
+			{
+				FlightEffects->SetTemplate(FlightEffectsTemplate);
+//				FLOGV("Reuse old flight effect and change template")
+			}
+/*
+			else
+			{
+				FLOGV("Reuse old flight effect")
+			}
+			*/
+		}
+		else
+		{
+			FlightEffects = UGameplayStatics::SpawnEmitterAttached(
+				FlightEffectsTemplate,
+				RootComponent,
+				NAME_None,
+				FVector(0,0,0),
+				FRotator(0,0,0),
+				EAttachLocation::KeepRelativeOffset,
+				true);
+		}
 	}
 
 	SetLifeSpan(ShellDescription->WeaponCharacteristics.GunCharacteristics.AmmoRange * 100 / ShellVelocity.Size()); // 10km
@@ -85,12 +104,34 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	PC = ParentWeapon->GetSpacecraft()->GetGame()->GetPC();
 
 	ManualTurret = ParentWeapon->GetSpacecraft()->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET;
+	UFlareSector* LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 }
 
 void AFlareShell::Tick(float DeltaSeconds)
 {
+	if(IsSafeDestroyingRunning)
+	{
+		if (!SafeDestroyed)
+		{
+			FinishSafeDestroy();
+		}
+		return;
+	}
+
 	Super::Tick(DeltaSeconds);
-	
+/*
+	if (LastTraceHandle._Data.FrameNumber != 0)
+	{
+		FTraceDatum OutData;
+		if (GetWorld()->QueryTraceData(LastTraceHandle, OutData))
+		{
+			// Clear out handle so next tick we don't enter
+			LastTraceHandle._Data.FrameNumber = 0;
+			// trace is finished, do stuff with results
+			DoWorkWithTraceResults(OutData);
+		}
+	}
+*/
 	FVector ActorLocation = GetActorLocation();
 	FVector NextActorLocation = ActorLocation + ShellVelocity * DeltaSeconds;
 	SetActorLocation(NextActorLocation, false);
@@ -121,11 +162,16 @@ void AFlareShell::Tick(float DeltaSeconds)
 
 	if (ShellDescription)
 	{
-		FHitResult HitResult(ForceInit);
 
+//		RequestTrace(ActorLocation, NextActorLocation);
+
+		FHitResult HitResult(ForceInit);
+		//TODO get async trace going without left over projectiles
 		if (Trace(ActorLocation, NextActorLocation, HitResult))
+//		if(PreviousHitResult.GetActor() != nullptr)
 		{
 			OnImpact(HitResult, ShellVelocity);
+//			OnImpact(PreviousHitResult, ShellVelocity);
 		}
 		
 		if (ShellDescription->WeaponCharacteristics.FuzeType == EFlareShellFuzeType::Proximity)
@@ -146,20 +192,20 @@ void AFlareShell::Tick(float DeltaSeconds)
 	}
 }
 
-
-
-
-
-
 void AFlareShell::CheckFuze(FVector ActorLocation, FVector NextActorLocation)
 {
+	if (!LocalSector)
+	{
+		return;
+	}
+
 	FVector Center = (NextActorLocation + ActorLocation) / 2;
 	float NearThresoldSquared = FMath::Square(100000); // 1km
-	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+//	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 
 	auto CheckTarget = [&](PilotHelper::PilotTarget TargetCandidate)
 	{
-		if (TargetCandidate.Is(ParentWeapon->GetSpacecraft()))
+		if (ParentWeapon && TargetCandidate.Is(ParentWeapon->GetSpacecraft()))
 		{
 			// Ignore parent spacecraft
 			return;
@@ -197,8 +243,6 @@ void AFlareShell::CheckFuze(FVector ActorLocation, FVector NextActorLocation)
 			MinDistance = NextCandidateOffset.Size();
 			MinInFuture = true;
 		}
-
-
 
 		float DistanceToMinDistancePoint;
 		if (CandidateOffset.Size() == MinDistance)
@@ -268,26 +312,25 @@ void AFlareShell::CheckFuze(FVector ActorLocation, FVector NextActorLocation)
 	};
 
 	// Check targets against every actor in the level, using index-based, not for-range, because this can affect the container
-	for (int32 Index = 0; Index < Sector->GetSpacecrafts().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetSpacecrafts().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetSpacecrafts()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetSpacecrafts()[Index]));
 	}
-	for (int32 Index = 0; Index < Sector->GetBombs().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetBombs().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetBombs()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetBombs()[Index]));
 	}
-	for (int32 Index = 0; Index < Sector->GetMeteorites().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetMeteorites().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetMeteorites()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetMeteorites()[Index]));
 	}
 }
-
 
 void AFlareShell::OnImpact(const FHitResult& HitResult, const FVector& HitVelocity)
 {
 	bool DestroyProjectile = true;
 	
-	if (HitResult.Actor.IsValid() && HitResult.Component.IsValid())
+	if (HitResult.Actor.IsValid() && HitResult.Component.IsValid() && ParentWeapon)
 	{
 		// Compute projectile energy.
 		FVector ProjectileVelocity = HitVelocity / 100;
@@ -298,18 +341,24 @@ void AFlareShell::OnImpact(const FHitResult& HitResult, const FVector& HitVeloci
 		// Compute parameters
 		float ShellEnergy = 0.5f * ShellMass * ImpactVelocity.SizeSquared() / 1000; // Damage in KJ
 		
-
 		float AbsorbedEnergy = ApplyDamage(HitResult.Actor.Get(), HitResult.GetComponent(), HitResult.Location, ImpactVelocityAxis, HitResult.ImpactNormal, ShellEnergy, ShellDescription->WeaponCharacteristics.AmmoDamageRadius, EFlareDamage::DAM_ArmorPiercing);
 		bool Richochet = (AbsorbedEnergy < ShellEnergy);
 
 		if (Richochet)
 		{
-			DestroyProjectile = false;
 			float RemainingEnergy = ShellEnergy - AbsorbedEnergy;
 			float RemainingVelocity = FMath::Sqrt(2 * RemainingEnergy * 1000 / ShellMass);
-			FVector BounceDirection = ShellVelocity.GetUnsafeNormal().MirrorByVector(HitResult.ImpactNormal);
-			ShellVelocity = BounceDirection * RemainingVelocity * 100;
-			SetActorLocation(HitResult.Location);
+			if (RemainingVelocity > 0)
+			{
+				DestroyProjectile = false;
+				FVector BounceDirection = ShellVelocity.GetUnsafeNormal().MirrorByVector(HitResult.ImpactNormal);
+				ShellVelocity = BounceDirection * RemainingVelocity * 100;
+				SetActorLocation(HitResult.Location);
+			}
+			else
+			{
+				DestroyProjectile = true;
+			}
 		}
 		else
 		{
@@ -377,17 +426,22 @@ void AFlareShell::OnImpact(const FHitResult& HitResult, const FVector& HitVeloci
 
 	if (DestroyProjectile)
 	{
-		Destroy();
+//		Destroy();
+		SafeDestroy();
 	}
 }
 
 void AFlareShell::DetonateAt(FVector DetonatePoint)
 {
+	if (!LocalSector)
+	{
+		return;
+	}
 
 	UGameplayStatics::SpawnEmitterAtLocation(this,
 		ExplosionEffectTemplate,
 		DetonatePoint);
-	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+//	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 	auto CheckTarget = [&](PilotHelper::PilotTarget Target)
 	{
 		//FLOGV("DetonateAt CheckTarget for %s",*Target.GetActor()->GetName());
@@ -475,20 +529,17 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 				//UKismetSystemLibrary::DrawDebugLine(ParentWeapon->GetSpacecraft()->GetWorld(), DetonatePoint, BestHitResult.Location, FColor::Green, 1000.f);
 
 				AFlareSpacecraft* Spacecraft = Cast<AFlareSpacecraft>(BestHitResult.Actor.Get());
-				AFlareBomb* Bomb = Cast<AFlareBomb>(BestHitResult.Actor.Get());
-				AFlareMeteorite* Meteorite = Cast<AFlareMeteorite>(BestHitResult.Actor.Get());
-
 				if (Spacecraft)
 				{
 					float FragmentPowerEffet = FMath::FRandRange(0.f, 2.f);
 					float FragmentRangeEffet = FMath::FRandRange(0.5f, 1.5f);
 					ApplyDamage(Spacecraft, BestHitResult.GetComponent()
-								, BestHitResult.Location
-								, HitDirection
-								, BestHitResult.ImpactNormal
-								, FragmentPowerEffet * ShellDescription->WeaponCharacteristics.ExplosionPower
-								, FragmentRangeEffet  * ShellDescription->WeaponCharacteristics.AmmoDamageRadius
-								, EFlareDamage::DAM_HighExplosive);
+						, BestHitResult.Location
+						, HitDirection
+						, BestHitResult.ImpactNormal
+						, FragmentPowerEffet * ShellDescription->WeaponCharacteristics.ExplosionPower
+						, FragmentRangeEffet  * ShellDescription->WeaponCharacteristics.AmmoDamageRadius
+						, EFlareDamage::DAM_HighExplosive);
 
 					// Play sound
 					AFlareSpacecraftPawn* SpacecraftPawn = Cast<AFlareSpacecraftPawn>(Spacecraft);
@@ -497,41 +548,51 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 						SpacecraftPawn->GetPC()->PlayLocalizedSound(ImpactSound, BestHitResult.Location, BestHitResult.GetComponent());
 					}
 				}
-				else if (Bomb)
+				else
 				{
-					Bomb->OnBombDetonated(nullptr, nullptr, BestHitResult.Location, BestHitResult.ImpactNormal);
-				}
-				else if (Meteorite)
-				{
-					float FragmentPowerEffet = FMath::FRandRange(0.f, 2.f);
-					float FragmentRangeEffet = FMath::FRandRange(0.5f, 1.5f);
-					ApplyDamage(Meteorite, BestHitResult.GetComponent()
+					AFlareBomb* Bomb = Cast<AFlareBomb>(BestHitResult.Actor.Get());
+					if (Bomb)
+					{
+						Bomb->OnBombDetonated(nullptr, nullptr, BestHitResult.Location, BestHitResult.ImpactNormal);
+					}
+					else
+					{
+						AFlareMeteorite* Meteorite = Cast<AFlareMeteorite>(BestHitResult.Actor.Get());
+						if (Meteorite)
+						{
+							float FragmentPowerEffet = FMath::FRandRange(0.f, 2.f);
+							float FragmentRangeEffet = FMath::FRandRange(0.5f, 1.5f);
+							ApplyDamage(Meteorite, BestHitResult.GetComponent()
 								, BestHitResult.Location
 								, HitDirection
 								, BestHitResult.ImpactNormal
 								, FragmentPowerEffet * ShellDescription->WeaponCharacteristics.ExplosionPower
 								, FragmentRangeEffet  * ShellDescription->WeaponCharacteristics.AmmoDamageRadius
 								, EFlareDamage::DAM_HighExplosive);
+						}
+
+					}
 				}
 			}
 		}
 	};
 
 	// Check targets against every actor in the level, using index-based, not for-range, because this can affect the container
-	for (int32 Index = 0; Index < Sector->GetSpacecrafts().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetSpacecrafts().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetSpacecrafts()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetSpacecrafts()[Index]));
 	}
-	for (int32 Index = 0; Index < Sector->GetBombs().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetBombs().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetBombs()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetBombs()[Index]));
 	}
-	for (int32 Index = 0; Index < Sector->GetMeteorites().Num(); Index++)
+	for (int32 Index = 0; Index < LocalSector->GetMeteorites().Num(); Index++)
 	{
-		CheckTarget(PilotHelper::PilotTarget(Sector->GetMeteorites()[Index]));
+		CheckTarget(PilotHelper::PilotTarget(LocalSector->GetMeteorites()[Index]));
 	}
 
-	Destroy();
+//	Destroy();
+	SafeDestroy();
 }
 
 float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitComponent, FVector ImpactLocation,  FVector ImpactAxis,  FVector ImpactNormal, float ImpactPower, float ImpactRadius, EFlareDamage::Type DamageType)
@@ -567,9 +628,7 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 	// Hit a component : damage in KJ
 	float AbsorbedEnergy = (PenetrateArmor ? ImpactPower : FMath::Square(Incidence) * ImpactPower);
 	AFlareSpacecraft* Spacecraft = Cast<AFlareSpacecraft>(ActorToDamage);
-	AFlareAsteroid* Asteroid = Cast<AFlareAsteroid>(ActorToDamage);
-	AFlareMeteorite* Meteorite = Cast<AFlareMeteorite>(ActorToDamage);
-	AFlareBomb* Bomb = Cast<AFlareBomb>(ActorToDamage);
+
 	if (Spacecraft)
 	{
 		DamageCause Cause(Cast<AFlareSpacecraft>(ParentWeapon->GetOwner())->GetParent(), DamageType);
@@ -578,8 +637,8 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 		Spacecraft->GetDamageSystem()->ApplyDamage(AbsorbedEnergy, ImpactRadius, ImpactLocation, DamageType, ParentWeapon->GetSpacecraft()->GetParent(), GetName());
 
 		// Physics impulse
-		Spacecraft->Airframe->AddImpulseAtLocation( 5000	 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
-		
+		Spacecraft->Airframe->AddImpulseAtLocation(5000 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
+
 		// Play sound
 		AFlareSpacecraftPawn* SpacecraftPawn = Cast<AFlareSpacecraftPawn>(Spacecraft);
 		if (SpacecraftPawn->IsPlayerShip())
@@ -601,34 +660,43 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 			ParentWeapon->GetSpacecraft()->GetGame()->GetSkirmishManager()->AmmoHit(HitByPlayer);
 		}
 	}
-	else if (Asteroid)
+	else
 	{
-		// Physics impulse
-		Asteroid->GetAsteroidComponent()->AddImpulseAtLocation( 5000	 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
-		if (ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()
-			&& ParentWeapon->GetSpacecraft()->GetParent() == ParentWeapon->GetSpacecraft()->GetGame()->GetPC()->GetPlayerShip())
+		AFlareAsteroid* Asteroid = Cast<AFlareAsteroid>(ActorToDamage);
+		if (Asteroid)
 		{
-			ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("hit-asteroid"));
+			// Physics impulse
+			Asteroid->GetAsteroidComponent()->AddImpulseAtLocation(5000 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
+			if (ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()
+				&& ParentWeapon->GetSpacecraft()->GetParent() == ParentWeapon->GetSpacecraft()->GetGame()->GetPC()->GetPlayerShip())
+			{
+				ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("hit-asteroid"));
+			}
 		}
-	}
-	else if (Meteorite)
-	{
-		// Physics impulse
-		Meteorite->GetMeteoriteComponent()->AddImpulseAtLocation( 5000	 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
-		if (ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()
-			&& ParentWeapon->GetSpacecraft()->GetParent() == ParentWeapon->GetSpacecraft()->GetGame()->GetPC()->GetPlayerShip())
+		else
 		{
-			ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("hit-meteorite"));
+			AFlareMeteorite* Meteorite = Cast<AFlareMeteorite>(ActorToDamage);
+			if (Meteorite)
+			{
+				// Physics impulse
+				Meteorite->GetMeteoriteComponent()->AddImpulseAtLocation(5000 * ImpactRadius * AbsorbedEnergy * (PenetrateArmor ? ImpactAxis : -ImpactNormal), ImpactLocation);
+				if (ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()
+					&& ParentWeapon->GetSpacecraft()->GetParent() == ParentWeapon->GetSpacecraft()->GetGame()->GetPC()->GetPlayerShip())
+				{
+					ParentWeapon->GetSpacecraft()->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("hit-meteorite"));
+				}
+				Meteorite->ApplyDamage(AbsorbedEnergy, ImpactRadius, ImpactLocation, DamageType, ParentWeapon->GetSpacecraft()->GetParent(), GetName());
+			}
+			else
+			{
+				AFlareBomb* Bomb = Cast<AFlareBomb>(ActorToDamage);
+				if (Bomb)
+				{
+					FHitResult Hit;
+					Bomb->NotifyHit(HitComponent, this, NULL, false, ImpactLocation, ImpactNormal, FVector::ZeroVector, Hit);
+				}
+			}
 		}
-		Meteorite->ApplyDamage(AbsorbedEnergy, ImpactRadius, ImpactLocation, DamageType, ParentWeapon->GetSpacecraft()->GetParent(), GetName());
-	}
-
-
-
-	else if (Bomb)
-	{
-		FHitResult Hit;
-		Bomb->NotifyHit(HitComponent, this, NULL, false, ImpactLocation, ImpactNormal, FVector::ZeroVector, Hit);
 	}
 
 	// Spawn impact decal
@@ -679,6 +747,73 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 	return AbsorbedEnergy;
 }
 
+FTraceHandle AFlareShell::RequestTrace(const FVector& Start, const FVector& End)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return FTraceHandle();
+	}
+
+	ECollisionChannel CollisionChannel = (ECollisionChannel)(ECC_WorldStatic | ECC_WorldDynamic | ECC_Pawn);
+
+	bool bTraceComplex = false;
+	bool bIgnoreSelf = true;
+	TArray<AActor*> ActorsToIgnore;
+
+	FCollisionQueryParams TraceParams(FName(TEXT("Shell Trace")), true, this);
+	TraceParams.bTraceComplex = true;
+	TraceParams.bReturnPhysicalMaterial = false;
+	TraceParams.AddIgnoredActor(this);
+	if (ParentWeapon)
+	{
+		TraceParams.AddIgnoredActor(ParentWeapon->GetSpacecraft());
+	}
+
+/*
+// all these checks *actually* do help if deleting a ship at the "wrong" time
+	if (ParentWeapon)
+	{
+		if (IsValid(ParentWeapon))
+		{
+			if (ParentWeapon->IsValidLowLevelFast())
+			{
+				if (!ParentWeapon->IsBeingDestroyed() && !ParentWeapon->IsPendingKill())
+				{
+					AFlareSpacecraft* WepSpacies = ParentWeapon->GetSpacecraft();
+					if (WepSpacies)
+					{
+						TraceParams.AddIgnoredActor(WepSpacies);
+					}
+				}
+			}
+		}
+	}
+*/
+	return World->AsyncLineTraceByChannel(EAsyncTraceType::Single,
+		Start, End,
+		CollisionChannel,
+		TraceParams,
+		FCollisionResponseParams::DefaultResponseParam,
+		&TraceDelegate);
+}
+
+void AFlareShell::DoWorkWithTraceResults(const FTraceDatum& TraceData)
+{
+	TArray< struct FHitResult > OutHits = TraceData.OutHits;
+	if (OutHits.Num())
+	{
+		PreviousHitResult = OutHits[0];
+	}
+}
+
+void AFlareShell::OnTraceCompleted(const FTraceHandle& Handle, FTraceDatum& Data)
+{
+	ensure(Handle == LastTraceHandle);
+	DoWorkWithTraceResults(Data);
+	LastTraceHandle._Data.FrameNumber = 0; // reset it
+}
+
 bool AFlareShell::Trace(const FVector& Start, const FVector& End, FHitResult& HitOut)
 {
 	// Ignore Actors
@@ -686,8 +821,29 @@ bool AFlareShell::Trace(const FVector& Start, const FVector& End, FHitResult& Hi
 	TraceParams.bTraceComplex = true;
 	TraceParams.bReturnPhysicalMaterial = false;
 	TraceParams.AddIgnoredActor(this);
-	TraceParams.AddIgnoredActor(ParentWeapon->GetSpacecraft());
-
+	if (ParentWeapon)
+	{
+		TraceParams.AddIgnoredActor(ParentWeapon->GetSpacecraft());
+	}
+/*
+	if (ParentWeapon)
+	{
+		if (IsValid(ParentWeapon))
+		{
+			if (ParentWeapon->IsValidLowLevelFast())
+			{
+				if (!ParentWeapon->IsBeingDestroyed() && !ParentWeapon->IsPendingKill())
+				{
+					AFlareSpacecraft* WepSpacies = ParentWeapon->GetSpacecraft();
+					if (WepSpacies)
+					{
+						TraceParams.AddIgnoredActor(WepSpacies);
+					}
+				}
+			}
+		}
+	}
+*/
 	// Re-initialize hit info
 	HitOut = FHitResult(ForceInit);
 
@@ -706,20 +862,71 @@ bool AFlareShell::Trace(const FVector& Start, const FVector& End, FHitResult& Hi
 	return (HitOut.GetActor() != NULL) ;
 }
 
-void AFlareShell::Destroyed()
+
+void AFlareShell::SafeDestroy()
 {
-	Super::Destroyed();
-
-	AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
-	FCHECK(Game);
-
-	UFlareSector* Sector = Game->GetActiveSector();
-	if (Sector->IsValidLowLevel())
+	if (!IsSafeDestroyingRunning)
 	{
-		Sector->UnregisterShell(this);
+		IsSafeDestroyingRunning = true;
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
 	}
 }
 
+void AFlareShell::UnsetSafeDestroyed()
+{
+	IsSafeDestroyingRunning = false;
+	SafeDestroyed = false;
+	this->SetActorHiddenInGame(false);
+	this->SetActorEnableCollision(true);
+}
+
+void AFlareShell::FinishSafeDestroy()
+{
+	if (!SafeDestroyed)
+	{
+		SafeDestroyed = true;
+
+		AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
+		FCHECK(Game);
+
+		if (LocalSector&&IsValid(LocalSector))
+		{
+			LocalSector->RegisterCachedShell(this);
+			LocalSector->UnregisterShell(this);
+		}
+		else
+		{
+			UFlareSector* Sector = Game->GetActiveSector();
+			if (Sector&&IsValid(Sector))
+			{
+				Sector->RegisterCachedShell(this);
+				Sector->UnregisterShell(this);
+			}
+		}
+
+		ImpactSound = nullptr;
+		DamageSound = nullptr;
+		ShellComp = nullptr;
+		ExplosionEffectTemplate = nullptr;
+		ImpactEffectTemplate = nullptr;
+//		FlightEffectsTemplate = nullptr;
+//		FlightEffects->Deactivate();
+//		FlightEffects = nullptr;
+		ExplosionEffectMaterial = nullptr;
+		ShellDescription = nullptr;
+		ParentWeapon = nullptr;
+		PC = nullptr;
+		LocalSector = nullptr;
+	}
+}
+
+/*
+void AFlareShell::Destroyed()
+{
+	Super::Destroyed();
+}
+*/
 void AFlareShell::SetFuzeTimer(float TargetSecureTime, float TargetActiveTime)
 {
 	SecureTime = TargetSecureTime;

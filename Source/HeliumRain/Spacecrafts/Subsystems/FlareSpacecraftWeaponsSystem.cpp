@@ -57,18 +57,26 @@ void UFlareSpacecraftWeaponsSystem::TickSystem(float DeltaSeconds)
 				HitTarget = Weapon->GetSpacecraft()->GetCurrentTarget().GetActor();
 			}
 
-			// Aim the turret toward the target or a distant point
-			if (HitTarget && Cast<UPrimitiveComponent>(HitTarget->GetRootComponent()))
+			// Aim the turret toward the target or a distant point.
+			FVector Location = Weapon->GetMuzzleLocation(0) + CameraAimDirection * 100000;
+			FVector Velocity = FVector::ZeroVector;
+			//during forced ship deletion, Rootcomp could be null or partially null
+			if (IsValid(HitTarget))
 			{
-				FVector Location = HitTarget->GetActorLocation();
-				FVector Velocity = Cast<UPrimitiveComponent>(HitTarget->GetRootComponent())->GetPhysicsLinearVelocity() / 100;
-				Weapon->SetTarget(Location, Velocity);
+				if (!HitTarget->IsPendingKillOrUnreachable() && HitTarget->IsValidLowLevel())
+				{
+					USceneComponent* RootComp = HitTarget->GetRootComponent();
+					if (RootComp)
+					{
+						if(!RootComp->IsPendingKillOrUnreachable() && RootComp->IsValidLowLevel())
+						{
+							Location = HitTarget->GetActorLocation();
+							Velocity = Cast<UPrimitiveComponent>(RootComp)->GetPhysicsLinearVelocity() / 100;
+						}
+					}
+				}
 			}
-			else
-			{
-				FVector FireTargetLocation = Weapon->GetMuzzleLocation(0) + CameraAimDirection * 100000;
-				Weapon->SetTarget(FireTargetLocation, FVector::ZeroVector);
-			}
+			Weapon->SetTarget(Location, Velocity);
 		}
 	}
 

@@ -1101,7 +1101,7 @@ void AFlareGame::UnloadGame()
 				*ActorList[Index]->GetClass()->GetName());
 		}
 	}
-	FCHECK(ActorCount == 0);
+//	FCHECK(ActorCount == 0);
 
 	// Force GC
 	GEngine->ForceGarbageCollection(true);

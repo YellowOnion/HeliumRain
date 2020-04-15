@@ -27,16 +27,16 @@ UFlareTurret::UFlareTurret(const class FObjectInitializer& PCIP)
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
+void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualOwnerShip);
 	AimDirection = FVector::ZeroVector;
 	IsIgnoreManualAimCached = false;
 	BarrelsMinAngleCache.Empty();
 
 	// Initialize pilot
 	Pilot = NewObject<UFlareTurretPilot>(this, UFlareTurretPilot::StaticClass());
-	Pilot->Initialize(&(Data->Pilot), Company, this);
+	Pilot->Initialize(&(Data->Pilot), Company, this, ActualOwnerShip);
 }
 
 void UFlareTurret::SetupFiringEffects()
@@ -99,7 +99,7 @@ void UFlareTurret::SetupComponentMesh()
 			TurretComponent->AttachToComponent(this, AttachRules);
 			TurretComponent->SetStaticMesh(ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh);
 			TurretComponent->SetMaterial(0, ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh->GetMaterial(0));
-			TurretComponent->Initialize(NULL, PlayerCompany, Spacecraft, false);
+			TurretComponent->Initialize(NULL, PlayerCompany, Spacecraft, false,Spacecraft);
 			Spacecraft->AddOwnedComponent(TurretComponent);
 		}
 	}
@@ -138,7 +138,7 @@ void UFlareTurret::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurret_Tick);
 
 	FCHECK(Pilot);
-	if (!Spacecraft)
+	if (!Spacecraft || Spacecraft->IsPendingKill() || Spacecraft->IsActorBeingDestroyed())
 	{
 		return;
 	}
@@ -164,7 +164,6 @@ void UFlareTurret::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 		}
 
 		AimDirection = Pilot->GetTargetAimAxis();
-
 		//FLOGV("Pilot exist WantFire %d", Pilot->IsWantFire());
 		//FLOGV("Pilot AimDirection %s", *AimDirection.ToString());
 	}
@@ -320,7 +319,6 @@ bool UFlareTurret::IsReacheableAxis(FVector TargetAxis)// const
 	float TargetTurretAngle = 0;
 	if (TurretComponent && ComponentDescription)
 	{
-
 		FVector LocalTurretAimDirection = GetComponentToWorld().GetRotation().Inverse().RotateVector(TargetAxis);
 		TargetTurretAngle = FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(LocalTurretAimDirection.Y, LocalTurretAimDirection.X)));
 
@@ -350,10 +348,6 @@ bool UFlareTurret::IsReacheableAxis(FVector TargetAxis)// const
 		{
 			return false;
 		}
-
-
-
-
 	}
 	return true;
 }

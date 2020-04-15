@@ -842,15 +842,15 @@ EVisibility SFlareCompanyInfo::GetToggleHostilityVisibility() const
 		AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Leaderboard)
 		{
+/*
 			UFlareCompany* SelectedCompany = MenuManager->GetLeaderboardMenu()->GetSelectedCompany();
 			if (SelectedCompany != Player->GetCompany())
 			{
 				return EVisibility::Collapsed;
 			}
+*/
 		}
 	}
-
-
 	return EVisibility::Visible;
 }
 

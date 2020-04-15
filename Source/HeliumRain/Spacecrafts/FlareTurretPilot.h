@@ -25,7 +25,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Initialize this pilot and register the master ship object */
-	void Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret);
+	void Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret, AFlareSpacecraft* OwnerShip);
 
 	/** Update this system */
 	void TickPilot(float DeltaSeconds);
@@ -89,14 +89,18 @@ protected:
 	float                                ManualAimDistance;
 	
 	// Pilot brain TODO save in save
-	float                                TargetSelectionReactionTime;
+	float                                TargetSelectionReactionTimeFast;
+	float                                TargetSelectionReactionTimeSlow;
+
 	float                                FireReactionTime;
 	float                                TimeUntilNextTargetSelectionReaction;
 	float                                TimeUntilFireReaction;
 	float                                TimeUntilNextComponentSwitch;
+	float								 SecurityRadius;
 	PilotHelper::PilotTarget             PilotTarget;
 	UFlareSpacecraftComponent*			 PilotTargetShipComponent;
 
+	bool								 EveryOtherTick;
 
 	/*----------------------------------------------------
 		Helper

@@ -17,7 +17,14 @@
 #include "../Spacecrafts/FlareEngine.h"
 #include "../Spacecrafts/FlareRCS.h"
 
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot FollowLeaderShip"), STAT_FlareShipPilot_FollowLeaderShip, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot GetNewLeaderShip"), STAT_FlareShipPilot_GetNewLeaderShip, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot AvoidShip"), STAT_FlareShipPilot_AvoidShip, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot TryAntiCollision"), STAT_FlareShipPilot_TryAntiCollision, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Tick"), STAT_FlareShipPilot_Tick, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot CarrierRelease"), STAT_FlareShipPilot_CarrierRelease, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot DroneReturnToCarrier"), STAT_FlareShipPilot_ReturnToCarrier, STATGROUP_Flare);
+DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ArmedStation"), STAT_FlareShipPilot_ArmedStation, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Military"), STAT_FlareShipPilot_Military, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Cargo"), STAT_FlareShipPilot_Cargo, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Fighter"), STAT_FlareShipPilot_Fighter, STATGROUP_Flare);
@@ -28,7 +35,6 @@ DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Flagship"), STAT_FlareShipPilot_Flagship
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot FindBestHostileTarget"), STAT_FlareShipPilot_FindBestHostileTarget, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ExitAvoidance"), STAT_FlareShipPilot_ExitAvoidance, STATGROUP_Flare);
 
-
 #define PILOT_ANTICOLLISION_SPEED -200.f
 
 /*----------------------------------------------------
@@ -38,7 +44,22 @@ DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ExitAvoidance"), STAT_FlareShipPilot_Exi
 UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	: Super(PCIP)
 {
+//main reason for setting up randomized reaction delays/times is to spread out the calculations of multiple ships to different game ticks
 	ReactionTime = FMath::FRandRange(0.4, 0.7);
+	ComponentSwitchReactionTime = FMath::FRandRange(4.5, 5.5);
+
+	PilotAvoidCheckReactionTimeFast = FMath::FRandRange(3, 4);
+	PilotAvoidCheckReactionTimeSlow = FMath::FRandRange(5, 6);
+	NextExitAvoidanceCheckReactionFast = FMath::FRandRange(0.90, 1.10);
+	NextExitAvoidanceCheckReactionSlow = FMath::FRandRange(3, 4);
+	HostileTargetSwitchReactionTimeFast = FMath::FRandRange(1.0, 1.5);
+	HostileTargetSwitchReactionTimeSlow = FMath::FRandRange(4, 6);
+
+	CollisionVectorReactionTimeFast = FMath::FRandRange(0.25, 0.35);;
+	CollisionVectorReactionTimeSlow = FMath::FRandRange(0.75, 1.25);
+
+
+	TimeUntilNextHostileTargetSwitch = 0;
 	TimeUntilNextReaction = 0;
 	CurrentWaitTime = 0;
 	DockWaitTime = FMath::FRandRange(30, 45);
@@ -49,6 +70,8 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	MaxFollowDistance = 0;
 	LockTarget = false;
 	WantFire = false;
+	HasUndockedAllInternalShips = false;
+	InitiatedCombat = false;
 
 	TimeSinceLastDockingAttempt = 0.0f;
 	TimeUntilNextDockingAttempt = 0.0f;
@@ -64,22 +87,52 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Tick);
 
+	if (EveryOtherTick)
+	{
+		EveryOtherTick = false;
+		return;
+	}
+	EveryOtherTick = true;
+
 	if (Ship->IsStation())
 	{
-		// No pilot for stations
+		// Basic pilot for stations
+		if (Ship->IsCapableCarrier() && PilotTarget.IsValid())
+		{
+			CarrierReleaseInternalDockShips(DeltaSeconds);
+		}
+
+		if (Ship->IsMilitary())
+		{
+			ArmedStationPilot(DeltaSeconds);
+		}
+
 		return;
 	}
 
 	TimeUntilNextReaction -= DeltaSeconds;
-
-
 	LinearTargetVelocity = FVector::ZeroVector;
 	AngularTargetVelocity = FVector::ZeroVector;
 	UseOrbitalBoost = true;
 
 	if(!Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
-		if (Ship->IsMilitary())
+
+/*
+	// Create and configure the ship
+	if (ParentSpacecraft->GetData().DockedAtInternally != NAME_None)
+	{
+		return NULL;
+	}
+	!Spacecraft->IsReserve()
+	Ship->GetParent()->GetCurrentSector()->GetSectorBattleState(PlayerCompany).HasDanger)
+*/
+		if (Ship->IsCapableCarrier() && PilotTarget.IsValid() && !HasUndockedAllInternalShips)
+		{
+			CarrierReleaseInternalDockShips(DeltaSeconds);
+		}
+
+		else if (Ship->IsMilitary())
 		{
 			MilitaryPilot(DeltaSeconds);
 		}
@@ -102,12 +155,113 @@ void UFlareShipPilot::Initialize(const FFlareShipPilotSave* Data, UFlareCompany*
 		ShipPilotData = *Data;
 	}
 	AttackAngle = FMath::FRandRange(0, 360);
+	LeaderShip = Ship;
 }
 
 
 /*----------------------------------------------------
 	Pilot functions
 ----------------------------------------------------*/
+
+void UFlareShipPilot::CarrierReleaseInternalDockShips(float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_CarrierRelease);
+	TimeBeforeNextInternalUndock -= DeltaSeconds;
+	if (TimeBeforeNextInternalUndock <= 0)
+	{
+		bool UndockedAShip = false;
+		for (UFlareSimulatedSpacecraft* OwnedShips : Ship->GetParent()->GetShipChildren())
+		{
+			if (!OwnedShips->IsActive() && OwnedShips->IsInternalDockedTo(Ship->GetParent()) && !OwnedShips->IsReserve())
+			{
+				if (OwnedShips->GetGame()->GetActiveSector() && OwnedShips->GetGame()->GetActiveSector()->GetSimulatedSector() == OwnedShips->GetCurrentSector())
+				{
+					OwnedShips->GetGame()->GetActiveSector()->LoadSpacecraft(OwnedShips);
+					UndockedAShip = true;
+					break;
+				}
+			}
+		}
+		TimeBeforeNextInternalUndock = 1;
+		if (!UndockedAShip)
+		{
+			HasUndockedAllInternalShips = true;
+		}
+	}
+}
+
+void UFlareShipPilot::SetUndockedAllShips(bool Set)
+{
+	HasUndockedAllInternalShips = Set;
+}
+
+bool UFlareShipPilot::DroneReturnToCarrier(float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_ReturnToCarrier);
+	AFlareSpacecraft* LocalMaster = Ship->GetParent()->GetShipMaster()->GetActive();
+	if (LocalMaster)
+	{
+		FVector Location = LocalMaster->GetActorLocation();
+		FVector DeltaLocation = LocalMaster->GetActorLocation() - Ship->GetActorLocation();
+		float Distance = (DeltaLocation.Size() ) * 0.01f; // Distance in meters
+
+		if (Distance < 100)
+		{
+			Ship->GetParent()->SetInternalDockedTo(Ship->GetParent()->GetShipMaster());
+			Ship->GetGame()->GetActiveSector()->RemoveSpacecraft(Ship);
+			HasUndockedAllInternalShips = false;
+			return true;
+		}
+
+		FVector LocationTarget = LocalMaster->GetActorLocation();
+
+		FVector TargetAxis = DeltaLocation;
+		AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1, 0, 0), TargetAxis, FVector::ZeroVector, DeltaSeconds);
+
+		LinearTargetVelocity = (LocalMaster->GetActorLocation() - Ship->GetActorLocation()).GetUnsafeNormal()  * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+
+		LinearTargetVelocity += LinearTargetVelocity.GetUnsafeNormal() * FVector::DotProduct(PilotTarget.GetLinearVelocity() / 100.f, LinearTargetVelocity.GetUnsafeNormal());
+
+//		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.4);
+		AlignToTargetVelocityWithThrust(DeltaSeconds);
+
+		// Anticollision
+		LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), UFlareShipPilot::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
+		return true;
+	}
+	return false;
+}
+
+void UFlareShipPilot::ArmedStationPilot(float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_ArmedStation);
+	if (Ship->GetParent()->GetDamageSystem()->IsDisarmed())
+	{
+		WantFire = false;
+	}
+	else
+	{
+		TimeUntilNextHostileTargetSwitch -= DeltaSeconds;
+		if (TimeUntilNextHostileTargetSwitch <= 0)
+		{
+			FindBestHostileTarget(EFlareCombatTactic::AttackMilitary);
+			if (!InitiatedCombat)
+			{
+				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
+			}
+			else
+			{
+				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
+			}
+		}
+/*
+		if (PilotTarget.IsValid())
+		{
+
+		}
+*/
+	}
+}
 
 void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 {
@@ -127,90 +281,134 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 		return;
 	}
 
-	EFlareCombatGroup::Type CombatGroup;
-
-	if(Ship->GetSize() == EFlarePartSize::L)
-	{
-		CombatGroup = EFlareCombatGroup::Capitals;
-	}
-	else
-	{
-		CombatGroup = EFlareCombatGroup::Fighters;
-	}
-
-	CurrentTactic = Ship->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
-	FindBestHostileTarget(CurrentTactic);
-
 	bool Idle = true;
-
-	TimeUntilNextComponentSwitch-=DeltaSeconds;
-
 	if(Ship->GetParent()->GetDamageSystem()->IsDisarmed())
 	{
 		// Idle
 	}
-	else if (Ship->GetSize() == EFlarePartSize::S && PilotTarget.IsValid() && SelectedWeaponGroupIndex >= 0)
+	else
 	{
-		if(PilotTarget.SpacecraftTarget)
+		TimeUntilNextComponentSwitch -= DeltaSeconds;
+		TimeUntilNextHostileTargetSwitch -= DeltaSeconds;
+
+		if (TimeUntilNextHostileTargetSwitch <= 0)
 		{
-			if (TimeUntilNextComponentSwitch <= 0 && !LockTarget)
+			if (LeaderShip == Ship)
+			{
+				EFlareCombatGroup::Type CombatGroup;
+
+				if (Ship->GetSize() == EFlarePartSize::L)
+				{
+					CombatGroup = EFlareCombatGroup::Capitals;
+				}
+				else
+				{
+					CombatGroup = EFlareCombatGroup::Fighters;
+				}
+				CurrentTactic = Ship->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
+				FindBestHostileTarget(CurrentTactic);
+
+				if (!InitiatedCombat)
+				{
+					TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
+				}
+				else
+				{
+					TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
+					GetNewLeaderShip();
+				}
+			}
+			else if (LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
+			{
+				LeaderShip = Ship;
+			}
+			else
+			{
+				PilotTarget = LeaderShip->GetPilot()->GetPilotTarget();
+				if (PilotTarget.SpacecraftTarget)
+				{
+					if (Ship->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
+					{
+						Ship->SetCurrentTarget(LeaderShip->GetCurrentTarget());
+					}
+					else
+					{
+						PilotTarget = PilotHelper::PilotTarget();
+					}
+				}
+			}
+		}
+
+		if (Ship->GetSize() == EFlarePartSize::S && PilotTarget.IsValid() && SelectedWeaponGroupIndex >= 0)
+		{
+			if (PilotTarget.SpacecraftTarget)
+			{
+				if (TimeUntilNextComponentSwitch <= 0 && !LockTarget)
+				{
+					PilotTargetShipComponent = NULL;
+				}
+				else if (PilotTargetShipComponent)
+				{
+					if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
+					{
+						PilotTargetShipComponent = NULL;
+					}
+					else if (PilotTargetShipComponent->GetUsableRatio() <= 0)
+					{
+						PilotTargetShipComponent = NULL;
+					}
+				}
+
+				if (!PilotTargetShipComponent)
+				{
+					if (LeaderShip == Ship)
+					{ 
+						PilotTargetShipComponent = PilotHelper::GetBestTargetComponent(PilotTarget.SpacecraftTarget);
+					}
+					else
+					{
+						PilotTargetShipComponent = LeaderShip->GetPilot()->GetPilotTargetShipComponent();
+					}
+
+					TimeUntilNextComponentSwitch = ComponentSwitchReactionTime;
+				}
+
+				if (!PilotTargetShipComponent)
+				{
+					PilotTarget.Clear();
+				}
+			}
+			else
 			{
 				PilotTargetShipComponent = NULL;
 			}
-			else if (PilotTargetShipComponent)
+
+			if (PilotTarget.IsValid())
 			{
-				if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
+				EFlareWeaponGroupType::Type WeaponType = Ship->GetWeaponsSystem()->GetWeaponGroup(SelectedWeaponGroupIndex)->Type;
+				if (WeaponType == EFlareWeaponGroupType::WG_GUN)
 				{
-					PilotTargetShipComponent = NULL;
+					FighterPilot(DeltaSeconds);
+					Idle = false;
 				}
-				else if (PilotTargetShipComponent->GetUsableRatio() <=0)
+				else if (WeaponType == EFlareWeaponGroupType::WG_BOMB)
 				{
-					PilotTargetShipComponent = NULL;
+					BomberPilot(DeltaSeconds);
+					Idle = false;
+				}
+				else if (WeaponType == EFlareWeaponGroupType::WG_MISSILE)
+				{
+					MissilePilot(DeltaSeconds);
+					Idle = false;
 				}
 			}
-
-			if (!PilotTargetShipComponent)
-			{
-				PilotTargetShipComponent = PilotHelper::GetBestTargetComponent(PilotTarget.SpacecraftTarget);
-				TimeUntilNextComponentSwitch = 5;
-			}
-
-			if(!PilotTargetShipComponent)
-			{
-				PilotTarget.Clear();
-			}
 		}
-		else
+		else if (Ship->GetSize() == EFlarePartSize::L && PilotTarget.IsValid())
 		{
-			PilotTargetShipComponent = NULL;
+			WantFire = false;
+			FlagShipPilot(DeltaSeconds);
+			Idle = false;
 		}
-
-		if(PilotTarget.IsValid())
-		{
-
-			EFlareWeaponGroupType::Type WeaponType = Ship->GetWeaponsSystem()->GetWeaponGroup(SelectedWeaponGroupIndex)->Type;
-			if (WeaponType == EFlareWeaponGroupType::WG_GUN)
-			{
-				FighterPilot(DeltaSeconds);
-				Idle = false;
-			}
-			else if (WeaponType == EFlareWeaponGroupType::WG_BOMB)
-			{
-				BomberPilot(DeltaSeconds);
-				Idle = false;
-			}
-			else if (WeaponType == EFlareWeaponGroupType::WG_MISSILE)
-			{
-				MissilePilot(DeltaSeconds);
-				Idle = false;
-			}
-		}
-	}
-	else if (Ship->GetSize() == EFlarePartSize::L && PilotTarget.IsValid())
-	{
-		WantFire = false;
-		FlagShipPilot(DeltaSeconds);
-		Idle = false;
 	}
 
 
@@ -220,12 +418,8 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 		PilotTarget.Clear();
 		WantFire = false;
 		IdlePilot(DeltaSeconds);
-	}
-
-
+	} 
 	// TODO S or L ship dispatch
-
-
 }
 
 void UFlareShipPilot::CargoPilot(float DeltaSeconds)
@@ -234,14 +428,10 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 
 	TimeSinceLastDockingAttempt += DeltaSeconds;
 
-	AFlareSpacecraft* PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::S);
-	if (!PilotAvoidShip)
-	{
-		PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::L);
-	}
+	FindPilotAvoidShip(DeltaSeconds);
 
 	// If enemy near, run away !
-	if (PilotAvoidShip)
+	if (PilotAvoidShip&&!PilotAvoidShip->IsActorBeingDestroyed()&&!PilotAvoidShip->IsPendingKill())
 	{
 		FVector DeltaLocation = (PilotAvoidShip->GetActorLocation() - Ship->GetActorLocation()) / 100.f;
 		float Distance = DeltaLocation.Size(); // Distance in meters
@@ -345,13 +535,13 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 
 	//FLOGV("%s LinearTargetVelocity before exit avoidance = %s",  *Ship->GetImmatriculation().ToString(), *LinearTargetVelocity.ToString());
 
-	LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.4);
+	LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.4,DeltaSeconds);
 	AlignToTargetVelocityWithThrust(DeltaSeconds);
 
 	//FLOGV("%s LinearTargetVelocity before anticollision = %s",  *Ship->GetImmatriculation().ToString(), *LinearTargetVelocity.ToString());
 
 	// Anticollision
-	LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), UFlareShipPilot::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 
 	//FLOGV("%s Location = %s Velocity = %s LinearTargetVelocity = %s",  *Ship->GetImmatriculation().ToString(), * Ship->GetActorLocation().ToString(), *Ship->GetLinearVelocity().ToString(), *LinearTargetVelocity.ToString());
 }
@@ -393,8 +583,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 	FVector AmmoIntersectionLocation;
 	float AmmoIntersectionTime = SpacecraftHelper::GetIntersectionPosition(PilotAimTargetLocation, PilotTarget.GetLinearVelocity(), BaseLocation, ShipVelocity, AmmoVelocity, 0, &AmmoIntersectionLocation);
 
-
-
 	FVector FireTargetAxis;
 	if (AmmoIntersectionTime > 0)
 	{
@@ -414,8 +602,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 		DrawDebugSphere(Ship->GetWorld(), AmmoIntersectionPredictedLocation, 100, 12, FColor::White, true);
 	}*/
 
-
-
 	FVector PredictedFireTargetAxis;
 	if (AmmoIntersectionPredictedTime > 0)
 	{
@@ -427,7 +613,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 	}
 
 	FRotator ShipAttitude = Ship->GetActorRotation();
-
 
 	// Bullet velocity
 	FVector BulletVelocity = ShipAttitude.Vector();
@@ -530,6 +715,7 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 		}
 		else
 		{
+
 			LinearTargetVelocity = PredictedFireTargetAxis * PreferedVelocity;
 			LinearTargetVelocity += LinearTargetVelocity.GetUnsafeNormal() * FVector::DotProduct(PilotTarget.GetLinearVelocity() / 100.f,LinearTargetVelocity.GetUnsafeNormal());
 
@@ -740,11 +926,11 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 			(PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable()
 			&& PilotTarget.SpacecraftTarget != Ship->GetGame()->GetPC()->GetShipPawn()))
 	{
-		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.8);
+		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.8, DeltaSeconds);
 	}
 
 	// Anticollision
-	LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), UFlareShipPilot::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 
 
 	if (ClearTarget)
@@ -810,9 +996,7 @@ void UFlareShipPilot::BomberPilot(float DeltaSeconds)
 		{
 			LinearTargetVelocity = TargetAxis * PreferedVelocity;
 			// Exit avoidance
-			LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5);
-
-
+			LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5, DeltaSeconds);
 			AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1,0,0), TargetAxis, FVector::ZeroVector, DeltaSeconds);
 			UseOrbitalBoost = true;
 		}
@@ -939,9 +1123,9 @@ void UFlareShipPilot::BomberPilot(float DeltaSeconds)
 	// Anticollision
 	if (Anticollision)
 	{
-		PilotHelper::AnticollisionConfig IgnoreConfig;
+		UFlareShipPilot::AnticollisionConfig IgnoreConfig;
 		IgnoreConfig.SpacecraftToIgnore = PilotTarget.SpacecraftTarget;
-		LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED);
+		LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 	}
 	
 	if (ClearTarget)
@@ -1019,13 +1203,12 @@ void UFlareShipPilot::MissilePilot(float DeltaSeconds)
 	}
 
 	// Exit avoidance
-	LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5);
-
+	LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5, DeltaSeconds);
 
 	// Anticollision
-	PilotHelper::AnticollisionConfig IgnoreConfig;
+	UFlareShipPilot::AnticollisionConfig IgnoreConfig;
 	IgnoreConfig.SpacecraftToIgnore = PilotTarget.SpacecraftTarget;
-	LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED);
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 }
 
 
@@ -1037,14 +1220,18 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 	//UseOrbitalBoost = false;
 
 	// If there is ennemy fly away
-	AFlareSpacecraft* PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::S);
-	if (!PilotAvoidShip)
+
+	if (Ship->GetParent()->GetShipMaster())
 	{
-		PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::L);
+		if (DroneReturnToCarrier(DeltaSeconds))
+		{
+			return;
+		}
 	}
 
+	FindPilotAvoidShip(DeltaSeconds);
 	// If enemy near, run away !
-	if (PilotAvoidShip)
+	if (PilotAvoidShip && !PilotAvoidShip->IsActorBeingDestroyed() && !PilotAvoidShip->IsPendingKill())
 	{
 		FVector DeltaLocation = (PilotAvoidShip->GetActorLocation() - Ship->GetActorLocation()) / 100.f;
 		float Distance = DeltaLocation.Size(); // Distance in meters
@@ -1054,7 +1241,6 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 		{
 			Ship->GetNavigationSystem()->AbortAllCommands();
 			LinearTargetVelocity = -DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
-
 			UseOrbitalBoost = true;
 		}
 
@@ -1068,47 +1254,18 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 	// If not, and outside the player fleet, find a leader and follow it
 	else// if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
 	{
-		AFlareSpacecraft* LeaderShip = Ship;
-
-
-		if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
+		if (!LeaderShip || (LeaderShip&&!LeaderShip->GetParent()->GetDamageSystem()->IsAlive()) || !FoundOutOfCombatLeader)
 		{
-
-			TArray<AFlareSpacecraft*> Spacecrafts = Ship->GetGame()->GetActiveSector()->GetCompanySpacecrafts(Ship->GetCompany());
-			for (int ShipIndex = 0; ShipIndex < Spacecrafts.Num() ; ShipIndex++)
+			if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
 			{
-				AFlareSpacecraft* CandidateShip = Spacecrafts[ShipIndex];
-				float LeaderMass = LeaderShip->GetSpacecraftMass();
-				float CandidateMass = CandidateShip->GetSpacecraftMass();
-
-				if (Ship == CandidateShip)
-				{
-					continue;
-				}
-
-				if (!CandidateShip->IsMilitary())
-				{
-					continue;
-				}
-
-				if (LeaderMass == CandidateMass)
-				{
-					if (LeaderShip->GetImmatriculation() < CandidateShip->GetImmatriculation())
-					{
-						continue;
-					}
-				}
-				else if (LeaderMass > CandidateMass)
-				{
-					continue;
-				}
-
-				LeaderShip = CandidateShip;
+				GetNewLeaderShip();
 			}
-		}
-		else
-		{
-			LeaderShip = Ship->GetGame()->GetPC()->GetShipPawn();
+			else
+			{
+				LeaderShip = Ship->GetGame()->GetPC()->GetShipPawn();
+			}
+			FoundOutOfCombatLeader = true;
+			InitiatedCombat = false;
 		}
 
 		// If is the leader, find a location in a 10 km radius and patrol
@@ -1138,36 +1295,132 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 		}
 		else
 		{
-			// Follow the leader
-			float FollowRadius = 50000 + FMath::Pow(Ship->GetCompany()->GetCompanyShips().Num() * 3 * FMath::Pow(10000, 3),1/3.);
-			if ((LeaderShip->GetActorLocation() - Ship->GetActorLocation()).Size() < FollowRadius)
-			{
-				LinearTargetVelocity = LeaderShip->GetLinearVelocity();
-			}
-			else
-			{
-				LinearTargetVelocity = (LeaderShip->GetActorLocation() - Ship->GetActorLocation()).GetUnsafeNormal()  * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
-
-			}
+			FollowLeaderShip();
 		}
 
 	}
 
 	AngularTargetVelocity = FVector::ZeroVector;
-
-
+	 
 	// Exit avoidance
 	if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
 	{
-		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5);
+		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.5, DeltaSeconds);
 	}
 
 	AlignToTargetVelocityWithThrust(DeltaSeconds);
 
 	// Anticollision
-	LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), UFlareShipPilot::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 
     //FLOGV("%s Leader ship LinearTargetVelocity=%s", *LinearTargetVelocity.ToString());
+}
+
+FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit,float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_TryAntiCollision);
+	LastNewCollisionVector -= DeltaSeconds;
+	if (LastNewCollisionVector <= 0)
+	{
+		PreviousAntiCollisionVector = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+		if (PreviousAntiCollisionVector == InitialVelocity)
+		{
+			LastNewCollisionVector = CollisionVectorReactionTimeSlow;
+		}
+		else
+		{
+			LastNewCollisionVector = CollisionVectorReactionTimeFast;
+		}
+	}
+	return PreviousAntiCollisionVector;
+}
+
+void UFlareShipPilot::FollowLeaderShip(int32 DefaultRadius)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_FollowLeaderShip);
+	// Follow the leader
+//	float FollowRadius = 50000 + FMath::Pow(Ship->GetCompany()->GetCompanyShips().Num() * 3 * FMath::Pow(10000, 3), 1 / 3.);
+	float FollowRadius = DefaultRadius + FMath::Pow(LeaderShip->GetInSectorSquad().Num() * 3 * FMath::Pow(10000, 3), 1 / 3.);
+	if ((LeaderShip->GetActorLocation() - Ship->GetActorLocation()).Size() < FollowRadius)
+	{
+		LinearTargetVelocity = LeaderShip->GetLinearVelocity();
+	}
+	else
+	{
+		LinearTargetVelocity = (LeaderShip->GetActorLocation() - Ship->GetActorLocation()).GetUnsafeNormal()  * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+	}
+}
+
+void UFlareShipPilot::GetNewLeaderShip()
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_GetNewLeaderShip);
+
+	TArray<AFlareSpacecraft*> Spacecrafts = Ship->GetGame()->GetActiveSector()->GetCompanySpacecrafts(Ship->GetCompany());
+
+	AFlareSpacecraft* OldLeaderShip = LeaderShip;
+	for (int ShipIndex = 0; ShipIndex < Spacecrafts.Num(); ShipIndex++)
+	{
+		AFlareSpacecraft* CandidateShip = Spacecrafts[ShipIndex];
+		if (!LeaderShip)
+		{
+			LeaderShip = CandidateShip;
+			continue;
+		}
+
+		if (Ship == CandidateShip)
+		{
+			continue;
+		}
+
+		if (!CandidateShip->IsMilitary())
+		{
+			continue;
+		}
+
+		float LeaderMass = LeaderShip->GetSpacecraftMass();
+		float CandidateMass = CandidateShip->GetSpacecraftMass();
+
+		if (LeaderMass == CandidateMass)
+		{
+			if (LeaderShip->GetImmatriculation() < CandidateShip->GetImmatriculation())
+			{
+				continue;
+			}
+		}
+		else if (LeaderMass > CandidateMass)
+		{
+			continue;
+		}
+
+		if (InitiatedCombat)
+		{
+			int32 LeaderShipSquadQuantity = LeaderShip->GetInSectorSquad().Num();
+			int32 MaximumShips = 0;
+			if (LeaderShip->GetSize() == EFlarePartSize::L)
+			{
+				MaximumShips = 3;
+			}
+			else
+			{
+				MaximumShips = 5;
+			}
+			if (LeaderShipSquadQuantity >= MaximumShips)
+			{
+				continue;
+			}
+		}
+
+		LeaderShip = CandidateShip;
+	}
+
+	if (LeaderShip)
+	{
+		LeaderShip->AddToInsectorSquad(Ship);
+		if (OldLeaderShip&&OldLeaderShip != LeaderShip)
+		{
+			OldLeaderShip->RemoveFromInsectorSquad(Ship);
+		}
+	}
 }
 
 void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
@@ -1179,6 +1432,19 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 	// If at less than 50 m from this point, get another random point
 
 	// If the target to farther than 2000 to the target point, change point
+
+	if (LeaderShip != Ship)
+	{
+		if (LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
+		{
+			LeaderShip = Ship;
+		}
+		else
+		{
+			FollowLeaderShip(100000);
+			return;
+		}
+	}
 
 	float TargetLocationToTargetShipDistance = (PilotTargetLocation - PilotTarget.GetActorLocation()).Size();
 	float TargetLocationToShipDistance = (PilotTargetLocation - Ship->GetActorLocation()).Size();
@@ -1197,8 +1463,7 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 
 
 	if (NewTargetLocation || PilotTargetLocation.IsZero())
-	{
-
+	{ 
 		PilotTargetLocation = FMath::VRand() * FMath::FRand() * 80000 + PilotTarget.GetActorLocation();
 		//FLOGV("New TargetDeltaLocation %f", (PilotTargetLocation - PilotTarget.GetActorLocation()).Size());
 		//UKismetSystemLibrary::DrawDebugSphere(Ship->GetWorld(), PilotTargetLocation, 1000, 12, FColor::Red, 1000.f);
@@ -1217,7 +1482,6 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 	FVector DeltaLocation = PilotTarget.GetActorLocation() - Ship->GetActorLocation();
 	float Distance = DeltaLocation.Size() * 0.01f; // Distance in meters
 
-
 	//FLOGV("DeltaLocation %f", DeltaLocation.Size());
 
 	AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1,0,0), DeltaLocation.GetUnsafeNormal(), FVector::ZeroVector, DeltaSeconds);
@@ -1229,11 +1493,11 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 	// Exit avoidance
 	if(PilotTarget.IsEmpty() || Distance > 2000 || (!PilotTarget.Is(Ship->GetGame()->GetPC()->GetShipPawn())))
 	{
-		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.7);
+		LinearTargetVelocity = ExitAvoidance(Ship, LinearTargetVelocity, 0.7, DeltaSeconds);
 	}
 
 	// Anticollision
-	LinearTargetVelocity = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), UFlareShipPilot::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 
 	FVector FrontAxis = Ship->Airframe->GetComponentToWorld().GetRotation().RotateVector(FVector(1,0,0));
 
@@ -1357,11 +1621,7 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 		}
 	}
 
-
-
 	TargetCandidate = PilotHelper::GetBestTarget(Ship, TargetPreferences);
-
-
 
 	if (TargetCandidate.IsValid())
 	{
@@ -1399,7 +1659,7 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 			MaxFollowDistance = TargetSize * 60; // Distance in meters
 			TimeBeforeNextDrop = FMath::FRandRange(0.1, 1.0);
 			TimeSinceAiming /= 2;
-
+			InitiatedCombat = true;
 			LockTarget = false;
 		}
 
@@ -1433,7 +1693,7 @@ int32 UFlareShipPilot::GetPreferedWeaponGroup() const
 	Helpers
 ----------------------------------------------------*/
 
-FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector InitialVelocityTarget, float CurveTrajectoryLimit) const
+FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector InitialVelocityTarget, float CurveTrajectoryLimit, float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_ExitAvoidance);
 
@@ -1444,10 +1704,13 @@ FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector Ini
 		return InitialVelocityTarget;
 	}*/
 
+	TimeUntilNextExitAvoidanceCheck -= DeltaSeconds;
+	if (TimeUntilNextExitAvoidanceCheck > 0 && !RunningExitAvoidance)
+	{
+		return InitialVelocityTarget;
+	}
 
 	float TimeToStop;
-
-
 	FVector CurrentVelocity = Ship->GetLinearVelocity();
 
 	if (FMath::IsNearlyZero(CurrentVelocity.SizeSquared()))
@@ -1508,6 +1771,7 @@ FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector Ini
 
 	if (ShipCenterDistance > SectorLimits * CurveTrajectoryLimit)
 	{
+		RunningExitAvoidance = true;
 		// Curve the trajectory to avoid exit
 		float CurveRatio = FMath::Min(1.f, (ShipCenterDistance - SectorLimits * CurveTrajectoryLimit) / (SectorLimits * (1-CurveTrajectoryLimit)));
 
@@ -1542,11 +1806,36 @@ FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector Ini
 */
 			return ExitAvoidanceVelocity;
 		}
-
+		TimeUntilNextExitAvoidanceCheck = NextExitAvoidanceCheckReactionFast;
 	}
 	else
 	{
+		TimeUntilNextExitAvoidanceCheck = NextExitAvoidanceCheckReactionSlow;
+		RunningExitAvoidance = false;
 		return InitialVelocityTarget;
+	}
+}
+
+void UFlareShipPilot::FindPilotAvoidShip(float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_AvoidShip);
+	TimeUntilNextPilotAvoidCheck -= DeltaSeconds;
+	if (TimeUntilNextPilotAvoidCheck <= 0)
+	{
+		PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::S);
+		if (!PilotAvoidShip)
+		{
+			PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::L);
+		}
+
+		if (!PilotAvoidShip)
+		{
+			TimeUntilNextPilotAvoidCheck = PilotAvoidCheckReactionTimeSlow;
+		}
+		else
+		{
+			TimeUntilNextPilotAvoidCheck = PilotAvoidCheckReactionTimeFast;
+		}
 	}
 }
 
@@ -1558,7 +1847,7 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly, EFl
 	// - From another company
 	// - Is the nearest
 
-	if (!Ship || !Ship->GetGame()->GetActiveSector())
+	if (!Ship || Ship->IsPendingKill() || Ship->IsActorBeingDestroyed() || !Ship->GetGame()->GetActiveSector())
 	{
 		return NULL;
 	}
@@ -1708,8 +1997,7 @@ FVector UFlareShipPilot::GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FV
 
 	return RelativeResultSpeed;
 }
-
-
+ 
 AFlareSpacecraft* UFlareShipPilot::GetNearestAvailableStation(bool RealStation) const
 {
 	FVector PilotLocation = Ship->GetActorLocation();
@@ -1746,7 +2034,6 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestAvailableStation(bool RealStation) 
 			MinDistanceSquared = DistanceSquared;
 			NearestStation = StationCandidate;
 		}
-
 	}
 	return NearestStation;
 }

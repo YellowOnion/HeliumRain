@@ -34,7 +34,7 @@ struct PilotHelper
 			, BombTarget(nullptr) {}
 
 
-		bool IsValid() const;
+		bool IsValid();
 		bool IsEmpty() const;
 		bool Is(AFlareSpacecraft* Spacecraft) const;
 		bool Is(AFlareMeteorite* Meteorite) const;
@@ -67,10 +67,12 @@ struct PilotHelper
 					(BombTarget != rhs.BombTarget);
 		}
 
+		UPROPERTY()
 		AFlareSpacecraft* SpacecraftTarget;
+		UPROPERTY()
 		AFlareMeteorite* MeteoriteTarget;
+		UPROPERTY()
 		AFlareBomb* BombTarget;
-
 	};
 
 	struct TargetPreferences

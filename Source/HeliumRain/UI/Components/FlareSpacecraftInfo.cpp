@@ -1396,7 +1396,7 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 		}
 
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
-		if (TargetCompany && PC && TargetCompany == PC->GetCompany() && !TradeMenu)
+		if (IsValid(TargetCompany) && PC && TargetCompany == PC->GetCompany() && !TradeMenu)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{

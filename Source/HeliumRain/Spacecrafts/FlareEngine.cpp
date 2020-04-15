@@ -22,9 +22,9 @@ UFlareEngine::UFlareEngine(const class FObjectInitializer& PCIP)
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareEngine::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
+void UFlareEngine::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualShip)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualShip);
 
 	if (ComponentDescription)
 	{
@@ -46,6 +46,9 @@ void UFlareEngine::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 	}
 
 	ExhaustAccumulator = FMath::Clamp(AverageCoeff * GetEffectiveAlpha() + (1 - AverageCoeff) * ExhaustAccumulator, 0.0f, 1.0f);
+
+	UpdateHeatProduction();
+	UpdateHeatSinkSurface();
 
 	// Apply effects
 	UpdateEffects();

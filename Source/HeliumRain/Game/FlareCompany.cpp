@@ -229,9 +229,8 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(Game->GetWorld()->GetFirstPlayerController());
 
-	TArray<UFlareSimulatedSpacecraft*> CompanyCarriersLocal = CompanyCarriers;//this->GetCompanyCarriers();
+	TArray<UFlareSimulatedSpacecraft*> CompanyCarriersLocal = CompanyCarriers;
 
-	//	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 	while (CompanyCarriersLocal.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompanyCarriersLocal.Num() - 1);
@@ -239,7 +238,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 		if (!Ship->GetDamageSystem()->IsAlive())
 		{
-			CompanyCarriersLocal.RemoveAt(Index);
+			CompanyCarriersLocal.RemoveSwap(Ship);
 			continue;
 		}
 
@@ -366,22 +365,22 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 									{
 										BestCompanyStation = BuyingStation;
 										BestStationCompanyQuantity = Stock;
-										//								FLOGV("Found Company station");
+		//								FLOGV("Found Company station");
 									}
 								}
 								else if (!BestStation || Stock > BestStationQuantity)
 								{
 									BestStation = BuyingStation;
 									BestStationQuantity = Stock;
-									//							FLOGV("Found Best Station");
+		//							FLOGV("Found Best Station");
 								}
 							}
 						}
 
-						//				FLOGV("After main loop...checking statements");
+		//				FLOGV("After main loop...checking statements");
 						if (BestCompanyStation && !BestStation && BestStationCompanyQuantity > 0)
 						{
-							//					FLOGV("Dealing to company station");
+		//					FLOGV("Dealing to company station");
 							int32 Quantity = SectorHelper::Trade(BestCompanyStation,
 								Ship,
 								LowestResource,
@@ -393,7 +392,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 						}
 						else if (BestCompanyStation && BestStation)
 						{
-							//					FLOGV("Dealing to...");
+		//					FLOGV("Dealing to...");
 							int32 ResourcePrice = LocalSector->GetTransfertResourcePrice(BestStation, Ship, LowestResource);
 							int32 MaxAffordableQuantity = FMath::Max(0, int32(this->GetMoney() / ResourcePrice));
 							BestStationQuantity = FMath::Min(BestStationQuantity, MaxAffordableQuantity);
@@ -402,8 +401,8 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 							if (Ratio >= 0.50f)
 							{
-								//						FLOGV("Company");
-														//trade company
+		//						FLOGV("Company");
+								//trade company
 								int32 Quantity = SectorHelper::Trade(BestCompanyStation,
 									Ship,
 									LowestResource,
@@ -415,8 +414,8 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 							}
 							else
 							{
-								//						FLOGV("Other");
-														//trade other
+		//						FLOGV("Other");
+								//trade other
 								int32 Quantity = SectorHelper::Trade(BestStation,
 									Ship,
 									LowestResource,
@@ -429,7 +428,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 						}
 						else if (BestStation && BestStationQuantity > 0)
 						{
-							//					FLOGV("Dealing to best station");
+		//					FLOGV("Dealing to best station");
 							int32 Quantity = SectorHelper::Trade(BestStation,
 								Ship,
 								LowestResource,
@@ -443,7 +442,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 				}
 			}
 		}
-		CompanyCarriersLocal.RemoveAt(Index);
+		CompanyCarriersLocal.RemoveSwap(Ship);
 	}
 }
 
@@ -949,7 +948,6 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 			if (OwnedShips->GetShipMaster() == Spacecraft)
 			{
  				OwnedShips->TryMigrateDrones();
-//				DestroySpacecraft(OwnedShips);
 			}
 		}
 		StepChildren.Empty();

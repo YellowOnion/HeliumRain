@@ -679,7 +679,7 @@ void SFlareCompanyMenu::ShowProperty(UFlareCompany* Target)
 	TArray<UFlareSimulatedSpacecraft*>& CompanyShips = Target->GetCompanyShips();
 	for (int32 i = 0; i < CompanyShips.Num(); i++)
 	{
-		if (CompanyShips[i]->GetDamageSystem()->IsAlive())
+		if (!CompanyShips[i]->GetDescription()->IsDroneShip && CompanyShips[i]->GetDamageSystem()->IsAlive())
 		{
 			ShipList->AddShip(CompanyShips[i]);
 		}

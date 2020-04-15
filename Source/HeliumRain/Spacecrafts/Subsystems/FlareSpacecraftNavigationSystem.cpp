@@ -55,7 +55,14 @@ void UFlareSpacecraftNavigationSystem::TickSystem(float DeltaSeconds)
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Tick);
 
 	UpdateCOM();
-
+/*
+	MaxTorqueCacheClearTime -= DeltaSeconds;
+	if (MaxTorqueCacheClearTime <= 0)
+	{
+		MaxTorqueCacheClearTime = 1;
+		MaxTorqueCache.Empty();
+	}
+*/
 	// Manual pilot
 	if (IsManualPilot() && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 	{
@@ -1254,6 +1261,20 @@ bool UFlareSpacecraftNavigationSystem::UpdateLinearBraking(FFlareShipCommandData
 	return KeepCommand;
 }
 
+void UFlareSpacecraftNavigationSystem::OnControlLost()
+{
+	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+
+	if (Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
+	{
+		// Shutdown engines
+		for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
+		{
+			UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
+			Engine->SetAlpha(0);
+		}
+	}
+}
 
 /*----------------------------------------------------
 	Attitude control : angular version
@@ -1339,7 +1360,7 @@ bool UFlareSpacecraftNavigationSystem::UpdateAngularAttitudeAuto(FFlareShipComma
 }
 
 
-FVector UFlareSpacecraftNavigationSystem::GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FVector TargetAxis, FVector TargetAngularVelocity, float DeltaSeconds) const
+FVector UFlareSpacecraftNavigationSystem::GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FVector TargetAxis, FVector TargetAngularVelocity, float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_GetAngularVelocityToAlignAxis);
 
@@ -1419,6 +1440,7 @@ bool UFlareSpacecraftNavigationSystem::UpdateAngularBraking(float DeltaSeconds)
 	Physics
 ----------------------------------------------------*/
 
+
 void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Physics);
@@ -1427,37 +1449,28 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 	if(Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
-		// Shutdown engines
-		for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
-		{
-			UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
-			Engine->SetAlpha(0);
-		}
-
 		return;
 	}
 
 	TArray<float> EnginesAlpha;
-
+	EnginesAlpha.Reserve(Engines.Num());
 	for(int i = 0 ; i < Engines.Num() ; i++)
 	{
 		EnginesAlpha.Add(0.f);
 	}
-
+/*
 	bool Log = false;
 	if (false && Spacecraft == Spacecraft->GetGame()->GetPC()->GetShipPawn())
 	{
 		Log = true;
 	}
-
+*/
 
 
 	FVector LocalLinearVelocity = Spacecraft->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(Spacecraft->GetLinearVelocity());
-
-
 	FVector LocalDeltaV = FVector::ZeroVector;
 
-
+/*
 	if(Log) {
 		FLOG("==========================");
 		FLOGV("PhysicSubTick DeltaSeconds=%f", DeltaSeconds);
@@ -1471,7 +1484,7 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 		FLOGV("PhysicSubTick LinearEngineTarget.Target=%s", *LinearEngineTarget.Target.ToString());
 		FLOGV("PhysicSubTick UseOrbitalBoost=%d", UseOrbitalBoost);
 	}
-
+*/
 
 
 	float SharableBoostAcceleration = 0.f;
@@ -1627,14 +1640,14 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 	FVector GlobalDeltaV = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LocalDeltaV);
 	Spacecraft->Airframe->SetPhysicsLinearVelocity(GlobalDeltaV, true);
-
+/*
 	if(Log) {
 
 		FLOGV("PhysicSubTick LocalDeltaV=%s", *LocalDeltaV.ToString());
 		FLOGV("PhysicSubTick GlobalDeltaV=%s", *GlobalDeltaV.ToString());
 		FLOGV("PhysicSubTick SharableBoostAcceleration=%f", SharableBoostAcceleration);
 	}
-
+*/
 	// Angular physics
 	FVector DeltaAngularV = AngularTargetVelocity - Spacecraft->Airframe->GetPhysicsAngularVelocityInDegrees();
 	FVector DeltaAngularVAxis = DeltaAngularV;
@@ -1752,10 +1765,19 @@ float UFlareSpacecraftNavigationSystem::GetTotalMaxThrustWithEngines(TArray<UAct
 }
 
 
-float UFlareSpacecraftNavigationSystem::GetTotalMaxTorqueInAxis(TArray<UActorComponent*>& Engines, FVector TorqueAxis, bool WithDamages) const
+float UFlareSpacecraftNavigationSystem::GetTotalMaxTorqueInAxis(TArray<UActorComponent*>& Engines, FVector TorqueAxis, bool WithDamages)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_GetTotalMaxTorqueInAxis);
-
+/*
+	if (MaxTorqueCache.Contains(TorqueAxis))
+	{
+		TMap<bool, float> DamagesTMap = MaxTorqueCache[TorqueAxis];
+		if (DamagesTMap.Contains(WithDamages))
+		{
+			return DamagesTMap[WithDamages];
+		}
+	}
+*/
 	TorqueAxis.Normalize();
 	float TotalMaxTorque = 0;
 
@@ -1791,7 +1813,11 @@ float UFlareSpacecraftNavigationSystem::GetTotalMaxTorqueInAxis(TArray<UActorCom
 		}
 
 	}
-
+/*
+	TMap<bool, float> DamagesTmap;
+	DamagesTmap.Add(WithDamages, TotalMaxTorque);
+	MaxTorqueCache.Add(TorqueAxis, DamagesTmap);
+*/
 	return TotalMaxTorque;
 }
 

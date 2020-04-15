@@ -353,7 +353,7 @@ public:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	/** Initialize this component and register the master ship object */
-	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false);
+	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr);
 
 	/** Save the ship component to a save file */
 	virtual FFlareSpacecraftComponentSave* Save();
@@ -443,6 +443,11 @@ public:
 	/** Return the current amount of heat sink surface in m^2 */
 	virtual float GetHeatSinkSurface() const;
 
+	/** Return the current amount of heat production in KW */
+	virtual void UpdateHeatProduction();
+
+	virtual void UpdateHeatSinkSurface();
+
 	/** Return true if is a heatsink (broken or not) */
 	virtual bool IsHeatSink() const;
 
@@ -466,6 +471,12 @@ public:
 	/** Normalize a color */
 	static FLinearColor NormalizeColor(FLinearColor Col);
 
+	virtual void SafeDestroy();
+
+	virtual void FinishSafeDestroy();
+
+	virtual void SetHeatSinkSurface(float NewHeatsinkValue);
+	virtual	void SetHeatProduction(float NewHeatProduction);
 
 protected:
 
@@ -473,9 +484,13 @@ protected:
 		Protected data
 	----------------------------------------------------*/
 
+	float									CurrentHeatProduction;
+	float									CurrentHeatSinkSurface;
+
 	UPROPERTY()
 	AFlareSpacecraftPawn*                   SpacecraftPawn;
 
+	UPROPERTY()
 	AFlareSpacecraft*	                    Spacecraft;
 
 	UPROPERTY()
@@ -538,6 +553,8 @@ protected:
 
 	float                                   ImpactEffectChance;
 
+	bool										   IsSafeDestroyingRunning;
+	bool										   SafeDestroyed;
 
 public:
 
@@ -547,7 +564,11 @@ public:
 
 	virtual AFlareSpacecraft* GetSpacecraft() const
 	{
-		return Spacecraft;
+		if (IsValidLowLevel())
+		{
+			return Spacecraft;
+		}
+		return NULL;
 	}
 
 	virtual FFlareSpacecraftComponentDescription* GetDescription() const

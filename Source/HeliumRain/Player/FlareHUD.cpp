@@ -855,30 +855,41 @@ void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 
 		// Target info
 		AFlareSpacecraft* TargetShip = PlayerShip->GetCurrentTarget().SpacecraftTarget;
-		if (TargetShip && TargetShip->IsValidLowLevel())
+		if(TargetShip)
 		{
-			FText ShipText = FText::Format(LOCTEXT("CurrentTargetFormat", "Targeting {0}"),
-				UFlareGameTools::DisplaySpacecraftName(TargetShip->GetParent()));
+//these extra validations help suppress crashing if a ship has had Destroy() called on them at the wrong time
+			if (TargetShip->IsValidLowLevel() && !TargetShip->IsSafeDestroying())
+			{
+				if (TargetShip->GetParent())
+				{
+					if (!TargetShip->GetParent()->IsDestroyed())
+					{
+						FText ShipText = FText::Format(LOCTEXT("CurrentTargetFormat", "Targeting {0}"),
+							UFlareGameTools::DisplaySpacecraftName(TargetShip->GetParent()));
 
-			// Get target color
-			FLinearColor TargetColor;
-			if (PC->GetCurrentObjective() && PC->GetCurrentObjective()->TargetSpacecrafts.Find(TargetShip->GetParent()) != INDEX_NONE)
-			{
-				TargetColor = Theme.ObjectiveColor;
-			}
-			else if (TargetShip->IsPlayerHostile())
-			{
-				TargetColor = Theme.EnemyColor;
-			}
-			else
-			{
-				TargetColor = Theme.FriendlyColor;
-			}
+						// Get target color
+						FLinearColor TargetColor;
+						if (PC->GetCurrentObjective() && PC->GetCurrentObjective()->TargetSpacecrafts.Find(TargetShip->GetParent()) != INDEX_NONE)
+						{
+							TargetColor = Theme.ObjectiveColor;
+						}
+						else if (TargetShip->IsPlayerHostile())
+						{
+							TargetColor = Theme.EnemyColor;
+						}
+						else
+						{
+							TargetColor = Theme.FriendlyColor;
+						}
 
-			// Draw
-			FlareDrawText(ShipText, CurrentPos, TargetColor, false);
-			DrawHUDDesignatorStatus(CurrentPos + FVector2D(InstrumentSize.X, 0) * 0.8, IconSize, TargetShip);
+						// Draw
+						FlareDrawText(ShipText, CurrentPos, TargetColor, false);
+						DrawHUDDesignatorStatus(CurrentPos + FVector2D(InstrumentSize.X, 0) * 0.8, IconSize, TargetShip);
+					}
+				}
+			}
 		}
+
 		CurrentPos += InstrumentLine;
 
 		// Get player threats

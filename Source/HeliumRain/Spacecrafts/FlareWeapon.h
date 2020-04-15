@@ -21,7 +21,7 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
-	void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu) override;
+	void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip) override;
 
 	/** Setup this weapon's effects */
 	virtual void SetupFiringEffects();
@@ -56,9 +56,13 @@ public:
 
 	virtual bool IsTurret() const;
 
-	virtual bool IsSafeToFire(int GunIndex, AActor*& HitTarget) const;
+	virtual bool IsSafeToFire(int GunIndex, AActor*& HitTarget);
 
 	virtual bool Trace(const FVector& Start, const FVector& End, FHitResult& HitOut) const;
+
+	FTraceHandle RequestTrace(const FVector& Start, const FVector& End);
+	void OnTraceCompleted(const FTraceHandle& Handle, FTraceDatum& Data);
+	void DoWorkWithTraceResults(const FTraceDatum& TraceData);
 
 	/** Return the aim need minimum radius. 0 if not proximity fuze */
 	virtual float GetAimRadius() const;
@@ -83,6 +87,8 @@ public:
 
 	virtual void FillBombs();
 
+	virtual void RemoveBomb(AFlareBomb* Removing);
+
 	virtual void ClearBombs();
 
 	virtual FText GetSlotName() const;
@@ -99,6 +105,9 @@ protected:
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
+
+	FTraceHandle LastTraceHandle;
+	FTraceDelegate TraceDelegate;
 
 	/** Firing sound */
 	UPROPERTY()
@@ -131,7 +140,6 @@ protected:
 	float                       AmmoVelocity;
 	FActorSpawnParameters       ProjectileSpawnParams;
 
-	UPROPERTY()
 	TArray<AFlareBomb*>         Bombs;
 
 	// State
@@ -139,6 +147,8 @@ protected:
 	float                       TimeSinceLastShell;
 	int                         LastFiredGun;
 	FFlareWeaponGroup*          WeaponGroup;
+
+	bool						PreviousTraceIsSafe;
 
 public:
 
@@ -149,6 +159,16 @@ public:
 	inline int32 GetCurrentAmmo() const
 	{
 		return GetMaxAmmo() - ShipComponentData->Weapon.FiredAmmo;
+	}
+
+	inline TArray<AFlareBomb*> GetBombs() const
+	{
+		return Bombs;
+	}
+
+	inline bool GetPreviousTraceIsSafe() const
+	{
+		return PreviousTraceIsSafe;
 	}
 
 	inline int32 GetMaxAmmo() const

@@ -30,9 +30,9 @@ void UFlareSpacecraftSpinningComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-void UFlareSpacecraftSpinningComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu)
+void UFlareSpacecraftSpinningComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
 {
-	Super::Initialize(Data, Company, OwnerSpacecraftPawn, IsInMenu);
+	Super::Initialize(Data, Company, OwnerSpacecraftPawn, IsInMenu, ActualOwnerShip);
 
 	SetCollisionProfileName("IgnoreOnlyPawn");
 	NeedTackerInit = true;

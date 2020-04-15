@@ -43,6 +43,9 @@ public:
 	/** Check if this is a military ship */
 	virtual bool IsMilitary() const;
 
+	/** Check if this is a carrier with internal bay*/
+	virtual bool IsCapableCarrier() const;
+
 	/** Check if this is a station ship */
 	virtual bool IsStation() const;
 
@@ -121,6 +124,11 @@ public:
 
 	/** This ship was created by another ship */
 	void SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShip);
+
+	/** This ship has entered the internal dock of OwnerShip*/
+	void SetInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip);
+
+	bool IsInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip);
 
 	bool IsHarpooned()
 	{
@@ -307,6 +315,7 @@ protected:
 	/**Used for carrier stuffs*/
 	UFlareSimulatedSpacecraft*								ShipMaster;
 	TArray<UFlareSimulatedSpacecraft*>						ShipChildren;
+	TArray<UFlareSimulatedSpacecraft*>						InternallyDocked;
 
 public:
 

@@ -98,7 +98,8 @@ namespace EFlareSpawnMode
 		Safe,
 		Spawn,
 		Travel,
-		Exit
+		Exit,
+		InternalDocked
 	};
 }
 
@@ -854,6 +855,10 @@ struct FFlareSpacecraftSave
 	/** We are docked at this station */
 	UPROPERTY(EditAnywhere, Category = Save)
 		FName DockedTo;
+
+	/** We are docked at this location, internally */
+	UPROPERTY(EditAnywhere, Category = Save)
+		FName DockedAtInternally;
 
 	/** We are docked at this specific dock */
 	UPROPERTY(EditAnywhere, Category = Save)

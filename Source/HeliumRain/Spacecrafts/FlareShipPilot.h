@@ -36,6 +36,12 @@ protected:
 	/*----------------------------------------------------
 		Pilot functions
 	----------------------------------------------------*/
+	virtual void CarrierReleaseInternalDockShips(float DeltaSeconds);
+
+	virtual bool DroneReturnToCarrier(float DeltaSeconds);
+
+	virtual void ArmedStationPilot(float DeltaSeconds);
+
 	virtual void MilitaryPilot(float DeltaSeconds);
 
 	virtual void CargoPilot(float DeltaSeconds);
@@ -50,6 +56,22 @@ protected:
 
 	virtual void IdlePilot(float DeltaSeconds);
 
+	virtual void FindPilotAvoidShip(float DeltaSeconds);
+
+	struct AnticollisionConfig
+	{
+		AnticollisionConfig() : SpacecraftToIgnore(nullptr), IgnoreAllStations(false), SpeedCorrectionOnly(false) {}
+		AFlareSpacecraft* SpacecraftToIgnore;
+		bool IgnoreAllStations;
+		bool SpeedCorrectionOnly;
+	};
+
+	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit, float DeltaSeconds);
+
+	virtual void GetNewLeaderShip();
+
+	virtual void FollowLeaderShip(int32 DefaultRadius = 50000);
+
 public:
 	/*----------------------------------------------------
 		Helpers
@@ -58,7 +80,7 @@ public:
 	/**
 	 * Return the curved trajectory to avoid exiting sector
 	 */
-	FVector ExitAvoidance(AFlareSpacecraft* Ship, FVector InitialVelocityTarget,float CurveTrajectoryLimit) const;
+	FVector ExitAvoidance(AFlareSpacecraft* Ship, FVector InitialVelocityTarget,float CurveTrajectoryLimit,float DeltaSeconds);
 
 	/**
 	 * Return the nearest hostile alive ship
@@ -137,6 +159,13 @@ protected:
 	float								         DockWaitTime;
 	float								         CurrentWaitTime;
 
+	FVector                                      PreviousAntiCollisionVector;
+	float										 LastNewCollisionVector;
+	float										 CollisionVectorReactionTimeFast;
+	float										 CollisionVectorReactionTimeSlow;
+
+	AFlareSpacecraft*							 LeaderShip;
+
 	// Pilot targets
 	PilotHelper::PilotTarget                     PilotTarget;
 	PilotHelper::PilotTarget                     LastPilotTarget;
@@ -155,13 +184,33 @@ protected:
 	int32                                        SelectedWeaponGroupIndex;
 	bool                                         LockTarget;
 	bool                                         LastWantFire;
+	bool										 HasUndockedAllInternalShips;
 
+	float										 TimeBeforeNextInternalUndock;
 	float                                        TimeBeforeNextDrop;
 	float                                        TimeSinceAiming;
 	float                                        TimeUntilNextComponentSwitch;
+	float										 ComponentSwitchReactionTime;
 	float                                        TimeSinceLastDockingAttempt;
 	float                                        TimeUntilNextDockingAttempt;
 	float                                        MaxTimeBetweenDockingAttempt;
+
+	AFlareSpacecraft*							 PilotAvoidShip;
+	float										 TimeUntilNextPilotAvoidCheck;
+	float								 		 PilotAvoidCheckReactionTimeFast;
+	float										 PilotAvoidCheckReactionTimeSlow;
+	float										 TimeUntilNextHostileTargetSwitch;
+	float										 HostileTargetSwitchReactionTimeFast;
+	float										 HostileTargetSwitchReactionTimeSlow;
+	float										 TimeUntilNextExitAvoidanceCheck;
+	float										 NextExitAvoidanceCheckReactionFast;
+	float										 NextExitAvoidanceCheckReactionSlow;
+
+	bool										 RunningExitAvoidance;
+	bool										 InitiatedCombat;
+	bool										 FoundOutOfCombatLeader;
+
+	bool								 		 EveryOtherTick;
 
 	EFlareCombatTactic::Type			         CurrentTactic;
 
@@ -169,11 +218,18 @@ protected:
 	/*----------------------------------------------------
 		Helper
 	----------------------------------------------------*/
-
+	
 public:
 
 	inline PilotHelper::PilotTarget GetPilotTarget()
 	{
 		return PilotTarget;
 	}
+
+	inline UFlareSpacecraftComponent* GetPilotTargetShipComponent()
+	{
+		return PilotTargetShipComponent;
+	}
+
+	void SetUndockedAllShips(bool Set);
 };

@@ -64,7 +64,7 @@ void AFlareBomb::Initialize(const FFlareBombSave* Data, UFlareWeapon* Weapon)
 	{
 		FFlareSpacecraftComponentSave ComponentData;
 		ComponentData.ComponentIdentifier = WeaponDescription->Identifier;
-		BombComp->Initialize(&ComponentData, Weapon->GetSpacecraft()->GetParent()->GetCompany(), Weapon->GetSpacecraft(), false);
+		BombComp->Initialize(&ComponentData, Weapon->GetSpacecraft()->GetParent()->GetCompany(), Weapon->GetSpacecraft(), false,ParentWeapon->GetSpacecraft());
 
 		DamageSound = WeaponDescription->WeaponCharacteristics.DamageSound;
 
@@ -108,6 +108,7 @@ void AFlareBomb::Initialize(const FFlareBombSave* Data, UFlareWeapon* Weapon)
 	{
 		BombComp->SetSimulatePhysics(true);
 	}
+	LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 }
 
 void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
@@ -144,6 +145,15 @@ void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
 
 void AFlareBomb::Tick(float DeltaSeconds)
 {
+	if (IsSafeDestroyingRunning)
+	{
+		if (!SafeDestroyed)
+		{
+			FinishSafeDestroy();
+		}
+		return;
+	}
+
 	Super::Tick(DeltaSeconds);
 
 	if(BombLockedInCollision > 0)
@@ -202,8 +212,6 @@ void AFlareBomb::Tick(float DeltaSeconds)
 	}
 
 	float NeededAcceleration = 0;
-
-
 	
 	if (TargetSpacecraft && BombData.LifeTime > WeaponDescription->WeaponCharacteristics.BombCharacteristics.ActivationTime && BombData.BurnDuration < WeaponDescription->WeaponCharacteristics.BombCharacteristics.MaxBurnDuration)
 	{
@@ -597,12 +605,15 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	}
 	else
 	{
+/*
 		if (ParentWeapon)
 		{
 			ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector()->UnregisterBomb(this);
 		}
+*/
 		CombatLog::BombDestroyed(GetIdentifier());
-		Destroy();
+		SafeDestroy();
+//		Destroy();
 	}
 }
 
@@ -646,6 +657,66 @@ FFlareBombSave* AFlareBomb::Save()
 	return &BombData;
 }
 
+void AFlareBomb::SafeDestroy()
+{
+	if (!IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = true;
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+	}
+}
+
+void AFlareBomb::FinishSafeDestroy()
+{
+	if (!SafeDestroyed)
+	{
+
+		//TODO: find all references to this bomb and null them so GC can kill us "safely"
+
+		SafeDestroyed = true;
+
+		this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+		DamageSound = nullptr;
+
+		if (ParentWeapon)
+		{
+			if (LocalSector)
+			{ 
+				LocalSector->UnregisterBomb(this);
+			}
+			else
+			{
+				UFlareSector* CurrentSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+				if (CurrentSector)
+				{
+					CurrentSector->UnregisterBomb(this);
+				}
+			}
+
+			ParentWeapon->MoveIgnoreActors.Remove(this);
+			ParentWeapon = nullptr;
+		}
+
+		ExplosionEffectTemplate = nullptr;
+		ExplosionEffectMaterial = nullptr;
+		WeaponDescription = nullptr;
+		TargetSpacecraft = nullptr;
+		LocalSector = nullptr;
+
+		if (BombComp)
+		{
+			BombComp->SetSimulatePhysics(false);
+			BombComp->FinishSafeDestroy();
+		}
+
+		RootComponent = NULL;
+		BombComp = NULL;	
+		this->Destroy();
+	}
+}
+
 void AFlareBomb::SetPause(bool Pause)
 {
 	if (Paused == Pause)
@@ -666,7 +737,7 @@ void AFlareBomb::SetPause(bool Pause)
 	CustomTimeDilation = (Pause ? 0.f : 1.0);
 
 	// On unpause, restore physics
-	if (!Pause)
+	if (!Pause && !SafeDestroyed)
 	{
 		BombComp->SetPhysicsLinearVelocity(BombData.LinearVelocity);
 		BombComp->SetPhysicsAngularVelocityInDegrees(BombData.AngularVelocity);

@@ -147,6 +147,8 @@ public:
 
 	void ProcessIncomingPlayerEnemy();
 
+	void UpdateReserveShips();
+
 	/** Simulate world for a day */
 	void Simulate();
 

@@ -78,6 +78,20 @@ void UFlareSpacecraftComponent::OnRegister()
 
 void UFlareSpacecraftComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	if (IsSafeDestroyingRunning)
+	{
+		if (!SafeDestroyed)
+		{
+			FinishSafeDestroy();
+		}
+		return;
+	}
+
+	if (IsPendingKill())
+	{
+		return;
+	}
+
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
 	// Graphical updates
@@ -161,7 +175,7 @@ void UFlareSpacecraftComponent::TickComponent(float DeltaTime, enum ELevelTick T
 	}
 }
 
-void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu)
+void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
 {
 	// Main data
 	SpacecraftPawn = OwnerSpacecraftPawn;
@@ -512,6 +526,8 @@ float UFlareSpacecraftComponent::ApplyDamage(float Energy, EFlareDamage::Type Da
 				StartDestroyedEffects();
 			}
 			UpdateLight();
+			UpdateHeatProduction();
+			UpdateHeatSinkSurface();
 		}
 	}
 	return InflictedDamageRatio;
@@ -588,6 +604,37 @@ bool UFlareSpacecraftComponent::IsBroken() const
 float UFlareSpacecraftComponent::GetUsableRatio() const
 {
 	return (IsBroken() ? 0 : 1) * (GetDamageRatio() * (IsPowered() ? 1 : 0)) * (Spacecraft && Spacecraft->GetParent()->GetDamageSystem()->HasPowerOutage() ? 0 : 1);
+}
+
+void UFlareSpacecraftComponent::SetHeatProduction(float NewHeatProduction)
+{
+	CurrentHeatProduction = NewHeatProduction;
+}
+
+void UFlareSpacecraftComponent::UpdateHeatProduction()
+{
+	float OldHeatProduction = CurrentHeatProduction;
+	CurrentHeatProduction = GetHeatProduction();
+	if (Spacecraft && OldHeatProduction != CurrentHeatProduction)
+	{
+		Spacecraft->GetDamageSystem()->NotifyHeatProductionChange(CurrentHeatProduction - OldHeatProduction);
+	}
+}
+
+void UFlareSpacecraftComponent::SetHeatSinkSurface(float NewHeatsinkValue)
+{
+	CurrentHeatSinkSurface = NewHeatsinkValue;
+}
+
+void UFlareSpacecraftComponent::UpdateHeatSinkSurface()
+{
+	float OldHeatSinkSurface = CurrentHeatSinkSurface;
+	CurrentHeatSinkSurface = GetHeatSinkSurface();
+	if (Spacecraft && OldHeatSinkSurface != CurrentHeatSinkSurface)
+	{
+//		FLOGV("Heat sink differs, %f vs %f", OldHeatSinkSurface, CurrentHeatSinkSurface);
+		Spacecraft->GetDamageSystem()->NotifyHeatSinkChange(CurrentHeatSinkSurface - OldHeatSinkSurface);
+	}
 }
 
 float UFlareSpacecraftComponent::GetHeatProduction() const
@@ -727,5 +774,40 @@ FLinearColor UFlareSpacecraftComponent::NormalizeColor(FLinearColor Col)
 	else
 	{
 		return FLinearColor(FVector(Col.R, Col.G, Col.B) / Col.GetLuminance());
+	}
+}
+
+void UFlareSpacecraftComponent::SafeDestroy()
+{
+	if (!IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = true;
+	}
+}
+
+void UFlareSpacecraftComponent::FinishSafeDestroy()
+{
+	if (!SafeDestroyed)
+	{
+		SafeDestroyed = true;
+
+		SpacecraftPawn = nullptr;
+		Spacecraft = nullptr;
+		PlayerCompany = nullptr;
+		ComponentMaterial = nullptr;
+		LightMaterial = nullptr;
+		BillboardMaterial = nullptr;
+		ComponentDescription = nullptr;
+		ShipComponentData = nullptr;
+		DestroyedEffectTemplate = nullptr;
+
+		if (DestroyedEffects)
+		{
+			DestroyedEffects->Deactivate();
+		}
+
+		DestroyedEffects = nullptr; 
+		ImpactEffectTemplateS = nullptr;
+		ImpactEffectTemplateL = nullptr;
 	}
 }

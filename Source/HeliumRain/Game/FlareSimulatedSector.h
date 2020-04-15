@@ -471,8 +471,10 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>      SectorChildStations;
 	TArray<UFlareSimulatedSpacecraft*>      SectorShips;
 	TArray<UFlareSimulatedSpacecraft*>      SectorSpacecrafts;
+	TArray<UFlareSimulatedSpacecraft*>      SectorCombatCapableShips;
 
 	TArray<UFlareFleet*>                    SectorFleets;
+
 
 	UPROPERTY()
 	UFlarePeople*							People;
@@ -487,6 +489,8 @@ protected:
 	const FFlareSectorDescription*          SectorDescription;
 	TMap<FFlareResourceDescription*, float> ResourcePrices;
 	TMap<FFlareResourceDescription*, FFlareFloatBuffer> LastResourcePrices;
+	TMap<UFlareCompany*, TArray<UFlareSimulatedSpacecraft*>> ReservesByCompany;
+	TArray<UFlareSimulatedSpacecraft*>						 SectorReserves;
 
 public:
 
@@ -537,6 +541,20 @@ public:
         return SectorShips;
     }
 
+	inline TArray<UFlareSimulatedSpacecraft*>& GetSectorReserves(UFlareCompany* Company)
+	{
+		if (ReservesByCompany.Contains(Company))
+		{
+			return ReservesByCompany[Company];
+		}
+		return SectorReserves;
+	}
+
+	inline TArray<UFlareSimulatedSpacecraft*>& GetSectorCombatCapableShips()
+	{
+		return SectorCombatCapableShips;
+	}
+
 	inline TArray<UFlareSimulatedSpacecraft*>& GetSectorSpacecrafts()
 	{
 		return SectorSpacecrafts;
@@ -577,6 +595,8 @@ public:
 
 	float GetPreciseResourcePrice(FFlareResourceDescription* Resource, int32 Age = 0);
 
+	void RemoveSectorReserves(UFlareSimulatedSpacecraft* RemovingShip);
+
 	void SwapPrices();
 
 	void SetPreciseResourcePrice(FFlareResourceDescription* Resource, float NewPrice);
@@ -586,6 +606,8 @@ public:
 	void OnFleetSupplyConsumed(int32 Quantity);
 
 	void UpdateReserveShips();
+
+	bool BattleBringInReserveShips(UFlareCompany* PreferredCompany);
 
 	static float GetDefaultResourcePrice(FFlareResourceDescription* Resource);
 

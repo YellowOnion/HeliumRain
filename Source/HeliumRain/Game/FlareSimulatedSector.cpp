@@ -55,11 +55,10 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 		Game = Cast<UFlareTravel>(GetOuter())->GetGame();
 	}
 
-
-
 	SectorData = Data;
 	SectorDescription = Description;
 	SectorOrbitParameters = OrbitParameters;
+	SectorCombatCapableShips.Empty();
 	SectorShips.Empty();
 	SectorStations.Empty();
 	SectorChildStations.Empty();
@@ -109,8 +108,11 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 		if(!Spacecraft->IsComplexElement())
 		{
 			SectorSpacecrafts.Add(Spacecraft);
+			if (Spacecraft->IsMilitary())
+			{
+				SectorCombatCapableShips.Add(Spacecraft);
+			}
 		}
-
 	}
 
 
@@ -459,6 +461,10 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	if(!Spacecraft->IsComplexElement())
 	{
 		SectorSpacecrafts.Add(Spacecraft);
+		if (Spacecraft->IsMilitary())
+		{
+			SectorCombatCapableShips.Add(Spacecraft);
+		}
 	}
 
 	Spacecraft->SetCurrentSector(this);
@@ -472,6 +478,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 			FFlareSpacecraftDescription* BuiltByDescription = BuiltBy->GetDescription();
 			if (BuiltByDescription->IsDroneCarrier && ShipDescription->IsDroneShip)
 			{
+				Spacecraft->SetInternalDockedTo(BuiltBy);
 				Spacecraft->SetOwnerShip(BuiltBy);
 				UFlareFleet* JoiningFleet = BuiltBy->GetCurrentFleet();
 				JoiningFleet->AddShip(Spacecraft);
@@ -525,6 +532,10 @@ void UFlareSimulatedSector::AddFleet(UFlareFleet* Fleet)
 		Fleet->GetShips()[ShipIndex]->SetCurrentSector(this);
 		SectorShips.AddUnique(Fleet->GetShips()[ShipIndex]);
 		SectorSpacecrafts.AddUnique(Fleet->GetShips()[ShipIndex]);
+		if (Fleet->GetShips()[ShipIndex]->IsMilitary())
+		{
+			SectorCombatCapableShips.Add(Fleet->GetShips()[ShipIndex]);
+		}
 	}
 }
 
@@ -563,6 +574,9 @@ int UFlareSimulatedSector::RemoveSpacecraft(UFlareSimulatedSpacecraft* Spacecraf
 	SectorStations.Remove(Spacecraft);
 	SectorChildStations.Remove(Spacecraft);
 	SectorShips.Remove(Spacecraft);
+	SectorCombatCapableShips.Remove(Spacecraft);
+	RemoveSectorReserves(Spacecraft);
+
 	return SectorSpacecrafts.Remove(Spacecraft);
 }
 
@@ -1080,9 +1094,21 @@ void UFlareSimulatedSector::GetSectorBalance(UFlareCompany* Company, int32& Play
 
 	for (int ShipIndex = 0; ShipIndex < SectorShips.Num(); ShipIndex++)
 	{
-		if (ActiveOnly && !SectorShips[ShipIndex]->IsActive())
+		if (SectorShips[ShipIndex]->IsDestroyed() || !SectorShips[ShipIndex]->GetDamageSystem()->IsAlive())
 		{
 			continue;
+		}
+
+		if (ActiveOnly)
+		{
+			if (!SectorShips[ShipIndex]->IsActive())
+			{
+				continue;
+			}
+			if (SectorShips[ShipIndex]->GetActive()->IsSafeDestroying())
+			{
+				continue;
+			}
 		}
 
 		if (SectorShips[ShipIndex]->IsHostile(Company)
@@ -1668,7 +1694,10 @@ static bool ReserveShipComparator (UFlareSimulatedSpacecraft& Ship1, UFlareSimul
 		return SELECT_SHIP1;
 	}
 
-
+	if (Ship1.IsMilitary() && Ship2.IsMilitary())
+	{
+		return Ship1.GetCombatPoints(true) > Ship2.GetCombatPoints(true);
+	}
 	// TODO sort by fleet order
 
 
@@ -1985,6 +2014,119 @@ void UFlareSimulatedSector::OnFleetSupplyConsumed(int32 Quantity)
 	SectorData.DailyFleetSupplyConsumption += Quantity;
 }
 
+void UFlareSimulatedSector::RemoveSectorReserves(UFlareSimulatedSpacecraft* RemovingShip)
+{
+	if (RemovingShip)
+	{
+		TArray<UFlareSimulatedSpacecraft*>& CompanyReserves = GetSectorReserves(RemovingShip->GetCompany());
+		CompanyReserves.Remove(RemovingShip);
+//		ReservesByCompany[RemovingShip->GetCompany()] = CompanyReserves;
+	}
+}
+
+bool UFlareSimulatedSector::BattleBringInReserveShips(UFlareCompany* PreferredCompany)
+{
+//	FLOGV("Battle bring reserve");
+	if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == this)
+	{
+		TArray<UFlareCompany*> CompaniesFighting;
+		bool FoundCompany = false;
+		for (int32 CompanyIndex = 0; CompanyIndex < GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+		{
+			UFlareCompany* Company = GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex];
+			if (GetSectorBattleState(Company).InBattle)
+			{
+				if (Company == PreferredCompany)
+				{
+					FoundCompany = true;
+				}
+				CompaniesFighting.Add(Company);
+			}
+		}
+
+		while (CompaniesFighting.Num() > 0)
+		{
+			UFlareCompany* Company;
+			int32 CompanyIndex;
+
+			if (FoundCompany)
+			{
+				Company = PreferredCompany;
+				FoundCompany = false;
+			}
+			else
+			{
+				CompanyIndex = FMath::RandRange(0, CompaniesFighting.Num() - 1);
+				Company = CompaniesFighting[CompanyIndex];
+			}
+
+			TArray<UFlareSimulatedSpacecraft*> ViableShips;
+			if (Company)
+			{
+//				FLOGV("got company");
+
+				TArray<UFlareSimulatedSpacecraft*> CompanyReserves = GetSectorReserves(Company);
+				if(!CompanyReserves.Num())
+				{
+					CompaniesFighting.Remove(Company);
+					continue;
+				}
+
+				for (UFlareSimulatedSpacecraft* Ship : CompanyReserves)
+				{
+					if (Ship->GetCompany() == Company && Ship->IsMilitary())
+					{
+						if (Ship->GetShipMaster())
+						{
+							if (!Ship->GetShipMaster()->GetActive())
+							{
+								continue;
+							}
+						}
+						if (Ship->GetDamageSystem()->IsUncontrollable() || Ship->GetDamageSystem()->IsDisarmed())
+						{
+							continue;
+						}
+						ViableShips.Add(Ship);
+					}
+				}
+
+				if (ViableShips.Num() > 0)
+				{
+					int32 ShipIndex = FMath::RandRange(0, ViableShips.Num() - 1);
+					UFlareSimulatedSpacecraft* Ship = ViableShips[ShipIndex];
+					if (Ship)
+					{
+//						FLOGV("found reinforcing ship");
+						ViableShips.Remove(Ship);
+						RemoveSectorReserves(Ship);
+						Ship->SetReserve(false);
+						if (Ship->GetData().SpawnMode != EFlareSpawnMode::InternalDocked || !Ship->GetShipMaster())
+						{
+							Ship->SetSpawnMode(EFlareSpawnMode::Exit);
+						}
+						Ship->GetGame()->GetActiveSector()->AddReinforcingShip(Ship);
+						return true;
+					}
+					else
+					{
+						CompaniesFighting.Remove(Company);
+					}
+				}
+				else
+				{
+					CompaniesFighting.Remove(Company);
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+	return false;
+}
+
 static const int32 MIN_SPAWN = 1;
 
 void UFlareSimulatedSector::UpdateReserveShips()
@@ -1993,10 +2135,11 @@ void UFlareSimulatedSector::UpdateReserveShips()
 	int32 MaxShipsInSector = MyGameSettings->MaxShipsInSector;
 	int32 TotalShipCount = GetSectorShips().Num();
 	int32 TotalCargoShipCount = 0;
-	int32 TotalMilitaryShipCount = 0;
+	int32 TotalMilitaryShipCount = 0; 
 
 	//FLOGV("UpdateReserveShips in %s: max=%d total=%d", *GetSectorName().ToString(), MaxShipsInSector, TotalShipCount);
 
+	ReservesByCompany.Empty();
 	if (TotalShipCount <= MaxShipsInSector)
 	{
 		//FLOG("reserve no ship");
@@ -2021,6 +2164,11 @@ void UFlareSimulatedSector::UpdateReserveShips()
 	{
 		Ship->SetReserve(false);
 
+		if (Ship->IsDestroyed())
+		{
+			continue;
+		}
+
 		for (int32 CompanyIndex = 0; CompanyIndex < GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 		{
 			UFlareCompany* Company = GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex];
@@ -2041,7 +2189,6 @@ void UFlareSimulatedSector::UpdateReserveShips()
 			}
 		}
 	}
-
 
 	// Count min ships to spawn
 	int MinShipToSpawn = 0;
@@ -2066,44 +2213,60 @@ void UFlareSimulatedSector::UpdateReserveShips()
 		}
 	}
 
-	float MilitaryProportion = (GetSectorBattleState(Game->GetPC()->GetCompany()).InBattle ? 0.75f : 0.25);
-	float CargoProportion = 1.f-MilitaryProportion;
+	float MilitaryBattleModifier = GetSectorBattleState(Game->GetPC()->GetCompany()).InBattle ? 0.75f : 0.25;
+	float CargoBattleModifier = 1.f - MilitaryBattleModifier;
+	float MilitaryProportion = (float)(TotalMilitaryShipCount / (float)TotalShipCount) * MilitaryBattleModifier;
+	float CargoProportion = (float)(TotalCargoShipCount / (float)TotalShipCount) * CargoBattleModifier;
+	float Difference = (1 - (MilitaryProportion + CargoProportion)) / 2;
+	MilitaryProportion += Difference;
+	CargoProportion += Difference;
+	//	FLOGV("Proportions: %f/%f Diff %f", MilitaryProportion, CargoProportion, Difference);
 
 	for (int32 CompanyIndex = 0; CompanyIndex < GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
 		UFlareCompany* Company = GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex];
 
 		int32 CargoCompanyShipCount = CargoShipListByCompanies[CompanyIndex].Num();
+		TArray<UFlareSimulatedSpacecraft*> CompanyReserves;
+		int32 CountOverflow = 0;
 		if (CargoCompanyShipCount > 0)
 		{
-			float CompanyProportion = (float) (CargoCompanyShipCount - MIN_SPAWN) / (float) (TotalCargoShipCount - MinCargoShipToSpawn);
+			float CompanyProportion = (float) (CargoCompanyShipCount - MinCargoShipToSpawn) / (float) (TotalCargoShipCount - MinCargoShipToSpawn);
 			int32 AllowedShipCount = FMath::Max(0, FMath::FloorToInt(CompanyProportion * CargoProportion * (MaxShipsInSector - MinShipToSpawn)));
-			AllowedShipCount += MIN_SPAWN;
-			//FLOGV("Allow %d/%d cargo for %s", AllowedShipCount, CargoCompanyShipCount, *Company->GetCompanyName().ToString());
+			AllowedShipCount += MinCargoShipToSpawn;	
+			if (AllowedShipCount > CargoCompanyShipCount)
+			{
+				CountOverflow = CargoCompanyShipCount - AllowedShipCount;
+			}
+
+//			FLOGV("Allow %d/%d cargo for %s", AllowedShipCount, CargoCompanyShipCount, *Company->GetCompanyName().ToString());
 
 			CargoShipListByCompanies[CompanyIndex].Sort(&ReserveShipComparator);
 			for (int32 ShipIndex = AllowedShipCount; ShipIndex < CargoCompanyShipCount; ShipIndex++)
 			{
 				UFlareSimulatedSpacecraft* Ship = CargoShipListByCompanies[CompanyIndex][ShipIndex];
 				Ship->SetReserve(true);
+//				CompanyReserves.Add(Ship);
 			}
 		}
 
 		int32 MilitaryCompanyShipCount = MilitaryShipListByCompanies[CompanyIndex].Num();
 		if (MilitaryCompanyShipCount > 0)
 		{
-			float CompanyProportion = (float) (MilitaryCompanyShipCount - MIN_SPAWN) / (float) (TotalMilitaryShipCount - MinMilitaryShipToSpawn);
+			float CompanyProportion = (float) (MilitaryCompanyShipCount - MinMilitaryShipToSpawn) / (float) (TotalMilitaryShipCount - MinMilitaryShipToSpawn);
 			int32 AllowedShipCount = FMath::Max(0, FMath::FloorToInt(CompanyProportion * MilitaryProportion * (MaxShipsInSector - MinShipToSpawn)));
-			AllowedShipCount += MIN_SPAWN;
-			//FLOGV("Allow %d/%d military for %s", AllowedShipCount, MilitaryCompanyShipCount, *Company->GetCompanyName().ToString());
-
+			AllowedShipCount += MinMilitaryShipToSpawn + CountOverflow;
+//			FLOGV("Allow %d/%d military for %s", AllowedShipCount, MilitaryCompanyShipCount, *Company->GetCompanyName().ToString());
+			
 			MilitaryShipListByCompanies[CompanyIndex].Sort(&ReserveShipComparator);
 			for (int32 ShipIndex = AllowedShipCount; ShipIndex < MilitaryCompanyShipCount; ShipIndex++)
 			{
 				UFlareSimulatedSpacecraft* Ship = MilitaryShipListByCompanies[CompanyIndex][ShipIndex];
 				Ship->SetReserve(true);
+				CompanyReserves.Add(Ship);
 			}
 		}
+		ReservesByCompany.Add(Company, CompanyReserves);
 	}
 }
 

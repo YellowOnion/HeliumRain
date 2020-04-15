@@ -131,8 +131,9 @@ bool UFlareBattle::SimulateTurn()
 
     // List all fighting ships
     TArray<UFlareSimulatedSpacecraft*> ShipToSimulate;
-    for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorShips().Num(); ShipIndex++)
-    {
+//  for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorShips().Num(); ShipIndex++)
+    for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
+	{
         UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
 
 		if(Ship->IsReserve())
@@ -165,8 +166,8 @@ bool UFlareBattle::SimulateTurn()
         {
             HasFight = true;
         }
-        ShipToSimulate.RemoveAt(Index);
-    }
+       ShipToSimulate.RemoveAt(Index);
+	}
 
 	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorSpacecrafts())
 	{
@@ -186,6 +187,10 @@ bool UFlareBattle::SimulateShipTurn(UFlareSimulatedSpacecraft* Ship)
     {
         return SimulateLargeShipTurn(Ship);
     }
+	else
+	{
+		return SimulateLargeShipTurn(Ship);
+	}
 
     return false;
 }
@@ -643,7 +648,7 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 		DamageSource);
 
 	// Ship salvage
-	if (!Target->IsStation() &&
+	if (!Target->IsStation() && !Target->GetDescription()->IsDroneShip &&
 		((WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage && Target->GetDescription()->Size == EFlarePartSize::S)
 	 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && Target->GetDescription()->Size == EFlarePartSize::L)))
 	{

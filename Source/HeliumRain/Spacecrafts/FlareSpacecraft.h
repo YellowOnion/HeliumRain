@@ -77,6 +77,7 @@ public:
 
 	virtual float GetSpacecraftMass() const;
 
+	bool GetIsDestroyed();
 
 	/*----------------------------------------------------
 		Player interface
@@ -89,7 +90,7 @@ public:
 	void ClearInvalidTarget(PilotHelper::PilotTarget invalidTarget);
 
 	/** Get the current target */
-	PilotHelper::PilotTarget GetCurrentTarget() const;
+	PilotHelper::PilotTarget GetCurrentTarget();
 
 	/** Are we scanning for a waypoint ? */
 	bool IsInScanningMode();
@@ -147,6 +148,13 @@ public:
 	
 	void SetCurrentTarget(PilotHelper::PilotTarget const& Target);
 
+	/** Slower actor destruction*/
+	void SafeDestroy();
+
+	void FinishSafeDestroy();
+
+	bool IsSafeDestroying();
+		
 public:
 
 	/*----------------------------------------------------
@@ -348,6 +356,15 @@ protected:
 
 	FFlareMovingAverage<float>                     JoystickRollInputVal;
 
+	float										   TimeSinceLastExplosion;
+	int32										   ExplodingTimes;
+	int32										   ExplodingTimesMax;
+	bool										   IsExploding;
+	bool										   IsSafeDestroyingRunning;
+	bool										   BegunSafeDestroy;
+	float										   SafeDestroyTimer;
+
+	TArray<AFlareSpacecraft*>					   InSectorSquad;
 
 	/*----------------------------------------------------
 		Target selection
@@ -377,9 +394,19 @@ protected:
 
 public:
 
+	void AddToInsectorSquad(AFlareSpacecraft* Adding);
+	void RemoveFromInsectorSquad(AFlareSpacecraft* Removing);
+	
+	void SetUndockedAllShips(bool Set);
+
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	TArray<AFlareSpacecraft*> GetInSectorSquad() const
+	{
+		return InSectorSquad;
+	}
 
 	bool GetIsManualDocking() const
 	{
@@ -438,6 +465,11 @@ public:
 	{
 		return Parent->IsMilitary();
 	}
+
+	inline bool IsCapableCarrier()
+	{
+		return Parent->IsCapableCarrier();
+	} 
 
 	inline FFlareSpacecraftSave& GetData()
 	{

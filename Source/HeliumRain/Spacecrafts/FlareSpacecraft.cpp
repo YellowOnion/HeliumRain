@@ -141,6 +141,22 @@ void AFlareSpacecraft::BeginPlay()
 
 void AFlareSpacecraft::Tick(float DeltaSeconds)
 {
+	if (IsActorBeingDestroyed() || IsPendingKill())
+	{
+		return;
+	}
+
+	if (IsSafeDestroyingRunning)
+	{
+// waiting a safe amount of time to self destruct
+		SafeDestroyTimer += DeltaSeconds;
+		if (SafeDestroyTimer >= 3 && !BegunSafeDestroy)
+		{
+			FinishSafeDestroy();
+		}
+		return;
+	}
+
 	FCHECK(IsValidLowLevel());
 
 	TimeToStopCached = false;
@@ -151,8 +167,21 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		if (Parent && StateManager && !IsPresentationMode())
 		{
 			LoadedAndReady = true;
-
 			Redock();
+/*
+			if (Parent->GetSize() == EFlarePartSize::L)
+			{
+				ExplodingTimesMax = FMath::RandRange(5, 10);
+			}
+			else if (Parent->GetSize() == EFlarePartSize::S)
+			{
+				ExplodingTimesMax = FMath::RandRange(2, 5);
+			}
+			else
+			{
+				ExplodingTimesMax = FMath::RandRange(5, 10);
+			}
+			*/
 		}
 	}
 
@@ -188,11 +217,24 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 			if(!IsStation())
 			{
 				NavigationSystem->TickSystem(DeltaSeconds);
+			}
+			if (IsMilitary())
+			{
 				WeaponsSystem->TickSystem(DeltaSeconds);
 			}
 			DamageSystem->TickSystem(DeltaSeconds);
 		}
-
+/*
+		if (IsExploding)
+		{
+			TimeSinceLastExplosion - DeltaSeconds;
+			if (TimeSinceLastExplosion <= 0)
+			{
+				TimeSinceLastExplosion = FMath::FRandRange(1, 3)
+				ExplodingShip();
+			}
+		}
+*/
 		// Lights
 		TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
@@ -377,6 +419,11 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 }
 
+/*
+void AFlareSpacecraft::ExplodingShip()
+{
+}
+*/
 void AFlareSpacecraft::SetCurrentTarget(PilotHelper::PilotTarget const& Target)
 {
 	if (CurrentTarget != Target)
@@ -405,7 +452,6 @@ TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets()
 	FVector CameraAimDirection = GetCamera()->GetComponentRotation().Vector();
 	CameraAimDirection.Normalize();
 
-
 	for (AFlareSpacecraft* Spacecraft: GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
 		if(Spacecraft == this)
@@ -414,6 +460,11 @@ TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets()
 		}
 
 		if(Spacecraft->IsComplexElement())
+		{
+			continue;
+		}
+
+		if (Spacecraft->GetParent()->IsDestroyed())
 		{
 			continue;
 		}
@@ -521,42 +572,90 @@ void AFlareSpacecraft::NotifyHit(class UPrimitiveComponent* MyComp, class AActor
 	}
 }
 
+void AFlareSpacecraft::SetUndockedAllShips(bool Set)
+{
+	if (Pilot)
+	{
+		Pilot->SetUndockedAllShips(Set);
+	}
+}
+
+bool AFlareSpacecraft::IsSafeDestroying()
+{
+	return IsSafeDestroyingRunning;
+}
+
+void AFlareSpacecraft::SafeDestroy()
+{
+	if (!IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = true;
+		StopFire();
+		DeactivateWeapon();
+		ResetCurrentTarget();
+
+		Airframe->SetSimulatePhysics(false);
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+	}
+}
+
+void AFlareSpacecraft::AddToInsectorSquad(AFlareSpacecraft* Adding)
+{
+	InSectorSquad.AddUnique(Adding);
+}
+
+void AFlareSpacecraft::RemoveFromInsectorSquad(AFlareSpacecraft* Removing)
+{
+	InSectorSquad.RemoveSwap(Removing);
+}
+
+void AFlareSpacecraft::FinishSafeDestroy()
+{
+	if (!BegunSafeDestroy)
+	{
+		BegunSafeDestroy = true;
+
+		InSectorSquad.Empty();
+
+		// Notify PC
+		if (!IsPresentationMode())
+		{
+			if (Parent)
+			{
+				Parent->SetActiveSpacecraft(NULL);
+			}
+		}
+
+		// Stop lights
+		TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
+		{
+			USpotLightComponent* Component = Cast<USpotLightComponent>(LightComponents[ComponentIndex]);
+			if (Component)
+			{
+				Component->SetActive(false);
+			}
+		}
+
+		// Clear bombs
+		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+		{
+			UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
+			if (Weapon)
+			{
+				Weapon->ClearBombs();
+			}
+		}
+		CurrentTarget.Clear();
+	}
+}
+
 void AFlareSpacecraft::Destroyed()
 {
-	// Notify PC
-	if(!IsPresentationMode())
-	{
-		if(Parent)
-		{
-			Parent->SetActiveSpacecraft(NULL);
-		}
-	}
-
-	// Stop lights
-	TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
-	{
-		USpotLightComponent* Component = Cast<USpotLightComponent>(LightComponents[ComponentIndex]);
-		if (Component)
-		{
-			Component->SetActive(false);
-		}
-	}
-
 	Super::Destroyed();
-
-	// Clear bombs
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
-	{
-		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
-		if (Weapon)
-		{
-			Weapon->ClearBombs();
-		}
-	}
-
-	CurrentTarget.Clear();
+	FinishSafeDestroy();
 }
 
 void AFlareSpacecraft::SetPause(bool Pause)
@@ -691,7 +790,7 @@ void AFlareSpacecraft::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget
 	}
 }
 
-PilotHelper::PilotTarget AFlareSpacecraft::GetCurrentTarget() const
+PilotHelper::PilotTarget AFlareSpacecraft::GetCurrentTarget()
 {
 	// Crash "preventer" - ensure we've got a really valid target, this isn't a solution, but it seems to only happen when using CreateShip commands
 	if (IsValidLowLevel() && CurrentTarget.IsValid())
@@ -1032,6 +1131,8 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	NavigationSystem->Start();
 	DockingSystem->Start();
 	WeaponsSystem->Start();
+	DamageSystem->CalculateInitialHeat();
+
 	SmoothedVelocity = GetLinearVelocity();
 
 	if (IsPaused())
@@ -1065,7 +1166,16 @@ void AFlareSpacecraft::Save()
 void AFlareSpacecraft::SetOwnerCompany(UFlareCompany* NewCompany)
 {
 	SetCompany(NewCompany);
-	Airframe->Initialize(NULL, Company, this);
+
+	AFlarePlayerController* PC = GetGame()->GetPC();
+	if (PC)
+	{
+		Airframe->Initialize(NULL, Company, this, false, PC->GetShipPawn());
+	}
+	else
+	{
+		Airframe->Initialize(NULL, Company, this, false, nullptr);
+	}
 }
 
 UFlareSpacecraftDamageSystem* AFlareSpacecraft::GetDamageSystem() const
@@ -1282,7 +1392,7 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 							FFlareSpacecraftComponentSave Data;
 							Data.Damage = 0;
 							Data.ComponentIdentifier = NAME_None;
-							ChildRootComponent->Initialize(&Data, Company, this, false);
+							ChildRootComponent->Initialize(&Data, Company, this, false, this);
 						}
 					}
 				}

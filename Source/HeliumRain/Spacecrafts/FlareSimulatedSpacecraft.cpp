@@ -399,6 +399,11 @@ bool UFlareSimulatedSpacecraft::IsMilitary() const
 	return SpacecraftDescription->IsMilitary();
 }
 
+bool UFlareSimulatedSpacecraft::IsCapableCarrier() const
+{
+	return SpacecraftDescription->IsDroneCarrier && this->GetShipChildren().Num() > 0;
+}
+
 bool UFlareSimulatedSpacecraft::IsStation() const
 {
 	return SpacecraftDescription->IsStation();
@@ -534,7 +539,7 @@ void UFlareSimulatedSpacecraft::TryMigrateDrones()
 			return;
 		}
 	}
-	this->GetDamageSystem()->SetDead(true);
+//	this->GetDamageSystem()->SetDead();
 }
 
 /*----------------------------------------------------
@@ -1024,7 +1029,6 @@ void UFlareSimulatedSpacecraft::SetReserve(bool InReserve)
 	SpacecraftData.IsReserve = InReserve;
 }
 
-
 void UFlareSimulatedSpacecraft::Repair()
 {
 	if(GetRepairStock() <= 0 || (GetCurrentSector() && GetCurrentSector()->IsInDangerousBattle(GetCompany())))
@@ -1224,6 +1228,36 @@ void UFlareSimulatedSpacecraft::SetHarpooned(UFlareCompany* OwnerCompany)
 	}
 }
 
+
+void UFlareSimulatedSpacecraft::SetInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip)
+{
+	if (OwnerShip)
+	{
+		this->SetSpawnMode(EFlareSpawnMode::InternalDocked);
+		if (SpacecraftData.DockedAtInternally != OwnerShip->GetImmatriculation())
+		{
+			SpacecraftData.DockedAtInternally = OwnerShip->GetImmatriculation();
+		}
+	}
+	else
+	{
+		SpacecraftData.DockedAtInternally = NAME_None;
+	}
+}
+
+bool UFlareSimulatedSpacecraft::IsInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip)
+{
+	if (OwnerShip)
+	{
+		if (SpacecraftData.DockedAtInternally == OwnerShip->GetImmatriculation())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
 void UFlareSimulatedSpacecraft::SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShip)
 {
 	if (OwnerShip)
@@ -1242,7 +1276,6 @@ void UFlareSimulatedSpacecraft::SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShi
 			}
 
 			OwnerShip->AddShipChildren(this);
-//			SetShipMaster(OwnerShip);
 
 			SpacecraftData.OwnerShipName = OwnerShip->GetImmatriculation();
 			FFlareSpacecraftSave& NewOwnerData = OwnerShip->GetData();
@@ -1480,7 +1513,7 @@ void UFlareSimulatedSpacecraft::OrderRefillStock(float FS)
 bool UFlareSimulatedSpacecraft::NeedRefill()
 {
 	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-
+	//note bugged
 	// List components
 	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 	{
