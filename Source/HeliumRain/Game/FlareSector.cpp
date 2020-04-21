@@ -127,8 +127,7 @@ void UFlareSector::Save()
 	}
 
 	SectorData->LocalTime = LocalTime + GetGame()->GetPlanetarium()->GetSmoothTime();
-}
-
+} 
 
 void UFlareSector::AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft)
 {
@@ -167,28 +166,45 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
 			CompanySpacecraftsPerCompanyCache[Company].Remove(Spacecraft);
 		}
 
-//		Spacecraft->SafeDestroy();
-		Spacecraft->Destroy();
+		Spacecraft->SafeHide();
+//		Spacecraft->Destroy();
 	}
 }
 void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
-
 	IsDestroyingSector = true;
+	AFlareSpacecraft* PlayerShip = nullptr;
+
+	if (ParentSector != nullptr)
+	{
+		AFlarePlayerController* PC = GetGame()->GetPC();
+		if (PC)
+		{
+			PlayerShip = PC->GetShipPawn();
+		}
+	}
 
 	// Remove spacecrafts from world
 	for (int SpacecraftIndex = 0 ; SpacecraftIndex < SectorSpacecrafts.Num(); SpacecraftIndex++)
 	{
-		SectorSpacecrafts[SpacecraftIndex]->Destroy();
+		if (PlayerShip == SectorSpacecrafts[SpacecraftIndex])
+		{
+//todo: find and cleanup playership variables "properly" so it can use safedestroy too, instead of freezing the game when exiting main menu screen after moving sectors
+			SectorSpacecrafts[SpacecraftIndex]->Destroy();
+		}
+		else
+		{
+			SectorSpacecrafts[SpacecraftIndex]->SafeDestroy();
+		}
 	}
 
 	for (int BombIndex = 0 ; BombIndex < SectorBombs.Num(); BombIndex++)
 	{
 		if (SectorShells[BombIndex])
 		{
-			SectorBombs[BombIndex]->FinishSafeDestroy();
-//			SectorBombs[BombIndex]->Destroy();
+			SectorBombs[BombIndex]->SafeDestroy();
+			SectorBombs[BombIndex]->Destroy();
 		}		
 	}
 
@@ -199,7 +215,8 @@ void UFlareSector::DestroySector()
 
 	for (AFlareMeteorite* Meteorite : SectorMeteorites)
 	{
-		Meteorite->Destroy();
+		Meteorite->SafeDestroy();
+//		Meteorite->Destroy();
 	}
 
 	for (int ShellIndex = 0 ; ShellIndex < SectorShells.Num(); ShellIndex++)

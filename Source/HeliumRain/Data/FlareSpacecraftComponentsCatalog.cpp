@@ -134,7 +134,6 @@ const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecr
 	for (int32 i = 0; i < EngineCatalog.Num(); i++)
 	{
 		FFlareSpacecraftComponentDescription& Candidate = EngineCatalog[i]->Data;
-
 		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)))
 		{
 			OutData.Add(&Candidate);

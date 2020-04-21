@@ -858,7 +858,7 @@ void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 		if(TargetShip)
 		{
 //these extra validations help suppress crashing if a ship has had Destroy() called on them at the wrong time
-			if (TargetShip->IsValidLowLevel() && !TargetShip->IsSafeDestroying())
+			if (TargetShip->IsValidLowLevel() && !TargetShip->IsSafeEither())
 			{
 				if (TargetShip->GetParent())
 				{

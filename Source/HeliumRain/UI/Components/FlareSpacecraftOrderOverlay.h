@@ -59,9 +59,7 @@ public:
 	/** Close the overlay */
 	void Close();
 
-
 	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
-
 
 	/*----------------------------------------------------
 		Content callbacks

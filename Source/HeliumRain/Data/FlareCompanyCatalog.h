@@ -17,6 +17,8 @@ public:
 		Public data
 	----------------------------------------------------*/
 	
+	const void GetCompanyList(TArray<FFlareCompanyDescription*>& OutData);
+
 	/** Company data */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<FFlareCompanyDescription> Companies;

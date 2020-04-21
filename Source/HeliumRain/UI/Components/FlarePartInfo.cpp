@@ -14,6 +14,7 @@
 void SFlarePartInfo::Construct(const FArguments& InArgs)
 {
 	ShowOwnershipInfo = InArgs._ShowOwnershipInfo;
+	VerboseInfo = InArgs._Verbose;
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
 	// Create the layout

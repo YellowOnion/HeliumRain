@@ -54,6 +54,8 @@ protected:
 
 	virtual void FlagShipPilot(float DeltaSeconds);
 
+	virtual void FlagShipMovement(float DeltaSeconds);
+
 	virtual void IdlePilot(float DeltaSeconds);
 
 	virtual void FindPilotAvoidShip(float DeltaSeconds);
@@ -67,6 +69,8 @@ protected:
 	};
 
 	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit, float DeltaSeconds);
+
+	virtual void SelectedNewLeader(AFlareSpacecraft* OldLeaderShip);
 
 	virtual void GetNewLeaderShip();
 

@@ -108,6 +108,11 @@ int32 FFlareSpacecraftDescription::GetCapacity() const
 
 bool FFlareSpacecraftDescription::IsStation() const
 {
+	return OrbitalEngineCount == 0 || IsAStation;
+}
+
+bool FFlareSpacecraftDescription::IsImmobileStation() const
+{
 	return OrbitalEngineCount == 0;
 }
 

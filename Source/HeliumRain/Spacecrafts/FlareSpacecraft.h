@@ -148,13 +148,18 @@ public:
 	
 	void SetCurrentTarget(PilotHelper::PilotTarget const& Target);
 
+	void SafeHide();
+
 	/** Slower actor destruction*/
 	void SafeDestroy();
 
 	void FinishSafeDestroy();
 
+	bool IsSafeEither();
+
 	bool IsSafeDestroying();
-		
+	
+	bool IsSafeHiding();
 public:
 
 	/*----------------------------------------------------
@@ -360,6 +365,8 @@ protected:
 	int32										   ExplodingTimes;
 	int32										   ExplodingTimesMax;
 	bool										   IsExploding;
+
+	bool										   IsSafeHidingRunning;
 	bool										   IsSafeDestroyingRunning;
 	bool										   BegunSafeDestroy;
 	float										   SafeDestroyTimer;
@@ -484,6 +491,11 @@ public:
 	bool IsStation() const
 	{
 		return Parent->IsStation();
+	}
+
+	bool IsImmobileStation() const
+	{
+		return Parent->IsImmobileStation();
 	}
 
 	bool IsHostile(UFlareCompany* TargetCompany, bool UseCache = false) const

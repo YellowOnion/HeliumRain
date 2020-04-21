@@ -34,6 +34,7 @@ class SFlareSectorMenu;
 class SFlareTradeMenu;
 class SFlareTradeRouteMenu;
 class SFlareCreditsMenu;
+class SFlareHelpMenu;
 class SFlareEULAMenu;
 class SFlareResourcePricesMenu;
 class SFlareWorldEconomyMenu;
@@ -246,6 +247,9 @@ protected:
 	/** Go to the game's credits */
 	void OpenCredits();
 
+	/** Go to the game's in game help menu */
+	void OpenHelp();
+
 	/** Go to the game's EULA */
 	void OpenEULA();
 
@@ -436,6 +440,8 @@ protected:
 	TSharedPtr<SFlareTradeMenu>             TradeMenu;
 	TSharedPtr<SFlareTradeRouteMenu>        TradeRouteMenu;
 	TSharedPtr<SFlareCreditsMenu>           CreditsMenu;
+	TSharedPtr<SFlareHelpMenu>	            HelpMenu;
+
 	TSharedPtr<SFlareEULAMenu>              EULAMenu;
 	TSharedPtr<SFlareResourcePricesMenu>    ResourcePricesMenu;
 	TSharedPtr<SFlareWorldEconomyMenu>      WorldEconomyMenu;

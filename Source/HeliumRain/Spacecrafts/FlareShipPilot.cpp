@@ -96,7 +96,7 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 
 	if (Ship->IsStation())
 	{
-		// Basic pilot for stations
+			// Basic pilot for stations
 		if (Ship->IsCapableCarrier() && PilotTarget.IsValid())
 		{
 			CarrierReleaseInternalDockShips(DeltaSeconds);
@@ -106,8 +106,6 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 		{
 			ArmedStationPilot(DeltaSeconds);
 		}
-
-		return;
 	}
 
 	TimeUntilNextReaction -= DeltaSeconds;
@@ -130,8 +128,7 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 		if (Ship->IsCapableCarrier() && PilotTarget.IsValid() && !HasUndockedAllInternalShips)
 		{
 			CarrierReleaseInternalDockShips(DeltaSeconds);
-		}
-
+		} 
 		else if (Ship->IsMilitary())
 		{
 			MilitaryPilot(DeltaSeconds);
@@ -182,7 +179,16 @@ void UFlareShipPilot::CarrierReleaseInternalDockShips(float DeltaSeconds)
 				}
 			}
 		}
-		TimeBeforeNextInternalUndock = 1;
+
+		if (Ship->GetParent()->GetDescription()->DroneLaunchDelay>0)
+		{
+			TimeBeforeNextInternalUndock = Ship->GetParent()->GetDescription()->DroneLaunchDelay;
+		}
+		else
+		{
+			TimeBeforeNextInternalUndock = 1;
+		}
+
 		if (!UndockedAShip)
 		{
 			HasUndockedAllInternalShips = true;
@@ -245,7 +251,7 @@ void UFlareShipPilot::ArmedStationPilot(float DeltaSeconds)
 		if (TimeUntilNextHostileTargetSwitch <= 0)
 		{
 			FindBestHostileTarget(EFlareCombatTactic::AttackMilitary);
-			if (!InitiatedCombat)
+			if (InitiatedCombat)
 			{
 				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
 			}
@@ -254,12 +260,19 @@ void UFlareShipPilot::ArmedStationPilot(float DeltaSeconds)
 				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
 			}
 		}
+
+		if (!Ship->IsImmobileStation())
+		{
+			FlagShipMovement(DeltaSeconds);
+		}
+		
 /*
 		if (PilotTarget.IsValid())
 		{
 
 		}
 */
+
 	}
 }
 
@@ -305,17 +318,22 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 				{
 					CombatGroup = EFlareCombatGroup::Fighters;
 				}
+
 				CurrentTactic = Ship->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
 				FindBestHostileTarget(CurrentTactic);
 
-				if (!InitiatedCombat)
+				if (InitiatedCombat)
 				{
 					TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
+					if (FoundOutOfCombatLeader)
+					{
+						FoundOutOfCombatLeader = false;
+						GetNewLeaderShip();
+					}
 				}
 				else
 				{
 					TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
-					GetNewLeaderShip();
 				}
 			}
 			else if (LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
@@ -325,7 +343,7 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 			else
 			{
 				PilotTarget = LeaderShip->GetPilot()->GetPilotTarget();
-				if (PilotTarget.SpacecraftTarget)
+				if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
 				{
 					if (Ship->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
 					{
@@ -335,6 +353,10 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 					{
 						PilotTarget = PilotHelper::PilotTarget();
 					}
+				}
+				else
+				{
+					PilotTarget = PilotHelper::PilotTarget();
 				}
 			}
 		}
@@ -411,7 +433,7 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 		}
 	}
 
-
+	Idle = true;
 
 	if (Idle)
 	{
@@ -1262,8 +1284,11 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 			}
 			else
 			{
+				AFlareSpacecraft* OldLeaderShip = LeaderShip;
 				LeaderShip = Ship->GetGame()->GetPC()->GetShipPawn();
+				SelectedNewLeader(OldLeaderShip);
 			}
+
 			FoundOutOfCombatLeader = true;
 			InitiatedCombat = false;
 		}
@@ -1339,7 +1364,6 @@ void UFlareShipPilot::FollowLeaderShip(int32 DefaultRadius)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_FollowLeaderShip);
 	// Follow the leader
-//	float FollowRadius = 50000 + FMath::Pow(Ship->GetCompany()->GetCompanyShips().Num() * 3 * FMath::Pow(10000, 3), 1 / 3.);
 	float FollowRadius = DefaultRadius + FMath::Pow(LeaderShip->GetInSectorSquad().Num() * 3 * FMath::Pow(10000, 3), 1 / 3.);
 	if ((LeaderShip->GetActorLocation() - Ship->GetActorLocation()).Size() < FollowRadius)
 	{
@@ -1361,12 +1385,6 @@ void UFlareShipPilot::GetNewLeaderShip()
 	for (int ShipIndex = 0; ShipIndex < Spacecrafts.Num(); ShipIndex++)
 	{
 		AFlareSpacecraft* CandidateShip = Spacecrafts[ShipIndex];
-		if (!LeaderShip)
-		{
-			LeaderShip = CandidateShip;
-			continue;
-		}
-
 		if (Ship == CandidateShip)
 		{
 			continue;
@@ -1374,6 +1392,12 @@ void UFlareShipPilot::GetNewLeaderShip()
 
 		if (!CandidateShip->IsMilitary())
 		{
+			continue;
+		}
+
+		if (!LeaderShip)
+		{
+			LeaderShip = CandidateShip;
 			continue;
 		}
 
@@ -1395,7 +1419,8 @@ void UFlareShipPilot::GetNewLeaderShip()
 		if (InitiatedCombat)
 		{
 			int32 LeaderShipSquadQuantity = LeaderShip->GetInSectorSquad().Num();
-			int32 MaximumShips = 0;
+			int32 MaximumShips = 1;
+/*
 			if (LeaderShip->GetSize() == EFlarePartSize::L)
 			{
 				MaximumShips = 3;
@@ -1404,6 +1429,7 @@ void UFlareShipPilot::GetNewLeaderShip()
 			{
 				MaximumShips = 5;
 			}
+*/
 			if (LeaderShipSquadQuantity >= MaximumShips)
 			{
 				continue;
@@ -1413,15 +1439,24 @@ void UFlareShipPilot::GetNewLeaderShip()
 		LeaderShip = CandidateShip;
 	}
 
+	SelectedNewLeader(OldLeaderShip);
+}
+
+void UFlareShipPilot::SelectedNewLeader(AFlareSpacecraft* OldLeaderShip)
+{
 	if (LeaderShip)
 	{
-		LeaderShip->AddToInsectorSquad(Ship);
+		if (LeaderShip != Ship)
+		{
+			LeaderShip->AddToInsectorSquad(Ship);
+		}
 		if (OldLeaderShip&&OldLeaderShip != LeaderShip)
 		{
 			OldLeaderShip->RemoveFromInsectorSquad(Ship);
 		}
 	}
 }
+
 
 void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 {
@@ -1441,11 +1476,15 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 		}
 		else
 		{
-			FollowLeaderShip(100000);
+			FollowLeaderShip(125000);
 			return;
 		}
 	}
+	FlagShipMovement(DeltaSeconds);
+}
 
+void UFlareShipPilot::FlagShipMovement(float DeltaSeconds)
+{
 	float TargetLocationToTargetShipDistance = (PilotTargetLocation - PilotTarget.GetActorLocation()).Size();
 	float TargetLocationToShipDistance = (PilotTargetLocation - Ship->GetActorLocation()).Size();
 

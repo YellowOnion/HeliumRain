@@ -948,7 +948,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	// Loop on sector list
 	TArray<UFlareSimulatedSector*> KnownSectors = Company->GetKnownSectors();
 
-
 //	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 	while (KnownSectors.Num())
 	{

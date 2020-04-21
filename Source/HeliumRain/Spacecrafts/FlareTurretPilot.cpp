@@ -345,6 +345,18 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 	if (PilotTarget.IsEmpty())
 	{
 		PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
+		if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+		{
+			if (!Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
+			{
+				PilotTarget = PilotHelper::PilotTarget();
+			}
+		}
+		else
+		{
+			PilotTarget = PilotHelper::PilotTarget();
+		}
+
 //		PilotTarget = GetNearestHostileTarget(false, Tactic);
 	}
 }

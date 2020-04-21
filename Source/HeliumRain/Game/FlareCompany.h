@@ -189,7 +189,7 @@ public:
 	void UnlockTechnology(FName Identifier, bool FromSave = false, bool Force = false);
 
 	bool HasStationTechnologyUnlocked() const;
-	
+
 	bool IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const;
 
 	bool IsTechnologyUnlockedPart(const FFlareSpacecraftComponentDescription* Description) const;

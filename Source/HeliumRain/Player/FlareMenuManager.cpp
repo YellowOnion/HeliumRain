@@ -23,6 +23,7 @@
 #include "../UI/Menus/FlareTradeMenu.h"
 #include "../UI/Menus/FlareTradeRouteMenu.h"
 #include "../UI/Menus/FlareCreditsMenu.h"
+#include "../UI/Menus/FlareHelpMenu.h"
 #include "../UI/Menus/FlareEULAMenu.h"
 #include "../UI/Menus/FlareResourcePricesMenu.h"
 #include "../UI/Menus/FlareWorldEconomyMenu.h"
@@ -94,6 +95,7 @@ void AFlareMenuManager::SetupMenu()
 		SAssignNew(TechnologyMenu, SFlareTechnologyMenu).MenuManager(this);
 		SAssignNew(GameOverMenu, SFlareGameOverMenu).MenuManager(this);
 		SAssignNew(CreditsMenu, SFlareCreditsMenu).MenuManager(this);
+		SAssignNew(HelpMenu, SFlareHelpMenu).MenuManager(this);
 		SAssignNew(EULAMenu, SFlareEULAMenu).MenuManager(this);
 		SAssignNew(SkirmishSetupMenu, SFlareSkirmishSetupMenu).MenuManager(this);
 		SAssignNew(SkirmishScoreMenu, SFlareSkirmishScoreMenu).MenuManager(this);
@@ -134,6 +136,7 @@ void AFlareMenuManager::SetupMenu()
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(TechnologyMenu.ToSharedRef()),     50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(GameOverMenu.ToSharedRef()),       50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CreditsMenu.ToSharedRef()),        50);
+		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(HelpMenu.ToSharedRef()),			 50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(EULAMenu.ToSharedRef()),           50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(SkirmishSetupMenu.ToSharedRef()),  50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(SkirmishScoreMenu.ToSharedRef()),  50);
@@ -166,6 +169,7 @@ void AFlareMenuManager::SetupMenu()
 		TechnologyMenu->Setup();
 		GameOverMenu->Setup();
 		CreditsMenu->Setup();
+		HelpMenu->Setup();
 		EULAMenu->Setup();
 		SkirmishSetupMenu->Setup();
 		SkirmishScoreMenu->Setup();
@@ -281,7 +285,14 @@ bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterDat
 	{
 		return false;
 	}
-
+/*
+	//TODO (some menus elements refresh by reopening the same menu)
+	if (CurrentMenu.Key == Target)
+	{
+		//menu is already open
+		return false;
+	}
+*/
 	FLOGV("AFlareMenuManager::OpenMenu : '%s'", *GetMenuName(Target).ToString());
 	
 	// Store current menu in history
@@ -611,6 +622,7 @@ void AFlareMenuManager::ResetMenu()
 	TechnologyMenu->Exit();
 	GameOverMenu->Exit();
 	CreditsMenu->Exit();
+	HelpMenu->Exit();
 	EULAMenu->Exit();
 	SkirmishSetupMenu->Exit();
 	SkirmishScoreMenu->Exit();
@@ -685,6 +697,7 @@ void AFlareMenuManager::ProcessNextMenu()
 		case EFlareMenu::MENU_WorldEconomy:       OpenWorldEconomy();          break;
 		case EFlareMenu::MENU_Technology:         OpenTechnology();            break;
 		case EFlareMenu::MENU_Credits:            OpenCredits();               break;
+		case EFlareMenu::MENU_Help:		          OpenHelp();                  break;
 		case EFlareMenu::MENU_EULA:               OpenEULA();                  break;
 		case EFlareMenu::MENU_SkirmishSetup:      OpenSkirmishSetup();         break;
 		case EFlareMenu::MENU_SkirmishScore:      OpenSkirmishScore();         break;
@@ -1189,6 +1202,12 @@ void AFlareMenuManager::OpenCredits()
 	CreditsMenu->Enter();
 }
 
+void AFlareMenuManager::OpenHelp()
+{
+	OnEnterMenu(false);
+	HelpMenu->Enter();
+}
+
 void AFlareMenuManager::OpenEULA()
 {
 	OnEnterMenu(false, false, false);
@@ -1260,6 +1279,7 @@ FText AFlareMenuManager::GetMenuName(EFlareMenu::Type MenuType, bool Uppercase)
 			case EFlareMenu::MENU_Trade:          Name = LOCTEXT("UppercaseTradeMenuName", "TRADE");                    break;
 			case EFlareMenu::MENU_TradeRoute:     Name = LOCTEXT("UppercaseTradeRouteMenuName", "TRADE ROUTE");         break;
 			case EFlareMenu::MENU_Orbit:          Name = LOCTEXT("UppercaseOrbitMenuName", "ORBITAL MAP");              break;
+			case EFlareMenu::MENU_Help:			  Name = LOCTEXT("UppercaseHelpMenuName", "HELP");			            break;
 			case EFlareMenu::MENU_Settings:       Name = LOCTEXT("UppercaseSettingsMenuName", "SETTINGS");              break;
 			case EFlareMenu::MENU_Quit:           Name = LOCTEXT("UppercaseQuitMenuName", "QUIT");                      break;		
 			default:                                                                                                    break;
@@ -1288,6 +1308,7 @@ FText AFlareMenuManager::GetMenuName(EFlareMenu::Type MenuType, bool Uppercase)
 			case EFlareMenu::MENU_Trade:          Name = LOCTEXT("LowercaseTradeMenuName", "Trade");                    break;
 			case EFlareMenu::MENU_TradeRoute:     Name = LOCTEXT("LowercaseTradeRouteMenuName", "Trade route");         break;
 			case EFlareMenu::MENU_Orbit:          Name = LOCTEXT("LowercaseOrbitMenuName", "Orbital map");              break;
+			case EFlareMenu::MENU_Help:			  Name = LOCTEXT("LowercaseHelpMenuName", "Help");			            break;
 			case EFlareMenu::MENU_Settings:       Name = LOCTEXT("LowercaseSettingsMenuName", "Settings");              break;
 			case EFlareMenu::MENU_Quit:           Name = LOCTEXT("LowercaseQuitMenuName", "Quit");                      break;		
 			default:                                                                                                    break;
@@ -1321,6 +1342,7 @@ const FSlateBrush* AFlareMenuManager::GetMenuIcon(EFlareMenu::Type MenuType)
 		case EFlareMenu::MENU_Trade:          Path = "Trade";        break;
 		case EFlareMenu::MENU_TradeRoute:     Path = "Trade";        break;
 		case EFlareMenu::MENU_Orbit:          Path = "Orbit";        break;
+		case EFlareMenu::MENU_Help:		      Path = "Help";		 break;
 		case EFlareMenu::MENU_Settings:       Path = "Settings";     break;
 		case EFlareMenu::MENU_Quit:           Path = "Quit";         break;
 		case EFlareMenu::MENU_FlyShip:        Path = "Close";        break;
@@ -1346,6 +1368,7 @@ FString AFlareMenuManager::GetMenuKey(EFlareMenu::Type MenuType)
 		case EFlareMenu::MENU_Technology:     Key = "TechnologyMenu";   break;
 		case EFlareMenu::MENU_Quest:          Key = "QuestMenu";        break;
 		case EFlareMenu::MENU_Main:           Key = "MainMenu";         break;
+//		case EFlareMenu::MENU_Help:		      Key = "HelpMenu";		    break;
 		case EFlareMenu::MENU_Settings:       Key = "SettingsMenu";     break;
 		default:                              Key = "NoKey";
 	}

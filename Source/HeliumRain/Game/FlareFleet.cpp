@@ -346,6 +346,8 @@ void UFlareFleet::RemoveImmobilizedShips()
 			ShipToRemove.Add(FleetShips[ShipIndex]);
 		}
 	}
+
+	RemoveShips(ShipToRemove);
 }
 
 void UFlareFleet::SetFleetColor(FLinearColor Color)

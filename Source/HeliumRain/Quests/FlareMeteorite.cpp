@@ -80,6 +80,15 @@ void AFlareMeteorite::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	if (IsSafeDestroyingRunning)
+	{
+		if (!SafeDestroyed)
+		{
+			FinishSafeDestroy();
+		}
+		return;
+	}
+
 	if(!Target)
 	{
 		Target = Parent->FindSpacecraft(MeteoriteData->TargetStation);
@@ -182,6 +191,24 @@ void AFlareMeteorite::OnCollision(class AActor* Other, FVector HitLocation)
 			}
 			ApplyDamage(MeteoriteData->BrokenDamage, 1.f , HitLocation, EFlareDamage::DAM_Collision, NULL, FString());
 		}
+	}
+}
+
+void AFlareMeteorite::SafeDestroy()
+{
+	if (!IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = true;
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+	}
+}
+
+void AFlareMeteorite::FinishSafeDestroy()
+{
+	if (!SafeDestroyed)
+	{
+		this->Destroy();
 	}
 }
 

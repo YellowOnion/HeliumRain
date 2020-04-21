@@ -974,7 +974,7 @@ bool PilotHelper::PilotTarget::IsValid()
 	{
 		if (SpacecraftTarget->IsValidLowLevel())
 		{
-			if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeDestroying())
+			if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeEither())
 			{
 				SpacecraftTarget = nullptr;
 				return false;

@@ -1796,7 +1796,6 @@ bool UFlareCompany::HasStationTechnologyUnlocked() const
 	return false;
 }
 
-
 bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const
 {
 	FName Identifier = Description->Identifier;

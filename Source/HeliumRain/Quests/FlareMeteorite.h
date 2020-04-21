@@ -53,6 +53,9 @@ public:
 	UPROPERTY(Category = Mesh, VisibleDefaultsOnly, BlueprintReadOnly)
 	class UStaticMeshComponent*                  Meteorite;
 
+	virtual void SafeDestroy();
+
+	virtual void FinishSafeDestroy();
 
 protected:
 	
@@ -71,6 +74,8 @@ protected:
 	// Data
 	FFlareMeteoriteSave*                          MeteoriteData;
 	bool                                          Paused;
+	bool										  IsSafeDestroyingRunning;
+	bool										  SafeDestroyed;
 	UFlareSector*                                 Parent;
 	AFlareSpacecraft*                             Target;
 

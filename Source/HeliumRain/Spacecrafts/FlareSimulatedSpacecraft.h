@@ -49,10 +49,11 @@ public:
 	/** Check if this is a station ship */
 	virtual bool IsStation() const;
 
+	virtual bool IsImmobileStation() const;
+
 	virtual bool CanFight() const;
 
 	virtual bool CanTravel() const;
-
 
 	/*----------------------------------------------------
 		Sub system

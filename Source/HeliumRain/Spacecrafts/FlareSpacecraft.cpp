@@ -157,6 +157,11 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		return;
 	}
 
+	if (IsSafeHidingRunning)
+	{
+		return;
+	}
+
 	FCHECK(IsValidLowLevel());
 
 	TimeToStopCached = false;
@@ -580,9 +585,42 @@ void AFlareSpacecraft::SetUndockedAllShips(bool Set)
 	}
 }
 
+bool AFlareSpacecraft::IsSafeEither()
+{
+	if (IsSafeDestroying())
+	{
+		return true;
+	}
+	else if (IsSafeHiding())
+	{
+		return true;
+	}
+	return false;
+}
+
 bool AFlareSpacecraft::IsSafeDestroying()
 {
 	return IsSafeDestroyingRunning;
+}
+
+bool AFlareSpacecraft::IsSafeHiding()
+{
+	return IsSafeHidingRunning;
+}
+
+void AFlareSpacecraft::SafeHide()
+{
+	if (!IsSafeHidingRunning)
+	{
+		IsSafeHidingRunning = true;
+		StopFire();
+		DeactivateWeapon();
+		ResetCurrentTarget();
+
+		Airframe->SetSimulatePhysics(false);
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+	}
 }
 
 void AFlareSpacecraft::SafeDestroy()
@@ -597,6 +635,13 @@ void AFlareSpacecraft::SafeDestroy()
 		Airframe->SetSimulatePhysics(false);
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
+		InSectorSquad.Empty();
+
+		// Notify PC
+		if (Parent)
+		{
+			Parent->SetActiveSpacecraft(NULL);
+		}
 	}
 }
 
@@ -615,47 +660,46 @@ void AFlareSpacecraft::FinishSafeDestroy()
 	if (!BegunSafeDestroy)
 	{
 		BegunSafeDestroy = true;
-
-		InSectorSquad.Empty();
-
-		// Notify PC
-		if (!IsPresentationMode())
-		{
-			if (Parent)
-			{
-				Parent->SetActiveSpacecraft(NULL);
-			}
-		}
-
-		// Stop lights
-		TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
-		for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
-		{
-			USpotLightComponent* Component = Cast<USpotLightComponent>(LightComponents[ComponentIndex]);
-			if (Component)
-			{
-				Component->SetActive(false);
-			}
-		}
-
-		// Clear bombs
-		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
-		{
-			UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
-			if (Weapon)
-			{
-				Weapon->ClearBombs();
-			}
-		}
-		CurrentTarget.Clear();
+		this->Destroy();
 	}
 }
 
 void AFlareSpacecraft::Destroyed()
 {
 	Super::Destroyed();
-	FinishSafeDestroy();
+
+	// Notify PC
+	if (!IsPresentationMode())
+	{
+		if (Parent)
+		{
+			Parent->SetActiveSpacecraft(NULL);
+		}
+	}
+
+	// Stop lights
+	TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
+	for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
+	{
+		USpotLightComponent* Component = Cast<USpotLightComponent>(LightComponents[ComponentIndex]);
+		if (Component)
+		{
+			Component->SetActive(false);
+		}
+	}
+
+	// Clear bombs
+	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	{
+		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
+		if (Weapon)
+		{
+			Weapon->ClearBombs();
+		}
+	}
+	CurrentTarget.Clear();
+//	FinishSafeDestroy();
 }
 
 void AFlareSpacecraft::SetPause(bool Pause)

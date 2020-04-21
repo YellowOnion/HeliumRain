@@ -49,6 +49,14 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 	}
 }
 
+void UFlareAIBehavior::Load(FFlareCompanyDescription* Description, AFlareGame* LoadingGame)
+{
+	CompanyDescription = Description;
+	Game = LoadingGame;
+	ST = Game->GetScenarioTools();
+	GenerateAffilities(true);
+}
+
 void UFlareAIBehavior::Simulate()
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareAIBehavior_Simulate);
@@ -356,21 +364,22 @@ void UFlareAIBehavior::SimulatePirateBehavior()
 	Company->GetAI()->ProcessBudget(Company->GetAI()->AllBudgets);
 
 	Company->GetAI()->UpdateMilitaryMovement();
-
 }
 
-void UFlareAIBehavior::GenerateAffilities()
+void UFlareAIBehavior::GenerateAffilities(bool Basic)
 {
 	// Reset resource affilities
 	ResourceAffilities.Empty();
 	ResearchOrder.Empty();
-	
+
 	// Default behavior
 	SetResourceAffilities(1.f);
 
 	// If above 5, will become exclusive
-	SetSectorAffilities(1.f);
-
+	if (!Basic)
+	{
+		SetSectorAffilities(1.f);
+	}
 	StationCapture = 1.f;
 	TradingBuy = 1.f;
 	TradingSell = 1.f;
@@ -414,7 +423,10 @@ void UFlareAIBehavior::GenerateAffilities()
 	BuildTradeDiversity = 1;
 
 	// Pirate base
-	SetSectorAffility(ST->Boneyard, 0.f);
+	if (!Basic)
+	{
+		SetSectorAffility(ST->Boneyard, 0.f);
+	}
 
 	UpgradeMilitarySalvagerSRatio = 0.10;
 	UpgradeMilitarySalvagerLRatio = 0.10;
@@ -430,7 +442,7 @@ void UFlareAIBehavior::GenerateAffilities()
 	BuildEfficientTradeChance = 0.10;
 	BuildEfficientTradeChanceSmall = 0.30;
 
-	if(Company == ST->Pirates)
+	if((Company && Company == ST->Pirates) || (CompanyDescription && CompanyDescription->ShortName==FName("PIR")))
 	{
 		// Pirates
 		// -------
@@ -449,9 +461,11 @@ void UFlareAIBehavior::GenerateAffilities()
 		// They need some cargo to buy resources for their shipyard and arsenal
 
 		SetResourceAffilities(0.1f);
-		SetSectorAffilities(0.f);
-
-		SetSectorAffility(ST->Boneyard, 10.f);
+		if (!Basic)
+		{
+			SetSectorAffilities(0.f);
+			SetSectorAffility(ST->Boneyard, 10.f);
+		}
 
 		ShipyardAffility = 0.0;
 		ConsumerAffility = 0.0;
@@ -495,17 +509,25 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("fast-travel");
 		ResearchOrder.Add("bombing");
 	}
-	else if(Company == ST->GhostWorksShipyards)
+	else if((Company && Company == ST->GhostWorksShipyards) || (CompanyDescription && CompanyDescription->ShortName == FName("GWS")))
 	{
 		// Loves Hela and doesn't like Nema
 		ShipyardAffility = 5.0;
 
-		SetSectorAffilitiesByMoon(ST->Nema,0.5f);
-		SetSectorAffilitiesByMoon(ST->Hela, 6.f);
-
-		SetResourceAffility(ST->Steel, 1.5f);
-		SetResourceAffility(ST->Plastics, 1.5f);
-		SetResourceAffility(ST->Tools, 1.25f);
+		if (!Basic)
+		{
+			SetSectorAffilitiesByMoon(ST->Nema, 0.5f);
+			SetSectorAffilitiesByMoon(ST->Hela, 6.f);
+			SetResourceAffility(ST->Steel, 1.5f);
+			SetResourceAffility(ST->Plastics, 1.5f);
+			SetResourceAffility(ST->Tools, 1.25f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 1.5f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("plastics"), 1.5f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 1.25f);
+		}
 
 		// Budget
 		BudgetTechnologyWeight = 0.25;
@@ -518,15 +540,26 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Add("instruments");
 	}
-	else if(Company == ST->MiningSyndicate)
+	else if((Company && Company == ST->MiningSyndicate) || (CompanyDescription && CompanyDescription->ShortName == FName("MSY")))
 	{
 		// Mining specialist.
 		// Loves raw materials
 		// Likes hard work
-		SetResourceAffility(ST->Water, 10.f);
-		SetResourceAffility(ST->Silica, 10.f);
-		SetResourceAffility(ST->IronOxyde, 10.f);
-		SetResourceAffility(ST->Hydrogen, 2.f);
+
+		if (!Basic)
+		{
+			SetResourceAffility(ST->Water, 10.f);
+			SetResourceAffility(ST->Silica, 10.f);
+			SetResourceAffility(ST->IronOxyde, 10.f);
+			SetResourceAffility(ST->Hydrogen, 2.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("h2o"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("sio2"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("feo"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("h2"), 2.f);
+		}
 
 		// Budget
 		BudgetTechnologyWeight = 0.25;
@@ -546,16 +579,33 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("chemicals");
 
 	}
-	else if(Company == ST->HelixFoundries)
+	else if((Company && Company == ST->HelixFoundries) || (CompanyDescription && CompanyDescription->ShortName == FName("HFR")))
 	{
 		// Likes hard factory, and Anka.
 		// Base at Outpost
-		SetResourceAffility(ST->Steel, 11.f);
-		SetResourceAffility(ST->Tools, 10.f);
-		SetResourceAffility(ST->Tech, 5.f);
-		SetSectorAffilitiesByMoon(ST->Anka, 6.f);
-		SetSectorAffility(ST->Outpost, 10.f);
+
+		if (!Basic)
+		{
+			SetSectorAffilitiesByMoon(ST->Anka, 6.f);
+			SetSectorAffility(ST->Outpost, 10.f);
+			SetResourceAffility(ST->Steel, 11.f);
+			SetResourceAffility(ST->Tools, 10.f);
+			SetResourceAffility(ST->Tech, 5.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 11.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
+		}
 		
+
+
+
+
+
+
+
 		// Budget
 		BudgetTechnologyWeight = 0.5;
 		BudgetMilitaryWeight = 0.5;
@@ -563,12 +613,20 @@ void UFlareAIBehavior::GenerateAffilities()
 		BudgetTradeWeight = 2.0;
 		ResearchOrder.Add("instruments");
 	}
-	else if(Company == ST->Sunwatch)
+	else if((Company && Company == ST->Sunwatch) || (CompanyDescription && CompanyDescription->ShortName == FName("SUN")))
 	{
 		// Likes hard factory, and Anka.
 		// Base at Outpost
-		SetResourceAffility(ST->Fuel, 10.f);
-		
+
+		if (!Basic)
+		{
+			SetResourceAffility(ST->Fuel, 10.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("fuel"), 10.f);
+		}
+
 		// Budget
 		BudgetTechnologyWeight = 0.55;
 		BudgetMilitaryWeight = 0.5;
@@ -577,7 +635,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		//already starts with instruments
 		ResearchOrder.Add("science");
 	}
-	else if(Company == ST->IonLane)
+	else if((Company && Company == ST->IonLane) || (CompanyDescription && CompanyDescription->ShortName == FName("ION")))
 	{
 		CostSafetyMarginMilitaryShip = 1.2f;
 		CostSafetyMarginTradeShip = 1.0f;
@@ -600,13 +658,21 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("fast-travel");
 	}
-	else if(Company == ST->UnitedFarmsChemicals)
+	else if((Company && Company == ST->UnitedFarmsChemicals) || (CompanyDescription && CompanyDescription->ShortName == FName("UFC")))
 	{
 		// Likes chemisty
-		SetResourceAffility(ST->Food, 10.f);
-		SetResourceAffility(ST->Carbon, 5.f);
-		SetResourceAffility(ST->Methane, 5.f);
-
+		if (!Basic)
+		{
+			SetResourceAffility(ST->Food, 10.f);
+			SetResourceAffility(ST->Carbon, 5.f);
+			SetResourceAffility(ST->Methane, 5.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("food"), 10.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("carbon"), 5.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("ch4"), 5.f);
+		}
 		// Budget
 		BudgetTechnologyWeight = 0.5;
 		BudgetMilitaryWeight = 0.5;
@@ -620,15 +686,24 @@ void UFlareAIBehavior::GenerateAffilities()
 		BuildEfficientTradeChanceSmall = 0.15;
 		ResearchOrder.Add("instruments");
 	}
-	else if(Company == ST->NemaHeavyWorks)
+	else if((Company && Company == ST->NemaHeavyWorks) || (CompanyDescription && CompanyDescription->ShortName == FName("NHW")))
 	{
 		// Likes Nema and heavy work
-		SetResourceAffility(ST->FleetSupply, 2.f);
-		SetResourceAffility(ST->Steel, 6.f);
-		SetResourceAffility(ST->Tools, 5.f);
-		SetResourceAffility(ST->Tech, 5.f);
-		SetSectorAffilitiesByMoon(ST->Nema, 5.f);
-
+		if (!Basic)
+		{
+			SetSectorAffilitiesByMoon(ST->Nema, 5.f);
+			SetResourceAffility(ST->FleetSupply, 2.f);
+			SetResourceAffility(ST->Steel, 6.f);
+			SetResourceAffility(ST->Tools, 5.f);
+			SetResourceAffility(ST->Tech, 5.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("fleet-supply"), 2.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 6.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 5.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
+		}
 		ShipyardAffility = 3.0;
 
 		// Budget
@@ -646,11 +721,19 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("shipyard-station");
 	}
-	else if(Company == ST->AxisSupplies)
+	else if((Company && Company == ST->AxisSupplies) || (CompanyDescription && CompanyDescription->ShortName == FName("AXS")))
 	{
 		// Assures fleet supply availability
-		SetResourceAffility(ST->FleetSupply, 5.f);
-		SetResourceAffility(ST->Food, 2.f);
+		if (!Basic)
+		{
+			SetResourceAffility(ST->FleetSupply, 5.f);
+			SetResourceAffility(ST->Food, 2.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("fleet-supply"), 5.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("food"), 2.f);
+		}
 
 		ShipyardAffility = 0.0;
 		ConsumerAffility = 1.0;
@@ -679,7 +762,7 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("fast-travel");
 	}
-	else if (Company == ST->BrokenMoon)
+	else if ((Company && Company == ST->BrokenMoon) || (CompanyDescription && CompanyDescription->ShortName == FName("BRM")))
 	{
 		DailyProductionCostSensitivityMilitary = 7;
 		DailyProductionCostSensitivityEconomic = 30;
@@ -698,9 +781,16 @@ void UFlareAIBehavior::GenerateAffilities()
 		ResearchOrder.Add("pirate-tech");
 
 	}
-	else if (Company == ST->Quantalium)
+	else if ((Company && Company == ST->Quantalium) || (CompanyDescription && CompanyDescription->ShortName == FName("QNT")))
 	{
-		SetResourceAffility(ST->Tech, 10.f);
+		if (!Basic)
+		{
+			SetResourceAffility(ST->Tech, 10.f);
+		}
+		else
+		{
+			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 10.f);
+		}
 
 		BudgetTechnologyWeight = 0.8;
 		BudgetMilitaryWeight = 0.5;
@@ -719,7 +809,7 @@ void UFlareAIBehavior::GenerateAffilities()
 	}
 	else
 	{
-	ResearchOrder.Add("instruments");
+		ResearchOrder.Add("instruments");
 	}
 }
 
@@ -742,7 +832,6 @@ void UFlareAIBehavior::SetResourceAffility(FFlareResourceDescription* Resource, 
 		ResourceAffilities.Add(Resource, Value);
 	}
 }
-
 
 void UFlareAIBehavior::SetSectorAffilities(float Value)
 {

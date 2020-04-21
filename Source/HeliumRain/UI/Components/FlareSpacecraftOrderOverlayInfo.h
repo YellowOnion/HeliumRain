@@ -24,6 +24,8 @@ class SFlareSpaceCraftOverlayInfo : public SCompoundWidget
 	SLATE_ARGUMENT(UFlareSimulatedSpacecraft*, TargetShipyard)
 	SLATE_ARGUMENT(UFlareSkirmishManager*, TargetSkirmish)
 	SLATE_ARGUMENT(bool, OrderIsConfig)
+	SLATE_ARGUMENT(bool, OrderIsShip)
+	SLATE_ARGUMENT(bool, VerboseInformation)
 
 	SLATE_ARGUMENT(UFlareSimulatedSector*, TargetSector)
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
@@ -37,6 +39,8 @@ public:
 
 	/** Create the widget */
 	void Construct(const FArguments& InArgs);
+
+	FText GetTechnologyRequirementsText(const FFlareSpacecraftDescription* Description) const;
 
 	/*----------------------------------------------------
 		Interaction
@@ -54,8 +58,13 @@ protected:
 	FText GetProductionText() const;
 	FText GetProductionTime() const;
 	FText GetSpacecraftInfo() const;
-	
+	FText GetSpacecraftShipInfo() const;
+	FText GetSpacecraftInfoVerboseLeft() const;
+	FText GetSpacecraftInfoVerboseRight() const;
+	void  SetSpacecraftInfoVerbose();
+
 	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+
 	EVisibility GetProductionTimeVisibility() const;
 
 
@@ -74,9 +83,14 @@ protected:
 	UFlareSimulatedSector*                   TargetSector;
 	FFlareSpacecraftSave					 SpaceCraftData;
 	bool									 OrderIsConfig;
+	bool									 OrderIsShip;
+	bool									 VerboseInformation = false;
 
 	//HUD STUFFS
 	TSharedPtr<STextBlock>                   TextBlock;
 
 	int										 ProductionTime = 0;
+
+	FText									 VerboseInfoLeft;
+	FText									 VerboseInfoRight;
 };

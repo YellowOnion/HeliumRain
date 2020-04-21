@@ -182,7 +182,21 @@ void SFlareMainOverlay::Construct(const FArguments& InArgs)
 		.OnClicked(this, &SFlareMainOverlay::OnOpenMenu, EFlareMenu::MENU_Settings)
 	];
 	SetupMenuLink(SettingsButton, EFlareMenu::MENU_Settings);
-	
+
+	// Help
+	TSharedPtr<SFlareButton> HelpButton;
+	MenuList->AddSlot()
+	.HAlign(HAlign_Right)
+	.AutoWidth()
+	[
+		SAssignNew(HelpButton, SFlareButton)
+		.Width(TitleButtonWidth)
+		.Height(TitleButtonHeight)
+		.Transparent(true)
+		.OnClicked(this, &SFlareMainOverlay::OnOpenMenu, EFlareMenu::MENU_Help)
+	];
+	SetupMenuLink(HelpButton, EFlareMenu::MENU_Help);
+
 	// Back, exit
 	TSharedPtr<SFlareButton> BackButton;
 	TSharedPtr<SFlareButton> ExitButton;
@@ -416,7 +430,8 @@ void SFlareMainOverlay::Tick(const FGeometry& AllottedGeometry, const double InC
 	}
 	else if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_None
 		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Credits
-		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Story)
+		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Story
+		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Help)
 	{
 		PlayerInfoText = FText();
 	}
@@ -454,6 +469,7 @@ EVisibility SFlareMainOverlay::GetGameButtonVisibility(EFlareMenu::Type Menu) co
 		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_NewGame
 		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Settings
 		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Credits
+		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Help
 		|| MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Story)
 	{
 		return EVisibility::Hidden;

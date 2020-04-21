@@ -16,6 +16,7 @@ class SFlarePartInfo : public SCompoundWidget
 	: _IsOwned(false)
 	, _IsMinimized(false)
 	, _ShowOwnershipInfo(false)
+	, _Verbose(false)
 	{}
 
 	SLATE_ARGUMENT(bool, IsOwned)
@@ -24,6 +25,8 @@ class SFlarePartInfo : public SCompoundWidget
 
 	SLATE_ARGUMENT(bool, ShowOwnershipInfo)
 
+	SLATE_ARGUMENT(bool, Verbose)
+		
 	SLATE_ARGUMENT(const FFlareSpacecraftComponentDescription*, Description)
 	
 	SLATE_END_ARGS()
@@ -61,6 +64,7 @@ protected:
 	// Behaviour data
 	bool                               IsOwned;
 	bool                               ShowOwnershipInfo;
+	bool							   VerboseInfo;
 
 	// Content data
 	float                              PartCost;

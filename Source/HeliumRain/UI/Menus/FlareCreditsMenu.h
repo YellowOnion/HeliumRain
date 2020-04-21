@@ -18,7 +18,6 @@ class SFlareCreditsMenu : public SCompoundWidget
 	
 	SLATE_END_ARGS()
 
-
 public:
 
 	/*----------------------------------------------------

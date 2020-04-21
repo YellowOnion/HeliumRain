@@ -1105,7 +1105,7 @@ void UFlareSimulatedSector::GetSectorBalance(UFlareCompany* Company, int32& Play
 			{
 				continue;
 			}
-			if (SectorShips[ShipIndex]->GetActive()->IsSafeDestroying())
+			if (SectorShips[ShipIndex]->GetActive()->IsSafeEither())
 			{
 				continue;
 			}

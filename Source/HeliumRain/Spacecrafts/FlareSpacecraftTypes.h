@@ -690,6 +690,9 @@ struct FFlareSpacecraftDescription
 	/** Maximum amount of drones the carrier can have built at once*/
 	UPROPERTY(EditAnywhere, Category = Content) int32 DroneMaximum;
 
+	/** Launching delay of carrier ships*/
+	UPROPERTY(EditAnywhere, Category = Content) float DroneLaunchDelay;
+	
 	/** If this is a drone it is not buildable via shipyards and has a different method*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
 
@@ -703,6 +706,9 @@ struct FFlareSpacecraftDescription
 	/** Number of orbital engine */
 	UPROPERTY(EditAnywhere, Category = Save) int32 OrbitalEngineCount;
 
+	/** Enable this if you want a ship with engines to be considered a station */
+	UPROPERTY(EditAnywhere, Category = Save) bool IsAStation;
+
 	/** Weapon groups */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<FFlareSpacecraftSlotGroupDescription> WeaponGroups;
@@ -710,7 +716,6 @@ struct FFlareSpacecraftDescription
 	/** Gun slots */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<FFlareSpacecraftSlotDescription> GunSlots;
-
 	/** Turret slots */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<FFlareSpacecraftSlotDescription> TurretSlots;
@@ -789,6 +794,8 @@ struct FFlareSpacecraftDescription
 
 	bool IsStation() const;
 
+	bool IsImmobileStation() const;
+
 	bool IsShipyard() const;
 
 	bool IsMilitary() const;
@@ -797,7 +804,6 @@ struct FFlareSpacecraftDescription
 
 	static const FSlateBrush* GetIcon(FFlareSpacecraftDescription* Characteristic);
 };
-
 /** Spacecraft save data */
 USTRUCT()
 struct FFlareSpacecraftSave

@@ -409,6 +409,11 @@ bool UFlareSimulatedSpacecraft::IsStation() const
 	return SpacecraftDescription->IsStation();
 }
 
+bool UFlareSimulatedSpacecraft::IsImmobileStation() const
+{
+	return SpacecraftDescription->IsImmobileStation();
+}
+
 bool UFlareSimulatedSpacecraft::CanFight() const
 {
 	return GetDamageSystem()->IsAlive() && IsMilitary() && !GetDamageSystem()->IsDisarmed();
@@ -1513,7 +1518,7 @@ void UFlareSimulatedSpacecraft::OrderRefillStock(float FS)
 bool UFlareSimulatedSpacecraft::NeedRefill()
 {
 	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-	//note bugged
+
 	// List components
 	for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 	{

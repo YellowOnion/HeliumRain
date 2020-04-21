@@ -23,6 +23,9 @@ public:
 	/** Load the company behavior */
 	virtual void Load(UFlareCompany* ParentCompany);
 
+	/** Load the company behavior */
+	virtual void Load(FFlareCompanyDescription* Description,AFlareGame* LoadingGame);
+
 	virtual void Simulate();
 
 	void UpdateDiplomacy(bool GlobalWar);
@@ -37,9 +40,7 @@ protected:
 
 	virtual void SimulatePirateBehavior();
 
-
-
-	void GenerateAffilities();
+	void GenerateAffilities(bool Basic = false);
 
 	/*----------------------------------------------------
 		Helpers
@@ -64,12 +65,12 @@ protected:
 
 	// Gameplay data
 	UFlareCompany*			               Company;
+	FFlareCompanyDescription*			   CompanyDescription;
 	AFlareGame*                            Game;
 	UFlareScenarioTools*                   ST;
 
-
 	TMap<FFlareResourceDescription*, float> ResourceAffilities;
-	TMap<UFlareSimulatedSector*, float> SectorAffilities;
+	TMap<UFlareSimulatedSector*, float>		SectorAffilities;
 
 public:
 
@@ -152,6 +153,4 @@ public:
 	float GetResourceAffility(FFlareResourceDescription* Resource);
 
 	float GetAttackThreshold();
-
 };
-

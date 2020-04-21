@@ -52,6 +52,7 @@ namespace EFlareMenu
 		MENU_SkirmishScore,
 
 		// Support menus
+		MENU_Help,
 		MENU_Settings,
 		MENU_Credits,
 		MENU_EULA,
