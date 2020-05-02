@@ -86,6 +86,9 @@ public:
 	/** Get a name for this fleet (capital ship's name, etc) */
 	FText GetName();
 
+	/** Tell us if we can add ship, and why */
+	virtual bool CanAddShip(UFlareSimulatedSpacecraft* Ship);
+
 	virtual void AddShip(UFlareSimulatedSpacecraft* Ship);
 
 	int32 InterceptShips();

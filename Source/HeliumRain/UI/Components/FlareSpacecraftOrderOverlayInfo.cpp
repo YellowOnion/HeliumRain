@@ -1,18 +1,16 @@
-
-#include "FlareSpacecraftOrderOverlayInfo.h"
+ï»¿#include "FlareSpacecraftOrderOverlayInfo.h"
 #include "FlareSpacecraftOrderOverlay.h"
+#include "../FlareUITypes.h"
 #include "../../Flare.h"
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
-#include "../FlareUITypes.h"
 #include "../../Spacecrafts/FlareSpacecraftTypes.h"
+#include "../../Game/FlareGame.h"
 #include "../../Game/FlareGameTools.h"
-
 #include "../../Data/FlareFactoryCatalogEntry.h"
 #include "../../Data/FlareSpaceCraftCatalog.h"
 #include "../../Data/FlareTechnologyCatalog.h"
 #include "../../Data/FlareSpacecraftComponentsCatalog.h"
-
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftOrderOverlayInfo"
 
@@ -65,7 +63,7 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 	// Station-building
 	else
 	{
-//		FCHECK(TargetSector);
+		//		FCHECK(TargetSector);
 		ProductionTime = Desc->CycleCost.ProductionTime;
 	}
 
@@ -74,7 +72,7 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		.VAlign(VAlign_Top)
 		.HAlign(HAlign_Fill)
 		[
-		SNew(SHorizontalBox)
+			SNew(SHorizontalBox)
 
 			// Picture
 		+ SHorizontalBox::Slot()
@@ -108,12 +106,12 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(SBox)
 			.WidthOverride(Theme.ContentWidth)
-			[
-				SNew(STextBlock)
-				.Text(Desc->Description)
-			.TextStyle(&Theme.TextFont)
-			.WrapTextAt(Theme.ContentWidth)
-			]
+		[
+			SNew(STextBlock)
+			.Text(Desc->Description)
+		.TextStyle(&Theme.TextFont)
+		.WrapTextAt(Theme.ContentWidth)
+		]
 		]
 
 	+ SVerticalBox::Slot()
@@ -121,34 +119,34 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		.Padding(Theme.SmallContentPadding)
 		[
 			SNew(SHorizontalBox)
-			+SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(Theme.ContentPadding)
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SmallContentPadding)
-				[
-					SNew(STextBlock)
-					.Text(this, &SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo)
-					.TextStyle(&Theme.TextFont)
-				]
-			]
-			+SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(Theme.ContentPadding)
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SmallContentPadding)
-				[
-					SNew(STextBlock)
-					.Text(this, &SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseRight)
-					.TextStyle(&Theme.TextFont)
-				]
-			]
+			+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(Theme.ContentPadding)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(Theme.SmallContentPadding)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo)
+		.TextStyle(&Theme.TextFont)
+		]
+		]
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(Theme.ContentPadding)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(Theme.SmallContentPadding)
+		[
+			SNew(STextBlock)
+			.Text(this, &SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseRight)
+		.TextStyle(&Theme.TextFont)
+		]
+		]
 		]
 		]
 
@@ -163,16 +161,16 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(LOCTEXT("ProductionCost", "Production cost & duration"))
-			.Visibility(!OrderIsConfig ? EVisibility::Visible : EVisibility::Collapsed)
-			.TextStyle(&Theme.NameFont)
+		.Visibility(!OrderIsConfig ? EVisibility::Visible : EVisibility::Collapsed)
+		.TextStyle(&Theme.NameFont)
 		]
 
 	+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
 			SAssignNew(TextBlock, STextBlock)
-//			SNew(STextBlock)
-			.Text(this, &SFlareSpaceCraftOverlayInfo::GetProductionText)
+			//			SNew(STextBlock)
+		.Text(this, &SFlareSpaceCraftOverlayInfo::GetProductionText)
 
 		.WrapTextAt(0.65 * Theme.ContentWidth)
 		.TextStyle(&Theme.TextFont)
@@ -181,14 +179,14 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 	+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
-		SNew(STextBlock)
-		.Text(this, &SFlareSpaceCraftOverlayInfo::GetProductionTime)
+			SNew(STextBlock)
+			.Text(this, &SFlareSpaceCraftOverlayInfo::GetProductionTime)
 		.Visibility(this, &SFlareSpaceCraftOverlayInfo::GetProductionTimeVisibility)
 		.WrapTextAt(0.65 * Theme.ContentWidth)
 		.TextStyle(&Theme.TextFont)
 		]
-	]
-];
+		]
+		];
 }
 
 void SFlareSpaceCraftOverlayInfo::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
@@ -234,7 +232,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 			else
 			{
 				return FText::Format(LOCTEXT("FactoryWeaponTurretFormatStation", "({0} turrets, {1} combat value)"),
-				FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints));
+					FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints));
 			}
 		}
 		else if (CargoBayCount&&CargoBayCapacity && !TargetSkirmish)
@@ -266,7 +264,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 			else
 			{
 				return FText::Format(LOCTEXT("FactoryWeaponGunFormatStation", "({0} gun slots, {1} combat value)"),
-				FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints));
+					FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints));
 			}
 		}
 		else if (CargoBayCount && CargoBayCapacity && !TargetSkirmish)
@@ -282,11 +280,11 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 				FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints));
 		}
 	}
-	else if(Desc->IsStation())
+	else if (Desc->IsStation())
 	{
 		return FText::Format(LOCTEXT("FactoryTraderFormatStation", "({0}x{1} cargo units)"),
-		FText::AsNumber(Desc->CargoBayCount),
-		FText::AsNumber(Desc->CargoBayCapacity));
+			FText::AsNumber(Desc->CargoBayCount),
+			FText::AsNumber(Desc->CargoBayCapacity));
 	}
 	else
 	{
@@ -294,10 +292,6 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 			FText::AsNumber(Desc->CargoBayCount),
 			FText::AsNumber(Desc->CargoBayCapacity));
 	}
-}
-void SetSpacecraftInfoVerbose()
-{
-
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseLeft() const
@@ -311,7 +305,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseRight() const
 
 void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 {
-//	FText BasicInfo = GetSpacecraftShipInfo();
+	//	FText BasicInfo = GetSpacecraftShipInfo();
 
 	FText Engines;
 	FText EnginesRight;
@@ -336,7 +330,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	float ArmourPoints = 0;
 	// Engine thrust in KN
 	int32 TotalEnginePower = 0;
-	//  Value represents global rcs system initial capabilities. Angular acceleration un °/s^2
+	//  Value represents global rcs system initial capabilities. Angular acceleration un Â°/s^2
 	float AngularAccelerationRate = 0.f;
 	// Heat radiation surface in m^2
 	float Heatsink = 0.f;
@@ -411,7 +405,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			}
 		}
 	}
-	
+
 	if (Desc->InternalComponentSlots.Num() > 0)
 	{
 		for (int32 SlotIndex = 0; SlotIndex < Desc->InternalComponentSlots.Num(); SlotIndex++)
@@ -527,63 +521,63 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	{
 		HitPointsText = LOCTEXT("HullIntegrity", "Hull Integrity:\n");
 		HitPointsTextRight = FText::Format(LOCTEXT("HullIntegrityValue", "{0}\n"),
-		FText::AsNumber(HitPoints));
+			FText::AsNumber(HitPoints));
 	}
 
 	if (ArmourPoints > 0)
 	{
 		ArmourPointsText = LOCTEXT("Armor", "Armor:\n");
 		ArmourPointsTextRight = FText::Format(LOCTEXT("ArmorValue", "{0}\n"),
-		FText::AsNumber(ArmourPoints * 100));
+			FText::AsNumber(ArmourPoints * 100));
 	}
 
 	if (TotalEnginePower > 0)
 	{
 		TotalEnginePowerText = LOCTEXT("EnginePower", "Engine Power:\n");
 		TotalEnginePowerTextRight = FText::Format(LOCTEXT("EnginePowerValue", "{0}KN\n"),
-		FText::AsNumber(TotalEnginePower));
+			FText::AsNumber(TotalEnginePower));
 	}
 
 	if (AngularAccelerationRate > 0)
 	{
 		AngularAccelerationRateText = LOCTEXT("AngularAccelerationRate", "Angular Acceleration Rate:\n");
-		AngularAccelerationRateTextRight = FText::Format(LOCTEXT("AngularAccelerationRateValue", "{0} °/s^2\n"),
-		FText::AsNumber(AngularAccelerationRate));
+		AngularAccelerationRateTextRight = FText::Format(LOCTEXT("AngularAccelerationRateValue", "{0} Â°/s^2\n"),
+			FText::AsNumber(AngularAccelerationRate));
 	}
 
 	if (Heatsink > 0)
 	{
 		HeatsinkText = LOCTEXT("Heatsink", "Heatsink:\n");
 		HeatsinkTextRight = FText::Format(LOCTEXT("HeatsinkValue", "{0} M^2\n"),
-		FText::AsNumber(Heatsink));
+			FText::AsNumber(Heatsink));
 	}
 
 	if (HeatProduction > 0)
 	{
 		HeatProductionText = LOCTEXT("HeatProduction", "Heat Production:\n");
 		HeatProductionTextRight = FText::Format(LOCTEXT("HeatProductionValue", "{0} K/W\n"),
-		FText::AsNumber(HeatProduction));
+			FText::AsNumber(HeatProduction));
 	}
 
 	if (HeatProductionWeapons > 0)
 	{
 		HeatProductionWEPText = LOCTEXT("HeatProductionWep", "\u2022	WEAPON:\n");
 		HeatProductionWEPTextRight = FText::Format(LOCTEXT("HeatProductionWepValue", "{0} K/W\n"),
-		FText::AsNumber(HeatProductionWeapons));
+			FText::AsNumber(HeatProductionWeapons));
 	}
 
 	if (HeatProductionEngines > 0)
 	{
 		HeatProductionEnginesText = LOCTEXT("HeatProductionEngine", "\u2022	ENGINE:\n");
 		HeatProductionEnginesTextRight = FText::Format(LOCTEXT("HeatProductionEngineValue", "{0} K/W\n"),
-		FText::AsNumber(HeatProductionEngines));
+			FText::AsNumber(HeatProductionEngines));
 	}
 
 	if (HeatProductionRCS > 0)
 	{
 		HeatProductionRCSText = LOCTEXT("HeatProductionRCS", "\u2022	RCS:\n");
 		HeatProductionRCSTextRight = FText::Format(LOCTEXT("HeatProductionRCSValue", "{0} K/W\n"),
-		FText::AsNumber(HeatProductionRCS));
+			FText::AsNumber(HeatProductionRCS));
 	}
 
 
@@ -591,102 +585,102 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	{
 		ComponentCargoText = LOCTEXT("Cargo", "Cargo:\n");
 		ComponentCargoTextRight = FText::Format(LOCTEXT("CargoValue", "{0} M^3\n"),
-		FText::AsNumber(ComponentCargo));
+			FText::AsNumber(ComponentCargo));
 	}
 
 	if (TotalAmmoCapacity > 0)
 	{
 		TotalAmmoCapacityText = LOCTEXT("AmmoCapacity", "Ammo Capacity:\n");
 		TotalAmmoCapacityTextRight = FText::Format(LOCTEXT("AmmoCapacityValue", "{0}\n"),
-		FText::AsNumber(TotalAmmoCapacity));
+			FText::AsNumber(TotalAmmoCapacity));
 	}
 
 	InternalComponents = FText::Format(LOCTEXT("DefaultInternalComponentsSummary", "\nDefault Component Configuration:\n{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}"),
-	HitPointsText,
-	ArmourPointsText,
-	TotalEnginePowerText,
-	AngularAccelerationRateText,
-	HeatsinkText,
-	HeatProductionText,
-	HeatProductionWEPText,
-	HeatProductionEnginesText,
-	HeatProductionRCSText,
-	TotalAmmoCapacityText,
-	ComponentCargoText);
+		HitPointsText,
+		ArmourPointsText,
+		TotalEnginePowerText,
+		AngularAccelerationRateText,
+		HeatsinkText,
+		HeatProductionText,
+		HeatProductionWEPText,
+		HeatProductionEnginesText,
+		HeatProductionRCSText,
+		TotalAmmoCapacityText,
+		ComponentCargoText);
 
 	InternalComponentsRight = FText::Format(LOCTEXT("DefaultInternalComponentsRightSummary", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}"),
-	HitPointsTextRight,
-	ArmourPointsTextRight,
-	TotalEnginePowerTextRight,
-	AngularAccelerationRateTextRight,
-	HeatsinkTextRight,
-	HeatProductionTextRight,
-	HeatProductionWEPTextRight,
-	HeatProductionEnginesTextRight,
-	HeatProductionRCSTextRight,
-	TotalAmmoCapacityTextRight,
-	ComponentCargoTextRight);
+		HitPointsTextRight,
+		ArmourPointsTextRight,
+		TotalEnginePowerTextRight,
+		AngularAccelerationRateTextRight,
+		HeatsinkTextRight,
+		HeatProductionTextRight,
+		HeatProductionWEPTextRight,
+		HeatProductionEnginesTextRight,
+		HeatProductionRCSTextRight,
+		TotalAmmoCapacityTextRight,
+		ComponentCargoTextRight);
 
-	if (Desc->Mass>0)
+	if (Desc->Mass > 0)
 	{
 		Mass = LOCTEXT("Mass", "Mass:\n");
 		MassRight = FText::Format(LOCTEXT("MassValue", "{0}-Tons\n"),
-		FText::AsNumber(Desc->Mass / 1000));
+			FText::AsNumber(Desc->Mass / 1000));
 	}
 
-	if (Desc->HeatCapacity>0)
+	if (Desc->HeatCapacity > 0)
 	{
 		HeatCapacity = LOCTEXT("HeatCapacity", "Heat Capacity:\n");
 		HeatCapacityRight = FText::Format(LOCTEXT("HeatCapacityValue", "{0} KJ/K\n"),
-		FText::AsNumber(Desc->HeatCapacity));
+			FText::AsNumber(Desc->HeatCapacity));
 	}
 
-	if (Desc->OrbitalEngineCount>0)
+	if (Desc->OrbitalEngineCount > 0)
 	{
 		Engines = LOCTEXT("Engines", "Engines:\n");
 		EnginesRight = FText::Format(LOCTEXT("EnginesValue", "{0}\n"),
-		FText::AsNumber(Desc->OrbitalEngineCount));
+			FText::AsNumber(Desc->OrbitalEngineCount));
 	}
-	
-	if (Desc->RCSCount>0)
+
+	if (Desc->RCSCount > 0)
 	{
 		RCSCount = LOCTEXT("RCSCount", "RCS:\n");
 		RCSCountRight = FText::Format(LOCTEXT("RCSCountValue", "{0}\n"),
-		FText::AsNumber(Desc->RCSCount));
+			FText::AsNumber(Desc->RCSCount));
 	}
 
 	if (Desc->AngularMaxVelocity > 0)
 	{
 		AngularMaxVelocity = LOCTEXT("AngularMaxVelocity", "Maximum Angular Velocity:\n");
 		AngularMaxVelocityRight = FText::Format(LOCTEXT("AngularMaxVelocityValue", "{0} degree/s\n"),
-		FText::AsNumber(Desc->AngularMaxVelocity));
+			FText::AsNumber(Desc->AngularMaxVelocity));
 	}
 
-	if (Desc->DroneMaximum>0)
+	if (Desc->DroneMaximum > 0)
 	{
 		DroneMax = LOCTEXT("DroneMaximum", "Maximum Drones:\n");
 		DroneMaxRight = FText::Format(LOCTEXT("DroneMaximumValue", "{0}\n"),
-		FText::AsNumber(Desc->DroneMaximum));
+			FText::AsNumber(Desc->DroneMaximum));
 	}
 
-//	FString FlagsString;
+	//	FString FlagsString;
 	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}"),
-	Mass,
-	HeatCapacity,
-	Engines,
-	RCSCount,
-	AngularMaxVelocity,
-	DroneMax,
-	InternalComponents);
+		Mass,
+		HeatCapacity,
+		Engines,
+		RCSCount,
+		AngularMaxVelocity,
+		DroneMax,
+		InternalComponents);
 
 	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}"),
-	MassRight,
-	HeatCapacityRight,
-	EnginesRight,
-	RCSCountRight,
-	AngularMaxVelocityRight,
-	DroneMaxRight,
-	InternalComponentsRight);
+		MassRight,
+		HeatCapacityRight,
+		EnginesRight,
+		RCSCountRight,
+		AngularMaxVelocityRight,
+		DroneMaxRight,
+		InternalComponentsRight);
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
@@ -699,7 +693,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 		if (Desc->IsStation())
 		{
 			return FText::Format(LOCTEXT("FactoryStationFormat", "(Station, {0} factories)"),
-			FText::AsNumber(Desc->Factories.Num()));
+				FText::AsNumber(Desc->Factories.Num()));
 		}
 		return GetSpacecraftShipInfo();
 	}
@@ -707,7 +701,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 	// Station-building
 	else
 	{
-//		FCHECK(TargetSector);
+		//		FCHECK(TargetSector);
 
 		if (VerboseInformation)
 		{
@@ -716,8 +710,8 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 				FText VerboseBasicInfo = GetSpacecraftInfoVerboseLeft();
 				FText LeftBasicInfo = GetSpacecraftShipInfo();
 				FText BasicInfo = FText::Format(LOCTEXT("SpacecraftInfoVerbose", "{0}\n{1}"),
-				LeftBasicInfo,
-				VerboseBasicInfo);
+					LeftBasicInfo,
+					VerboseBasicInfo);
 
 				FString FactoryString;
 
@@ -839,16 +833,16 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 				if (Desc->IsStation())
 				{
 					return FText::Format(LOCTEXT("StationInfoFormatVerbose", "(Station, {0} factories)\n{1}\n{2}"),
-					FText::AsNumber(Desc->Factories.Num()),
-					BasicInfo,
-					FText::FromString(FactoryString));
+						FText::AsNumber(Desc->Factories.Num()),
+						BasicInfo,
+						FText::FromString(FactoryString));
 				}
 				else
 				{
 					return FText::Format(LOCTEXT("ShipStationInfoFormatVerbose", "({0} factories)\n{1}\n{2}"),
-					FText::AsNumber(Desc->Factories.Num()),
-					BasicInfo,
-					FText::FromString(FactoryString));
+						FText::AsNumber(Desc->Factories.Num()),
+						BasicInfo,
+						FText::FromString(FactoryString));
 				}
 			}
 			else if (Desc->IsStation())
@@ -856,8 +850,8 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 				FText VerboseBasicInfo = GetSpacecraftInfoVerboseLeft();
 				FText LeftBasicInfo = GetSpacecraftShipInfo();
 				FText BasicInfo = FText::Format(LOCTEXT("StationInfoVerbose", "(Station, 0 factories)\n{0}\n{1}"),
-				LeftBasicInfo,
-				VerboseBasicInfo);
+					LeftBasicInfo,
+					VerboseBasicInfo);
 				return BasicInfo;
 			}
 			else
@@ -865,8 +859,8 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 				FText VerboseBasicInfo = GetSpacecraftInfoVerboseLeft();
 				FText LeftBasicInfo = GetSpacecraftShipInfo();
 				FText BasicInfo = FText::Format(LOCTEXT("InfoVerbose", "\n{0}\n{1}"),
-				LeftBasicInfo,
-				VerboseBasicInfo);
+					LeftBasicInfo,
+					VerboseBasicInfo);
 				return BasicInfo;
 			}
 		}
@@ -882,7 +876,7 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionTime() const
 	// Ship-building
 
 	return FText::Format(LOCTEXT("ProductionTimeFormat", "\u2022 {0} days"),
-	FText::AsNumber(ProductionTime));
+		FText::AsNumber(ProductionTime));
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
@@ -909,11 +903,11 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 			}
 			else
 			{
-//				// Production time
-//				ProductionTime = TargetShipyard->GetShipProductionTime(Desc->Identifier);
-//				ProductionTime += TargetShipyard->GetEstimatedQueueAndProductionDuration(Desc->Identifier, -1);
+				//				// Production time
+				//				ProductionTime = TargetShipyard->GetShipProductionTime(Desc->Identifier);
+				//				ProductionTime += TargetShipyard->GetEstimatedQueueAndProductionDuration(Desc->Identifier, -1);
 
-				// Production cost
+								// Production cost
 				if (MenuManager->GetPC()->GetCompany() == TargetShipyard->GetCompany())
 				{
 					ProductionCost = FText::Format(LOCTEXT("FactoryProductionResourcesFormat", "\u2022 {0}"), TargetShipyard->GetShipCost(Desc->Identifier));
@@ -936,9 +930,9 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 	// Station-building
 	else
 	{
-//		FCHECK(TargetSector);
+		//		FCHECK(TargetSector);
 
-		// Add resources
+				// Add resources
 		FString ResourcesString;
 		for (int ResourceIndex = 0; ResourceIndex < Desc->CycleCost.InputResources.Num(); ResourceIndex++)
 		{
@@ -1015,7 +1009,7 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 			ConstraintString = LOCTEXT("ConstructioNRequirement", "\n\u2022 Requires").ToString() + " " + ConstraintString;
 		}
 
-		if(TargetSector)
+		if (TargetSector)
 		{
 			int32 CompanyStationCountInSector = 0;
 			for (UFlareSimulatedSpacecraft* Station : TargetSector->GetSectorStations())
@@ -1057,19 +1051,19 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 				if (!TechnologyRequired.IsEmpty())
 				{
 					ProductionCost = FText::Format(LOCTEXT("StationCostFormat", "\u2022 Costs {0} credits\n\u2022{1}\n\u2022 Requires {2}{3}"),
-					UFlareGameTools::DisplayMoney(Desc->CycleCost.ProductionCost),
-					FText::FromString(ResourcesString),
-					TechnologyRequired,
-					FText::FromString(ConstraintString),
-					FText::FromString(FlagsString));
+						UFlareGameTools::DisplayMoney(Desc->CycleCost.ProductionCost),
+						FText::FromString(ResourcesString),
+						TechnologyRequired,
+						FText::FromString(ConstraintString),
+						FText::FromString(FlagsString));
 				}
 				else
 				{
 					ProductionCost = FText::Format(LOCTEXT("StationCostFormat", "\u2022 Costs {0} credits\n\u2022 {1}{2}"),
-					UFlareGameTools::DisplayMoney(Desc->CycleCost.ProductionCost),
-					FText::FromString(ResourcesString),
-					FText::FromString(ConstraintString),
-					FText::FromString(FlagsString));
+						UFlareGameTools::DisplayMoney(Desc->CycleCost.ProductionCost),
+						FText::FromString(ResourcesString),
+						FText::FromString(ConstraintString),
+						FText::FromString(FlagsString));
 				}
 			}
 			else

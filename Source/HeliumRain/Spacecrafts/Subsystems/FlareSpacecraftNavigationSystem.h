@@ -1,12 +1,12 @@
 #pragma once
 #include "FlareSpacecraftDockingSystem.h"
-#include "FlareSpacecraftDockingSystem.h"
+#include "../../Data/FlareResourceCatalog.h"
 #include "FlareSpacecraftNavigationSystem.generated.h"
 
 class AFlareSpacecraft;
 
 class UPhysicsConstraintComponent;
-
+struct FFlareSpacecraftComponentDescription;
 
 /** Status of the ship */
 UENUM()
@@ -160,8 +160,6 @@ public:
 
 	virtual bool DockAt(AFlareSpacecraft* TargetStation);
 
-	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = 0);
-
 	FFlareDockingParameters GetDockingParameters(FFlareDockingInfo StationDockInfo, FVector CameraLocation);
 
 	/** Continue docking sequence has completed until effectif docking */
@@ -261,8 +259,6 @@ public:
 	void UpdateCOM();
 
 protected:
-
-
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
@@ -277,7 +273,7 @@ protected:
 	FFlareSpacecraftDescription*                    Description;
 	TArray<UActorComponent*>                        Components;
 
-	TEnumAsByte <EFlareShipStatus::Type>     Status;
+	TEnumAsByte <EFlareShipStatus::Type>		    Status;
 
 	// Configuration properties
 	float                                    AngularDeadAngle;
@@ -304,6 +300,10 @@ protected:
 	TPair<TArray<int>, TArray<int>> YEngines;
 	TPair<TArray<int>, TArray<int>> ZEngines;
 
+	//local upgrade memory
+	FFlareSpacecraftComponentDescription*   TransactionNewPartDesc;
+	int32									TransactionNewPartWeaponGroupIndex;
+
 	//local trade memory
 	FFlareResourceDescription*				 TransactionResource;
 	uint32									 TransactionQuantity;
@@ -316,6 +316,9 @@ protected:
 	float									 MaxTorqueCacheClearTime;
 
 public:
+
+	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = 0);
+	virtual bool DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex);
 
 	/*----------------------------------------------------
 		Getters (Attitude)
@@ -384,7 +387,16 @@ public:
 	{
 		return TransactionDestinationDock;
 	}
-	
+
+	inline FFlareSpacecraftComponentDescription* GetTransactionNewPartDesc() const
+	{
+		return TransactionNewPartDesc;
+	}
+	inline int32 GetTransactionNewPartWeaponIndex() const
+	{
+		return TransactionNewPartWeaponGroupIndex;
+	}
+
 	inline UFlareSimulatedSpacecraft* GetTransactionSourceShip() const
 	{
 		return TransactionSourceShip;

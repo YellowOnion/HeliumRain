@@ -7,7 +7,6 @@
 
 DECLARE_DELEGATE_OneParam(FFlareListItemSelected, TSharedPtr<FInterfaceContainer>)
 
-
 class SFlareList : public SCompoundWidget
 {
 	/*----------------------------------------------------
@@ -20,15 +19,20 @@ class SFlareList : public SCompoundWidget
 	, _FleetList(false)
 	, _WidthAdjuster(0.f)
 	, _ShowOwnedShips(false)
-	{}
+	, _ArrayMode(ESelectionMode::Single)
+	{}			 
 
 	SLATE_ARGUMENT(bool, UseCompactDisplay)
 	SLATE_ARGUMENT(bool, StationList)
 	SLATE_ARGUMENT(bool, FleetList)
-	SLATE_ARGUMENT(bool, ShowOwnedShips)
+	SLATE_ARGUMENT(bool, ShowOwnedShips) 
+		
+	SLATE_ARGUMENT(TEnumAsByte<ESelectionMode::Type>, ArrayMode)
 	SLATE_ARGUMENT(float, WidthAdjuster)
+		
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
+	SLATE_EVENT(FFlareListItemSelected, OnItemUnSelected)
 	SLATE_ARGUMENT(FText, Title)
 	
 	SLATE_END_ARGS()
@@ -68,7 +72,9 @@ public:
 
 	/** Remove all entries from the list */
 	void Reset();
-	
+
+	void UnSelectedObjects();
+
 	/** Get the number of items */
 	int32 GetItemCount() const
 	{
@@ -102,6 +108,8 @@ protected:
 	/** Target item selected */
 	void OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectInfo::Type SelectInfo);
 
+	void UnselectPreviousWidget();
+
 	/** Update filters */
 	void OnToggleShowFlags();
 
@@ -124,7 +132,10 @@ protected:
 	TSharedPtr< SListView< TSharedPtr<FInterfaceContainer> > >   WidgetList;
 	TArray< TSharedPtr<FInterfaceContainer> >                    ObjectList;
 	TArray< TSharedPtr<FInterfaceContainer> >                    FilteredObjectList;
+
 	TSharedPtr<FInterfaceContainer>                              SelectedObject;
+
+	TArray< TSharedPtr<SFlareListItem> >						 SelectedWidgets;
 	TSharedPtr<SFlareListItem>                                   PreviousWidget;
 
 	// Filters
@@ -134,6 +145,7 @@ protected:
 	TSharedPtr<SFlareButton>                                     GroupFleetsButton;
 
 	// State data
+	FFlareListItemSelected                                       OnItemUnSelected;
 	FFlareListItemSelected                                       OnItemSelected;
 	bool                                                         UseCompactDisplay;
 	bool                                                         HasShips;
@@ -142,5 +154,7 @@ protected:
 	bool														 FleetList;
 	bool														 LastDisableSort;
 	bool														 ShowOwnedShips;
+	bool														 UseExpandedDisplay; 
 	float														 WidthAdjuster;
+	TEnumAsByte<ESelectionMode::Type>							 ArraySelectionMode;
 };

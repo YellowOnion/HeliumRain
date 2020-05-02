@@ -247,6 +247,7 @@ protected:
 	/** Upgrade station */
 	void OnUpgradeStationClicked(UFlareSimulatedSpacecraft* Spacecraft);
 
+	FText GetShipUpgradeDetails() const;
 
 protected:
 

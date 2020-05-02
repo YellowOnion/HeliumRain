@@ -156,6 +156,8 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 	YEngines.Value.Empty();
 	ZEngines.Value.Empty();
 
+	TransactionNewPartDesc = NULL;
+	TransactionNewPartWeaponGroupIndex = NULL;
 	TransactionResource = NULL;
 	TransactionQuantity = NULL;
 	TransactionSourceShip = NULL;
@@ -272,21 +274,9 @@ void UFlareSpacecraftNavigationSystem::SetAngularAccelerationRate(float Accelera
 /*----------------------------------------------------
 	Docking
 ----------------------------------------------------*/
-
 bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation)
-
 {
-
-//	if (!TargetStation||!TransactionSourceSpacecraft)
-//	{
-//		return false;
-//	}
-
-//	AFlareSpacecraft* PhysicalSpacecraft = TransactionSourceSpacecraft->GetActive();
-//	bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAt(TargetStation);
 	bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
-	//	TransactionSellOrBuy = TransactionSellOrBuy_;
-
 	if (DockingConfirmed)
 	{
 		TransactionResource = TransactionResource_;
@@ -321,6 +311,46 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetSt
 	return false;
 }
 
+bool UFlareSpacecraftNavigationSystem::DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex)
+{
+	UFlareSimulatedSpacecraft* ShipParent = Spacecraft->GetParent();
+	if (!ShipParent || ShipParent == nullptr)
+	{
+		return false;
+	}
+
+	UFlareSimulatedSector* SimulatedSector = ShipParent->GetCurrentSector();
+	if (SimulatedSector)
+	{
+		for (int StationIndex = 0; StationIndex < SimulatedSector->GetSectorStations().Num(); StationIndex++)
+		{
+			UFlareSimulatedSpacecraft* StationInterface = SimulatedSector->GetSectorStations()[StationIndex];
+			if (!StationInterface->IsHostile(Spacecraft->GetCompany()) && StationInterface->HasCapability(EFlareSpacecraftCapability::Upgrade))
+			{
+				AFlareSpacecraft* TargetStation = StationInterface->GetActive();
+				if (TargetStation == nullptr || !TargetStation)
+				{
+					continue;
+				}
+
+				bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
+				if (DockingConfirmed)
+				{
+					TransactionDestinationDock = StationInterface;
+					TransactionNewPartDesc = NewPartDesc;
+					TransactionNewPartWeaponGroupIndex = CurrentWeaponGroupIndex;
+					return true;
+				}
+			}
+		}
+	}
+
+	TransactionDestinationDock = NULL;
+	TransactionNewPartDesc = NULL;
+	TransactionNewPartWeaponGroupIndex = NULL;
+	return false;
+}
+
 bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
 {
 	FLOGV("UFlareSpacecraftNavigationSystem::DockAt : '%s' docking at '%s'",
@@ -348,6 +378,8 @@ bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
 		TransactionDestination = NULL;
 		TransactionDestinationDock = NULL;
 		TransactionDonation = NULL;
+		TransactionNewPartDesc = NULL;
+		TransactionNewPartWeaponGroupIndex = NULL;
 		return true;
 	}
 
@@ -979,7 +1011,9 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 		Engine->SetAlpha(0.0f);
 	}
 
-	Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination,TransactionDonation);
+	Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination,TransactionDonation, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
+	TransactionNewPartDesc = NULL;
+	TransactionNewPartWeaponGroupIndex = NULL;
 	TransactionResource = NULL;
 	TransactionQuantity = NULL;
 	TransactionSourceShip = NULL;
@@ -1098,6 +1132,8 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands()
 	}
 
 	SetStatus(EFlareShipStatus::SS_Manual);
+	TransactionNewPartDesc = NULL;
+	TransactionNewPartWeaponGroupIndex = NULL;
 	TransactionResource = NULL;
 	TransactionQuantity = NULL;
 	TransactionSourceShip = NULL;

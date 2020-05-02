@@ -110,10 +110,14 @@ protected:
 	
 	/** A spacecraft has been selected*/
 	void OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+	/** A spacecraft has been unselected*/
+	void OnSpacecraftUnSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
 
 	/** A fleet has been selected */
 	void OnFleetSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
-	
+	/** A fleet has been unselected */
+	void OnFleetUnSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+
 	/** Editing done */
 	void OnEditFinished();
 
@@ -159,6 +163,7 @@ protected:
 //	TSharedPtr<SFlareList>                          OtherFleetList;
 	TSharedPtr<SEditableText>                       EditFleetName;
 
+	TSharedPtr<SFlareButton>						RemoveShipButton;
 	TSharedPtr<SFlareButton>						TradeRouteButton;
 	TSharedPtr<SFlareButton>				        AutoTradeButton;
 	TSharedPtr<SFlareButton>					    RefillButton;

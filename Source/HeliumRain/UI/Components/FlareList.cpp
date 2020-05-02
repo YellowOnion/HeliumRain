@@ -29,10 +29,12 @@ void SFlareList::Construct(const FArguments& InArgs)
 	StationList = InArgs._StationList;
 	WidthAdjuster = InArgs._WidthAdjuster;
 	ShowOwnedShips = InArgs._ShowOwnedShips;
+	ArraySelectionMode = InArgs._ArrayMode;
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	OnItemSelected = InArgs._OnItemSelected;
+	OnItemUnSelected = InArgs._OnItemUnSelected;
 	HasShips = false;
 	HasFleets = false;
 	LastDisableSort = false;
@@ -148,7 +150,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 				[
 					SAssignNew(WidgetList, SListView< TSharedPtr<FInterfaceContainer> >)
 					.ListItemsSource(&FilteredObjectList)
-					.SelectionMode(ESelectionMode::Single)
+					.SelectionMode(ArraySelectionMode)
 					.OnGenerateRow(this, &SFlareList::GenerateTargetInfo)
 					.OnSelectionChanged(this, &SFlareList::OnTargetSelected)
 				]
@@ -610,8 +612,12 @@ void SFlareList::Reset()
 	WidgetList->RequestListRefresh();
 
 	SelectedObject.Reset();
+	UnSelectedObjects();
 }
 
+void SFlareList::UnSelectedObjects()
+{
+}
 
 /*----------------------------------------------------
 	Callbacks
@@ -716,39 +722,36 @@ TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContai
 	return ListItem.ToSharedRef();
 }
 
+void SFlareList::UnselectPreviousWidget()
+{
+	// De-select previous item
+	if (PreviousWidget.IsValid())
+	{
+		if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareSpacecraftInfo")
+		{
+			StaticCastSharedRef<SFlareSpacecraftInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(true);
+		}
+		else if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareFleetInfo")
+		{
+			StaticCastSharedRef<SFlareFleetInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(true);
+		}
+		PreviousWidget->SetSelected(false);
+	}
+}
+
 void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectInfo::Type SelectInfo)
 {
 	FLOG("SFlareList::OnTargetSelected");
 
-	SelectedObject = Item;
-	TSharedPtr<SFlareListItem> NewWidget = StaticCastSharedPtr<SFlareListItem>(WidgetList->WidgetFromItem(Item));
-	bool UseExpandedDisplay = Item.IsValid() && (Item->SpacecraftPtr || Item->FleetPtr) && !UseCompactDisplay;
-
-	// De-select previous item
-	if (PreviousWidget.IsValid())
-	{
-		if (UseExpandedDisplay)
-		{
-			if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareSpacecraftInfo")
-			{
-				StaticCastSharedRef<SFlareSpacecraftInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(true);
-			}
-			else if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareFleetInfo")
-			{
-				StaticCastSharedRef<SFlareFleetInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(true);
-			}
-		}
-		PreviousWidget->SetSelected(false);
-	}
-
 	// Select new item
+	TSharedPtr<SFlareListItem> NewWidget = StaticCastSharedPtr<SFlareListItem>(WidgetList->WidgetFromItem(Item));
+	UseExpandedDisplay = Item.IsValid() && (Item->SpacecraftPtr || Item->FleetPtr) && !UseCompactDisplay;
+
+	UnselectPreviousWidget();
+
 	if (NewWidget.IsValid())
 	{
-		if (OnItemSelected.IsBound())
-		{
-			OnItemSelected.Execute(Item); 
-		}
-
+		NewWidget->SetSelected(true);
 		if (UseExpandedDisplay)
 		{
 			if (NewWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareSpacecraftInfo")
@@ -761,9 +764,20 @@ void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectI
 			}
 		}
 
-		NewWidget->SetSelected(true);
 		PreviousWidget = NewWidget;
+		if (OnItemSelected.IsBound())
+		{
+			OnItemSelected.Execute(Item);
+		}
 	}
+	else
+	{
+		if (OnItemUnSelected.IsBound())
+		{
+			OnItemUnSelected.Execute(SelectedObject);
+		}
+	}
+	SelectedObject = Item;
 }
 
 void SFlareList::OnToggleShowFlags()

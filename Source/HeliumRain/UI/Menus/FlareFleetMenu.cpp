@@ -1,4 +1,3 @@
-
 #include "FlareFleetMenu.h"
 #include "../../Flare.h"
 #include "../../Game/FlareGame.h"
@@ -141,8 +140,8 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						[
 							SNew(SComplexGradient)
 							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.GradientColors(HueGradientColors)
-						.Orientation(Orient_Vertical)
+							.GradientColors(HueGradientColors)
+							.Orientation(Orient_Vertical)
 						]
 
 					+ SOverlay::Slot()
@@ -163,7 +162,9 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						SAssignNew(FleetList, SFlareList)
 						.MenuManager(MenuManager)
 						.FleetList(true)
+						.ArrayMode(ESelectionMode::SingleToggle)
 						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
+						.OnItemUnSelected(this, &SFlareFleetMenu::OnFleetUnSelected)
 					]
 /*
 					// Fleet list 2
@@ -223,8 +224,8 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 					.Padding(Theme.SmallContentPadding)
 					.AutoWidth()
 					[
-						SNew(SFlareButton)
-						.Width(4)
+						SAssignNew(RemoveShipButton,SFlareButton)
+						.Width(5)
 						.Icon(FFlareStyleSet::GetIcon("MoveLeft"))
 						.Text(LOCTEXT("RemoveFromFleet", "Remove ship"))
 						.HelpText(this, &SFlareFleetMenu::GetRemoveHintText)
@@ -241,11 +242,11 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 							// Inspect trade route
 							SAssignNew(TradeRouteButton, SFlareButton)
 							.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
-						.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Width(6)
+							.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
+							.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
+							.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
+							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+							.Width(5)
 						]
 					+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Left)
@@ -255,16 +256,14 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 							// Auto Trade Button
 							SAssignNew(AutoTradeButton, SFlareButton)
 							.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
-						.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Toggle(true)
-						.Width(6)
+							.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
+							.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
+							.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+							.Toggle(true)
+							.Width(5)
 						]
-
-
-				]
+					]
 /*
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -315,11 +314,11 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(RefillButton, SFlareButton)
 						.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
-					.IsDisabled(this, &SFlareFleetMenu::IsRefillDisabled)
-					.OnClicked(this, &SFlareFleetMenu::OnRefillClicked)
-					.Text(this, &SFlareFleetMenu::GetRefillText)
-					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-					.Width(8)
+						.IsDisabled(this, &SFlareFleetMenu::IsRefillDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnRefillClicked)
+						.Text(this, &SFlareFleetMenu::GetRefillText)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Width(8)
 					]
 
 					// Repair
@@ -328,11 +327,11 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(RepairButton, SFlareButton)
 						.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
-					.IsDisabled(this, &SFlareFleetMenu::IsRepairDisabled)
-					.OnClicked(this, &SFlareFleetMenu::OnRepairClicked)
-					.Text(this, &SFlareFleetMenu::GetRepairText)
-					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-					.Width(8)
+						.IsDisabled(this, &SFlareFleetMenu::IsRepairDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnRepairClicked)
+						.Text(this, &SFlareFleetMenu::GetRepairText)
+						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+						.Width(8)
 					]
 				]
 
@@ -347,7 +346,9 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(ShipList, SFlareList)
 						.MenuManager(MenuManager)
+						.ArrayMode(ESelectionMode::Single)
 						.OnItemSelected(this, &SFlareFleetMenu::OnSpacecraftSelected)
+						.OnItemUnSelected(this, &SFlareFleetMenu::OnSpacecraftUnSelected)
 						.UseCompactDisplay(true)
 					]
 				]
@@ -987,6 +988,31 @@ void SFlareFleetMenu::OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> Space
 	}
 }
 
+void SFlareFleetMenu::OnSpacecraftUnSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
+{
+	if (SpacecraftContainer)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = SpacecraftContainer->SpacecraftPtr;
+		if (Spacecraft)
+		{
+			if (ShipToRemove == Spacecraft)
+			{
+				ShipToRemove = nullptr;
+			}
+		}
+	}
+}
+
+
+void SFlareFleetMenu::OnFleetUnSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
+{
+	RemoveShipButton->SetText(LOCTEXT("RemoveFromFleet", "Remove ship"));
+	if (FleetToEdit)
+	{
+		FleetToAdd = nullptr;
+	}
+}
+
 void SFlareFleetMenu::OnFleetSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
 {
 	UFlareFleet* Fleet = SpacecraftContainer->FleetPtr;
@@ -996,6 +1022,17 @@ void SFlareFleetMenu::OnFleetSelected(TSharedPtr<FInterfaceContainer> Spacecraft
 		if (FleetToEdit)
 		{
 			FleetToAdd = Fleet;
+
+//			if (FleetToEdit->GetCurrentSector() == FleetToAdd->GetCurrentSector())
+			if (ShipToRemove && FleetToAdd->CanAddShip(ShipToRemove))
+			{
+				RemoveShipButton->SetText(LOCTEXT("RemoveFromFleetAdd", "Remove ship & add"));
+			}
+			else
+			{
+				RemoveShipButton->SetText(LOCTEXT("RemoveFromFleet", "Remove ship"));
+			}
+
 			FLOGV("SFlareFleetMenu::OnFleetSelected : fleet to add/edit '%s'", *Fleet->GetFleetName().ToString());
 		}
 
@@ -1034,11 +1071,20 @@ void SFlareFleetMenu::OnRemoveFromFleet()
 	FCHECK(ShipToRemove);
 
 	FLOGV("SFlareFleetMenu::OnRemoveFromFleet : removing '%s'", *ShipToRemove->GetImmatriculation().ToString());
-	FleetToEdit->RemoveShip(ShipToRemove);
+
+	if (FleetToAdd && FleetToAdd->CanAddShip(ShipToRemove))
+	{
+		FleetToEdit->RemoveShip(ShipToRemove,false,false);
+		FleetToAdd->AddShip(ShipToRemove);
+	}
+	else
+	{
+		FleetToEdit->RemoveShip(ShipToRemove);
+		UpdateFleetList();
+		FleetToAdd = NULL;
+	}
 
 	UpdateShipList(FleetToEdit);
-	UpdateFleetList();
-	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 }
 
@@ -1059,4 +1105,3 @@ void SFlareFleetMenu::SFlareFleetMenu::OnColorSpinBoxValueChanged(float NewValue
 }
 
 #undef LOCTEXT_NAMESPACE
-

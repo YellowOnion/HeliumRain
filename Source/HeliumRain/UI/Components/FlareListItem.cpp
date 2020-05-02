@@ -88,3 +88,8 @@ void SFlareListItem::SetSelected(bool Selected)
 {
 	IsSelected = Selected;
 }
+
+bool SFlareListItem::GetSelected()
+{
+	return IsSelected;
+}

@@ -15,6 +15,7 @@
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlareMenuPawn.h"
 #include "../../Player/FlarePlayerController.h"
+#include "../../Player/FlareHUD.h"
 
 #include "../Components/FlareRoundButton.h"
 #include "../Components/FlarePartInfo.h"
@@ -34,7 +35,8 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 	MenuManager = InArgs._MenuManager;
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-	
+	int32 TextWidth = Theme.ContentWidth - 2 * Theme.ContentPadding.Left - 2 * Theme.ContentPadding.Right;
+
 	// Build structure
 	ChildSlot
 	.HAlign(HAlign_Fill)
@@ -302,6 +304,17 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 						.TextStyle(&Theme.TextFont)
 						.Text(LOCTEXT("EditInfoText", "Click on a part to exchange it. Please return only loaded, functional parts. Combat damage will void the warranty."))
 						.Visibility(this, &SFlareShipMenu::GetEditVisibility)
+					]
+
+					// Upgrade text
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareShipMenu::GetShipUpgradeDetails)
+					.WrapTextAt(TextWidth)
 					]
 
 					// Components
@@ -2092,9 +2105,39 @@ void SFlareShipMenu::OnPartConfirmed()
 	// Upgrade the ship
 	if (TargetSpacecraft)
 	{
-		TargetSpacecraft->UpgradePart(NewPartDesc, CurrentWeaponGroupIndex);
+		if (TargetSpacecraft->GetActive())
+		{
+			AFlareSpacecraft* ActiveShip = TargetSpacecraft->GetActive();
+			if (ActiveShip)
+			{
+				AFlareSpacecraft* DockedStation = ActiveShip->GetNavigationSystem()->GetDockStation();
+				if (DockedStation)
+				{
+					UFlareSimulatedSpacecraft* StationInterface = DockedStation->GetParent();
+					if (StationInterface)
+					{
+						if (!StationInterface->IsHostile(TargetSpacecraft->GetCompany())
+							&& StationInterface->HasCapability(EFlareSpacecraftCapability::Upgrade))
+						{
+							TargetSpacecraft->UpgradePart(NewPartDesc, CurrentWeaponGroupIndex);
+						}
+					}
+				}
+				else
+				{
+					bool DockingConfirmed = ActiveShip->GetNavigationSystem()->DockAtAndUpgrade(NewPartDesc, CurrentWeaponGroupIndex);
+					if (DockingConfirmed && ActiveShip->IsPlayerShip())
+					{
+						MenuManager->CloseMenu();
+					}
+				}
+			}
+		}
+		else
+		{
+			TargetSpacecraft->UpgradePart(NewPartDesc, CurrentWeaponGroupIndex);
+		}
 	}
-
 	// Get back to the ship config
 	BuyConfirmation->Hide();
 	LoadTargetSpacecraft();
@@ -2114,5 +2157,39 @@ void SFlareShipMenu::OnCancelUpgrade()
 	MenuManager->Reload();
 }
 
+FText SFlareShipMenu::GetShipUpgradeDetails() const
+{
+	AFlareSpacecraft* PhysicalSpacecraft = TargetSpacecraft->GetActive();
+	if (PhysicalSpacecraft)
+	{
+		UFlareSpacecraftNavigationSystem* Spacecraftnavigation = PhysicalSpacecraft->GetNavigationSystem();
+		if (Spacecraftnavigation)
+		{
+			UFlareSimulatedSpacecraft* TransactionDestinationDock = Spacecraftnavigation->GetTransactionDestinationDock();
+			FFlareSpacecraftComponentDescription* TransactionNewPartDesc = Spacecraftnavigation->GetTransactionNewPartDesc();
+			int32 TransactionNewPartWeaponGroupIndex = Spacecraftnavigation->GetTransactionNewPartWeaponIndex();
+
+			if (TransactionDestinationDock && TransactionNewPartDesc && TransactionNewPartWeaponGroupIndex >= 0)
+			{
+				uint32 TransactionQuantity = Spacecraftnavigation->GetTransactionQuantity();
+				FText Formatted;
+				FText DistanceText;
+				FText TradeStatus = LOCTEXT("TradeInfoUpgrade", "upgrade");
+
+				AFlareSpacecraft* TargetSpacecraftPawn = TransactionDestinationDock->GetActive();
+				float Distance = (PhysicalSpacecraft->GetActorLocation() - TargetSpacecraftPawn->GetActorLocation()).Size();
+				DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
+
+				Formatted = FText::Format(LOCTEXT("SpacecraftInfoFormatUpgrade", "{0}docking at {1} to {2} {3}"),
+					DistanceText,
+					UFlareGameTools::DisplaySpacecraftName(TransactionDestinationDock),
+					TradeStatus,
+					TransactionNewPartDesc->Name);
+				return Formatted;
+			}
+		}
+	}
+	return FText();
+}
 
 #undef LOCTEXT_NAMESPACE

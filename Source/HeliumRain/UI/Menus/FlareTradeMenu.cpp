@@ -1164,7 +1164,6 @@ void SFlareTradeMenu::OnConfirmTransaction()
 	{
 		if (TargetLeftSpacecraft->IsActive())
 		{
-
 			AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
 			AFlareSpacecraft* PhysicalSpacecraftDock = TargetRightSpacecraft->GetActive();
 			WasActiveSector = true;
@@ -1180,20 +1179,12 @@ void SFlareTradeMenu::OnConfirmTransaction()
 			}
 			else
 			{
-/*
-				bool WasDocked = false;
-				if (PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
-				{
-					WasDocked = true;
-				}
-*/
 				bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAtAndTrade(PhysicalSpacecraftDock, TransactionResource, TransactionQuantity, TransactionSourceSpacecraft, TransactionDestinationSpacecraft, Donation);
 				if (!DockingConfirmed)
 				{
 					ResetVariables = 0;
 				}
 				else if (PhysicalSpacecraft->IsPlayerShip())
-		
 				{
 					MenuManager->CloseMenu();
 				}

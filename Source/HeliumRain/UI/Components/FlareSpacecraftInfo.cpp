@@ -511,7 +511,7 @@ void SFlareSpacecraftInfo::Show()
 
 		// Permissions
 		bool CanDock =     !IsDocked && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(PlayerShip->GetActive());
-		bool CanUpgradeDistant = IsOutsidePlayerFleet && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
+		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
 		bool CanUpgradeDocked = ActiveTargetSpacecraft && DockedStation && DockedStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade);
 		bool CanUpgrade = !TargetSpacecraft->IsStation() && (CanUpgradeDistant || CanUpgradeDocked);
 //		bool CanTrade = IsCargo && 1;//(IsDocked || IsOutsidePlayerFleet);
@@ -1410,7 +1410,14 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 						UFlareSimulatedSpacecraft* TransactionDestinationDock = Spacecraftnavigation->GetTransactionDestinationDock();
 						UFlareSimulatedSpacecraft* TransactionSourceShip = Spacecraftnavigation->GetTransactionSourceShip();
 						FFlareResourceDescription* TransactionResource = Spacecraftnavigation->GetTransactionResource();
+
+						FFlareSpacecraftComponentDescription* TransactionNewPartDesc = Spacecraftnavigation->GetTransactionNewPartDesc();
+						int32 TransactionNewPartWeaponGroupIndex = Spacecraftnavigation->GetTransactionNewPartWeaponIndex();
 						if (TransactionDestination && TransactionSourceShip && TransactionResource && Spacecraftnavigation && TransactionDestinationDock)
+						{
+							return EVisibility::Visible;
+						}
+						else if (TransactionDestinationDock && TransactionNewPartDesc && TransactionNewPartWeaponGroupIndex>=0)
 						{
 							return EVisibility::Visible;
 						}
@@ -1667,10 +1674,14 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 						UFlareSimulatedSpacecraft* TransactionDestinationDock = Spacecraftnavigation->GetTransactionDestinationDock();
 						UFlareSimulatedSpacecraft* TransactionSourceShip = Spacecraftnavigation->GetTransactionSourceShip();
 						FFlareResourceDescription* TransactionResource = Spacecraftnavigation->GetTransactionResource();
-						uint32 TransactionQuantity = Spacecraftnavigation->GetTransactionQuantity();
+
+						FFlareSpacecraftComponentDescription* TransactionNewPartDesc = Spacecraftnavigation->GetTransactionNewPartDesc();
+						int32 TransactionNewPartWeaponGroupIndex = Spacecraftnavigation->GetTransactionNewPartWeaponIndex();
+
 
 						if (TransactionDestination && TransactionSourceShip && TransactionResource && Spacecraftnavigation && TransactionDestinationDock)
 						{
+							uint32 TransactionQuantity = Spacecraftnavigation->GetTransactionQuantity();
 							FText Formatted;
 							FText DistanceText;
 							FText TradeStatus = FText();
@@ -1706,6 +1717,24 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 								TradeStatus,
 								FText::AsNumber(TransactionQuantity),
 								TransactionResource->Name);
+							return Formatted;
+						}
+						else if (TransactionDestinationDock && TransactionNewPartDesc && TransactionNewPartWeaponGroupIndex>=0)
+						{
+							uint32 TransactionQuantity = Spacecraftnavigation->GetTransactionQuantity();
+							FText Formatted;
+							FText DistanceText;
+							FText TradeStatus = LOCTEXT("TradeInfoUpgrade", "upgrade");
+
+							AFlareSpacecraft* TargetSpacecraftPawn = TransactionDestinationDock->GetActive();
+							float Distance = (ActiveShip->GetActorLocation() - TargetSpacecraftPawn->GetActorLocation()).Size();
+							DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
+
+							Formatted = FText::Format(LOCTEXT("SpacecraftInfoFormatUpgrade", "{0}docking at {1} to {2} {3}"),
+								DistanceText,
+								UFlareGameTools::DisplaySpacecraftName(TransactionDestinationDock),
+								TradeStatus,
+								TransactionNewPartDesc->Name);
 							return Formatted;
 						}
 					}

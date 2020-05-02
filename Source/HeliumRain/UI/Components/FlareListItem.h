@@ -149,6 +149,7 @@ public:
 	/** Mouse click	*/
 	void SetSelected(bool Selected);
 
+	bool GetSelected();
 
 protected:
 

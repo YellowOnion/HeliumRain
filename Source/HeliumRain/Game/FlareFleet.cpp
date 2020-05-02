@@ -84,7 +84,6 @@ bool UFlareFleet::IsAlive()
 	return false;
 }
 
-
 bool UFlareFleet::CanTravel(UFlareSimulatedSector* TargetSector)
 {
 	if (IsTraveling())
@@ -422,6 +421,28 @@ int32 UFlareFleet::InterceptShips()
 	return InterseptedShipCount;
 }
 
+bool UFlareFleet::CanAddShip(UFlareSimulatedSpacecraft* Ship)
+{
+	if (IsTraveling())
+	{
+		return false;
+	}
+
+	if (GetCurrentSector() != Ship->GetCurrentSector())
+	{
+		return false;
+	}
+
+	if (!Ship->GetDescription()->IsDroneShip)
+	{
+		if (GetShipCount() + 1 > GetMaxShipCount())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 {
 	if (IsTraveling())
@@ -448,6 +469,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 
 	FleetData.ShipImmatriculations.Add(Ship->GetImmatriculation());
 	FleetShips.AddUnique(Ship);
+
 	if (!Ship->GetDescription()->IsDroneShip)
 	{
 		FleetCount++;

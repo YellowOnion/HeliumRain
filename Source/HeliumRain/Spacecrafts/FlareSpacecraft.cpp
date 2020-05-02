@@ -1640,7 +1640,7 @@ void AFlareSpacecraft::OnRefilled()
 	}
 }
 
-void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation)
+void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation, FFlareSpacecraftComponentDescription* TransactionNewPartDesc, int32 TransactionNewPartWeaponGroupIndex)
 {
 	// Signal the PC
 	AFlarePlayerController* PC = GetPC();
@@ -1651,7 +1651,51 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		PC->NotifyDockingComplete(DockStation, TellUser);
 	}
 
-	if (TransactionResource&&TransactionQuantity&&SourceSpacecraft&&DestinationSpacecraft)
+	if (TransactionNewPartDesc&&TransactionNewPartWeaponGroupIndex>=0)
+		// this ship was told to do an insector upgrade
+	{
+		UFlareSimulatedSpacecraft* ShipSimmed = GetParent();
+		bool SuccessfulUpgrade = ShipSimmed->UpgradePart(TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
+		if (SuccessfulUpgrade)
+		{
+			FText UpgradeStatus = FText(LOCTEXT("UpgradeInfoSuccess", "Upgraded"));
+
+			FText FirstHalf;
+
+			if (!FlewByPlayer)
+			{
+				UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
+				FirstHalf = FText::Format(LOCTEXT("LocalUpgradeFormat", "{0} is now docked at {1}\n"),
+					UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
+					UFlareGameTools::DisplaySpacecraftName(StationSimmed)
+				);
+			}
+
+			FText Formatted = FText::Format(LOCTEXT("LocalUpgradeSuccessInfo", "{0}{1} {2}"),
+				FirstHalf,
+				UpgradeStatus,
+				TransactionNewPartDesc->Name);
+
+			PC->Notify(
+				LOCTEXT("RemoteUpgradeSuccessTitle", "Remote Upgrade Info"),
+				Formatted,
+				"upgrade-success",
+				EFlareNotification::NT_Info);
+		}
+		else
+		{
+			FText Formatted = FText::Format(LOCTEXT("LocalUpgradeFailInfo", "Failed to upgrade {0}"),
+			TransactionNewPartDesc->Name);
+
+			PC->Notify(
+				LOCTEXT("RemoteUpgradeFail", "Remote Upgrade Info"),
+				Formatted,
+				"upgrade-fail",
+				EFlareNotification::NT_Info);
+		}
+	}
+
+	else if (TransactionResource&&TransactionQuantity&&SourceSpacecraft&&DestinationSpacecraft)
 		// this ship was told to do a manual insector trade
 	{
 

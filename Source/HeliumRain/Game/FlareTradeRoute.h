@@ -197,6 +197,8 @@ public:
 
 	virtual void RemoveFleet(UFlareFleet* Fleet);
 
+	virtual void ChangeSector(UFlareSimulatedSector* OldSector, UFlareSimulatedSector* NewSector);
+
 	virtual void AddSector(UFlareSimulatedSector* Sector);
 
 	virtual void RemoveSector(UFlareSimulatedSector* Sector);

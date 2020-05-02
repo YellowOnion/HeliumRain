@@ -2359,7 +2359,6 @@ bool UFlareSimulatedSector::CanUpgrade(UFlareCompany* Company)
 			return true;
 		}
 	}
-
 	return false;
 }
 

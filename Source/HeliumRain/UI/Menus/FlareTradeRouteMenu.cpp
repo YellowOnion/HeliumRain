@@ -773,6 +773,27 @@ void SFlareTradeRouteMenu::Tick(const FGeometry& AllottedGeometry, const double 
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 }
 
+void SFlareTradeRouteMenu::OnSelectSector(UFlareSimulatedSector* ChosenSector)
+{
+	UFlareSimulatedSector* Item = SectorSelector->GetSelectedItem();
+	FText ConfirmSelectSectorText = FText::Format(LOCTEXT("ConfirmChangeSector", "Are you sure you want to change {0} for {1}?"),
+		ChosenSector->GetSectorName(), Item->GetSectorName());
+
+	MenuManager->Confirm(LOCTEXT("ConfirmDefaults", "ARE YOU SURE ?"),
+	ConfirmSelectSectorText,
+	FSimpleDelegate::CreateSP(this, &SFlareTradeRouteMenu::ConfirmChangeSector, ChosenSector));
+}
+
+void SFlareTradeRouteMenu::ConfirmChangeSector(UFlareSimulatedSector* ChosenSector)
+{
+	UFlareSimulatedSector* Item = SectorSelector->GetSelectedItem();
+	if (TargetTradeRoute)
+	{
+		TargetTradeRoute->ChangeSector(ChosenSector,Item);
+		GenerateSectorList();
+	}
+}
+
 void SFlareTradeRouteMenu::GenerateSectorList()
 {
 	SectorList.Empty();
@@ -880,6 +901,7 @@ void SFlareTradeRouteMenu::GenerateSectorList()
 							SNew(SFlareSectorButton)
 							.Sector(Sector)
 							.PlayerCompany(MenuManager->GetGame()->GetPC()->GetCompany())
+							.OnClicked(this, &SFlareTradeRouteMenu::OnSelectSector, Sector)
 						]
 					]
 

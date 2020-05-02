@@ -77,6 +77,9 @@ protected:
 	/** Get a description of a trade operation */
 	FText GetOperationInfo(FFlareTradeRouteSectorOperationSave* Operation) const;
 	
+	void OnSelectSector(UFlareSimulatedSector* ChosenSector);
+	void ConfirmChangeSector(UFlareSimulatedSector* ChosenSector);
+
 	// Sector list
 	TSharedRef<SWidget> OnGenerateSectorComboLine(UFlareSimulatedSector* TargetSector);
 	TArray<TFlareResourceDeal> GetSellableResources(UFlareSimulatedSector* TargetSector) const;

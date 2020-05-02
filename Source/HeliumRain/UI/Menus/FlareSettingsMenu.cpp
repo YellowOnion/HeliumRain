@@ -2446,10 +2446,13 @@ void SFlareSettingsMenu::CreateBinds()
 		->AddAxisMapping("NormalRollInput", 1.0f)
 		->AddDefaults(EKeys::Q)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextTarget", "Next target")))
-		->AddActionMapping("AlternateNextTarget")));
+		->AddActionMapping("AlternateNextTarget")
+		->AddDefaults(EKeys::MouseScrollDown)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousTarget", "Previous target")))
-		->AddActionMapping("AlternatePreviousTarget")));
-	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick ship switch")))
+		->AddActionMapping("AlternatePreviousTarget")
+		->AddDefaults(EKeys::MouseScrollUp)));
+
+Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick ship switch")))
 		->AddActionMapping("QuickSwitch")
 		->AddDefaults(EKeys::N)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toogle Camera", "Toggle camera")))
