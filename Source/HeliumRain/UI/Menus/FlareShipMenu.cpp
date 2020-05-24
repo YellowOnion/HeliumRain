@@ -688,6 +688,8 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		}
 		else
 		{
+			ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
+			AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
 			RenameBox->SetVisibility(EVisibility::Collapsed);
 		}
 

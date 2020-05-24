@@ -2,6 +2,7 @@
 #include "../../Flare.h"
 #include "../../Game/FlareCompany.h"
 #include "../../Game/FlareGameTools.h"
+#include "../../Game/FlareGame.h"
 #include "../../Player/FlarePlayerController.h"
 #include "../FlareUITypes.h"
 #include "FlareButton.h"

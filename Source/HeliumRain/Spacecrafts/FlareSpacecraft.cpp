@@ -640,7 +640,10 @@ void AFlareSpacecraft::SafeDestroy()
 		// Notify PC
 		if (Parent)
 		{
-			Parent->SetActiveSpacecraft(NULL);
+			if (Parent->GetActive() == this)
+			{
+				Parent->SetActiveSpacecraft(NULL);
+			}
 		}
 	}
 }
@@ -673,7 +676,10 @@ void AFlareSpacecraft::Destroyed()
 	{
 		if (Parent)
 		{
-			Parent->SetActiveSpacecraft(NULL);
+			if (Parent->GetActive() == this)
+			{
+				Parent->SetActiveSpacecraft(NULL);
+			}
 		}
 	}
 

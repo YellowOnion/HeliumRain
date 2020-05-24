@@ -20,6 +20,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareWeapon ConfigureShellFuze"), STAT_Weapon_Configure
 DECLARE_CYCLE_STAT(TEXT("FlareWeapon IsSafeToFire"), STAT_FlareWeapon_IsSafeToFire, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareWeapon Trace"), STAT_FlareWeapon_Trace, STATGROUP_Flare);
 
+#define LOCTEXT_NAMESPACE "FlareWeapon"
 
 /*----------------------------------------------------
 	Constructor
@@ -330,7 +331,7 @@ bool UFlareWeapon::FireGun(int GunIndex)
 	FVector FiringVelocity = Spacecraft->Airframe->GetPhysicsLinearVelocity();
 
 	AFlareShell* Shell = Spacecraft->GetGame()->GetActiveSector()->RetrieveCachedShell();
-	if (Shell)
+	if (IsValid(Shell))
 	{
 		//retrieve a shell
 		Shell->UnsetSafeDestroyed();
@@ -816,3 +817,4 @@ bool UFlareWeapon::IsDestroyedEffectRelevant()
 	// Always smoke
 	return true;
 }
+#undef LOCTEXT_NAMESPACE

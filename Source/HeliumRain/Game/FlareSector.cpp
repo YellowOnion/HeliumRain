@@ -16,6 +16,8 @@
 	Constructor
 ----------------------------------------------------*/
 
+#define LOCTEXT_NAMESPACE "FlareSector"
+
 UFlareSector::UFlareSector(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -605,12 +607,16 @@ void UFlareSector::RegisterCachedShell(AFlareShell* Shell)
 
 AFlareShell* UFlareSector::RetrieveCachedShell()
 {
-	if (SectorCachedShells.Num())
+//	return NULL;
+	if (!IsDestroyingSector)
 	{
-//		AFlareShell* Shell = SectorCachedShells[SectorCachedShells.Num()];
-//		SectorCachedShells.RemoveAt(SectorCachedShells.Num());
-		AFlareShell* Shell = SectorCachedShells.Pop();
-		return Shell;
+		if (SectorCachedShells.Num())
+		{
+//			AFlareShell* Shell = SectorCachedShells[0];
+//			SectorCachedShells.RemoveAt(0);
+			AFlareShell* Shell = SectorCachedShells.Pop();
+			return Shell;
+		}
 	}
 	return NULL;
 }
@@ -882,3 +888,4 @@ float UFlareSector::GetSectorRadius()
 	GenerateSectorRepartitionCache();
 	return SectorRadius;
 }
+#undef LOCTEXT_NAMESPACE

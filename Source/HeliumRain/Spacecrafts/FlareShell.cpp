@@ -104,7 +104,7 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	PC = ParentWeapon->GetSpacecraft()->GetGame()->GetPC();
 
 	ManualTurret = ParentWeapon->GetSpacecraft()->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET;
-	UFlareSector* LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+	LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 }
 
 void AFlareShell::Tick(float DeltaSeconds)
@@ -890,6 +890,19 @@ void AFlareShell::FinishSafeDestroy()
 		AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
 		FCHECK(Game);
 
+		ImpactSound = nullptr;
+		DamageSound = nullptr;
+		ShellComp = nullptr;
+		ExplosionEffectTemplate = nullptr;
+		ImpactEffectTemplate = nullptr;
+//		FlightEffectsTemplate = nullptr;
+//		FlightEffects->Deactivate();
+//		FlightEffects = nullptr;
+		ExplosionEffectMaterial = nullptr;
+		ShellDescription = nullptr;
+		ParentWeapon = nullptr;
+		PC = nullptr;
+
 		if (LocalSector&&IsValid(LocalSector))
 		{
 			LocalSector->RegisterCachedShell(this);
@@ -904,19 +917,6 @@ void AFlareShell::FinishSafeDestroy()
 				Sector->UnregisterShell(this);
 			}
 		}
-
-		ImpactSound = nullptr;
-		DamageSound = nullptr;
-		ShellComp = nullptr;
-		ExplosionEffectTemplate = nullptr;
-		ImpactEffectTemplate = nullptr;
-//		FlightEffectsTemplate = nullptr;
-//		FlightEffects->Deactivate();
-//		FlightEffects = nullptr;
-		ExplosionEffectMaterial = nullptr;
-		ShellDescription = nullptr;
-		ParentWeapon = nullptr;
-		PC = nullptr;
 		LocalSector = nullptr;
 	}
 }

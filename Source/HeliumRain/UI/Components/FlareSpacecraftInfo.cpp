@@ -563,12 +563,14 @@ void SFlareSpacecraftInfo::Show()
 		}
 
 		// Flyable ships : disable when not flyable
+
 		FText Reason;
 		if (!TargetSpacecraft->CanBeFlown(Reason))
 		{
 			FlyButton->SetHelpText(Reason);
 			FlyButton->SetDisabled(true);
 		}
+
 		else if (TargetSpacecraft == PlayerShip)
 		{
 			FlyButton->SetHelpText(LOCTEXT("CantFlySelfInfo", "You are already flying this ship"));
