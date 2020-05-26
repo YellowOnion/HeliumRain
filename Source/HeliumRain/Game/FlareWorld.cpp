@@ -1347,8 +1347,10 @@ void UFlareWorld::ProcessStationCapture()
 			}
 		}
 
-		Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
+		Owner->GetAI()->FinishedConstruction(Spacecraft);
+		Owner->DestroySpacecraft(Spacecraft);
 		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
+		
 		Capturer->GetAI()->CapturedStation(NewShip);
 
 		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
