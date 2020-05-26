@@ -84,6 +84,10 @@ public:
 
 	void UpdateIdleShipsStats(AITradeIdleShips& IdleShips);
 
+	void TrackStationConstructionStatus(UFlareSimulatedSpacecraft* Station);
+	void FinishedConstruction(UFlareSimulatedSpacecraft* FinishedStation);
+	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation);
+
 	/*----------------------------------------------------
 		Behavior API
 	----------------------------------------------------*/
@@ -236,6 +240,8 @@ protected:
 	// Cache
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 	TArray<UFlareSimulatedSpacecraft*>       Shipyards;
+	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionUpgradeStations;
+	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionStations;
 	TMap<UFlareSimulatedSector*, SectorVariation> WorldResourceVariation;
 
 	TArray<UFlareSimulatedSector*>            SectorWithBattle;
@@ -243,6 +249,7 @@ protected:
 	int32									IdleCargoCapacity;
 	int32									ReservedResources;
 	int32									GlobalReservedResources;
+
 
 public:
 

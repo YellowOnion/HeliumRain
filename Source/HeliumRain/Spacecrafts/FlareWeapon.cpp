@@ -321,6 +321,11 @@ bool UFlareWeapon::FireGun(int GunIndex)
 		//FLOGV("%s Not secure", *GetReadableName());
 		return false;
 	}
+	UFlareSector* ActiveSector = Spacecraft->GetGame()->GetActiveSector();
+	if (ActiveSector == nullptr)
+	{
+		return false;
+	}
 
 	// Get firing data
 	FVector FiringLocation = GetMuzzleLocation(GunIndex);
@@ -330,7 +335,7 @@ bool UFlareWeapon::FireGun(int GunIndex)
 	FVector FiringDirection = FMath::VRandCone(FiringAxis, Imprecision);
 	FVector FiringVelocity = Spacecraft->Airframe->GetPhysicsLinearVelocity();
 
-	AFlareShell* Shell = Spacecraft->GetGame()->GetActiveSector()->RetrieveCachedShell();
+	AFlareShell* Shell = ActiveSector->RetrieveCachedShell();
 	if (IsValid(Shell))
 	{
 		//retrieve a shell

@@ -224,6 +224,7 @@ void UFlareWorld::CompanyMutualAssistance()
 		UFlareCompany* Company =Companies[CompanyIndex];
 		if (Company != PlayerCompany)
 		{
+			// 0.02 % given to others
 			int64 MoneyToTake = Company->GetMoney() / 500;
 			if (MoneyToTake > 0)
 			{
@@ -518,11 +519,14 @@ void UFlareWorld::Simulate()
 	int32 MaxCombatPoint = 0;
 	UFlareCompany* MaxCombatPointCompany = NULL;
 
+	TotalCompaniesMoney = 0;
+
 	AICompaniesMoney CompaniesMoney;
 	CompaniesMoney.CompaniesMoney.Reserve(GetCompanies().Num());
 	for(UFlareCompany* Company: GetCompanies())
 	{
 		CompaniesMoney.CompaniesMoney.Add(Company, Company->GetMoney())	;
+		TotalCompaniesMoney += Company->GetMoney();
 
 		struct CompanyValue Value = Company->GetCompanyValue();
 		if (MaxCombatPoint < Value.ArmyCurrentCombatPoints)
@@ -1343,9 +1347,9 @@ void UFlareWorld::ProcessStationCapture()
 			}
 		}
 
-
 		Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
 		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
+		Capturer->GetAI()->CapturedStation(NewShip);
 
 		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
 		{
@@ -1980,6 +1984,45 @@ void UFlareWorld::DeleteTravel(UFlareTravel* Travel)
 /*----------------------------------------------------
 	Getters
 ----------------------------------------------------*/
+
+TArray<UFlareSimulatedSpacecraft*> UFlareWorld::GetShipyardsFor(UFlareCompany* Company)
+{
+	TArray<UFlareSimulatedSpacecraft*> ShipyardList = GetShipyards();
+	if (!Company) return ShipyardList;
+
+	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
+	{
+		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
+
+		if (Shipyard->IsHostile(Company))
+		{
+			ShipyardList.Remove(Shipyard);
+			continue;
+		}
+
+		UFlareSimulatedSector* Sector = Shipyard->GetCurrentSector();
+		bool IsKnownSector = false;
+
+		//todo: Optimize this known sectors lookup
+		for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+		{
+			UFlareSimulatedSector* KnownSector = Company->GetKnownSectors()[SectorIndex];
+			if (KnownSector == Sector)
+			{
+				IsKnownSector = true;
+				break;
+			}
+		}
+
+		if (!IsKnownSector)
+		{
+			ShipyardList.Remove(Shipyard);
+			continue;
+		}
+	}
+
+	return ShipyardList;
+}
 
 UFlareCompany* UFlareWorld::FindCompany(FName Identifier) const
 {

@@ -1034,17 +1034,26 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 {
 	if(SpacecraftTarget)
 	{
-		return SpacecraftTarget->GetActorLocation();
+		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
+		{
+			return SpacecraftTarget->GetActorLocation();
+		}
 	}
 
 	if(BombTarget)
 	{
-		return BombTarget->GetActorLocation();
+		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+		{
+			return BombTarget->GetActorLocation();
+		}
 	}
 
 	if(MeteoriteTarget)
 	{
-		return MeteoriteTarget->GetActorLocation();
+		if (!MeteoriteTarget->IsActorBeingDestroyed() && !MeteoriteTarget->IsPendingKill())
+		{
+			return MeteoriteTarget->GetActorLocation();
+		}
 	}
 
 	return FVector::ZeroVector;
@@ -1054,18 +1063,31 @@ FVector PilotHelper::PilotTarget::GetLinearVelocity() const
 {
 	if(SpacecraftTarget != nullptr)
 	{
-		return SpacecraftTarget->Airframe->GetPhysicsLinearVelocity();
+		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
+		{
+			return SpacecraftTarget->Airframe->GetPhysicsLinearVelocity();
+		}
 	}
 
 	if(BombTarget != nullptr)
 	{
-		return Cast<UPrimitiveComponent>(BombTarget->GetRootComponent())->GetPhysicsLinearVelocity();
+		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+		{
+			return Cast<UPrimitiveComponent>(BombTarget->GetRootComponent())->GetPhysicsLinearVelocity();
+		}
 	}
 
 	if(MeteoriteTarget != nullptr)
 	{
-		return Cast<UPrimitiveComponent>(MeteoriteTarget->GetRootComponent())->GetPhysicsLinearVelocity();
+		if (!MeteoriteTarget->IsActorBeingDestroyed() && !MeteoriteTarget->IsPendingKill())
+		{
+			return Cast<UPrimitiveComponent>(MeteoriteTarget->GetRootComponent())->GetPhysicsLinearVelocity();
+		}
 	}
+
+/*
+if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeEither())
+*/
 
 	return FVector::ZeroVector;
 }
@@ -1075,19 +1097,28 @@ float PilotHelper::PilotTarget::GetMeshScale()
 {
 	if(SpacecraftTarget)
 	{
-		return SpacecraftTarget->GetMeshScale();
+		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
+		{
+			return SpacecraftTarget->GetMeshScale();
+		}
 	}
 
 	if(BombTarget)
 	{
-		FBox Box = BombTarget->GetComponentsBoundingBox();
-		return FMath::Max(Box.GetExtent().Size(), 1.0f);
+		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+		{
+			FBox Box = BombTarget->GetComponentsBoundingBox();
+			return FMath::Max(Box.GetExtent().Size(), 1.0f);
+		}
 	}
 
 	if(MeteoriteTarget)
 	{
-		FBox Box = MeteoriteTarget->GetComponentsBoundingBox();
-		return FMath::Max(Box.GetExtent().Size(), 1.0f);
+		if (!MeteoriteTarget->IsActorBeingDestroyed() && !MeteoriteTarget->IsPendingKill())
+		{
+			FBox Box = MeteoriteTarget->GetComponentsBoundingBox();
+			return FMath::Max(Box.GetExtent().Size(), 1.0f);
+		}
 	}
 
 	return 0.f;

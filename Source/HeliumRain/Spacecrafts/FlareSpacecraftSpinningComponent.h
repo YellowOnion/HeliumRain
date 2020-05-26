@@ -45,4 +45,9 @@ public:
 	bool LookForSun;
 
 	bool NeedTackerInit;
+	FRotator Axis;
+
+	FVector X;
+	FVector Y;
+	FVector Z;
 };

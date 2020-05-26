@@ -433,8 +433,6 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 		}
 	}
 
-	Idle = true;
-
 	if (Idle)
 	{
 		PilotTarget.Clear();
@@ -1341,13 +1339,13 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
     //FLOGV("%s Leader ship LinearTargetVelocity=%s", *LinearTargetVelocity.ToString());
 }
 
-FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit,float DeltaSeconds)
+FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* TargetShip, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit,float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_TryAntiCollision);
 	LastNewCollisionVector -= DeltaSeconds;
 	if (LastNewCollisionVector <= 0)
 	{
-		PreviousAntiCollisionVector = PilotHelper::AnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
+		PreviousAntiCollisionVector = PilotHelper::AnticollisionCorrection(TargetShip, LinearTargetVelocity, TargetShip->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), PILOT_ANTICOLLISION_SPEED);
 		if (PreviousAntiCollisionVector == InitialVelocity)
 		{
 			LastNewCollisionVector = CollisionVectorReactionTimeSlow;

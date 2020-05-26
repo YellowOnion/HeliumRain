@@ -30,7 +30,7 @@
 
 #define STATION_CONSTRUCTION_PRICE_BONUS 1.2
 #define AI_MAX_SHIP_COUNT 200
-#define AI_MAX_SHIPYARD_COUNT 3
+#define AI_MAX_SHIPYARD_COUNT 5
 
 #define AI_MAX_SHIP_BEFORE_SCRAP  60
 #define AI_MIN_S_CARGO_SHIP_COUNT 10
@@ -80,6 +80,72 @@ void UFlareCompanyAI::Load(UFlareCompany* ParentCompany, const FFlareCompanyAISa
 
 	// Setup Behavior
 	Behavior = NewObject<UFlareAIBehavior>(this, UFlareAIBehavior::StaticClass());
+
+	UnderConstructionStations.Empty();
+	UnderConstructionUpgradeStations.Empty();
+	for (UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
+	{
+		TrackStationConstructionStatus(Station);
+	}
+}
+
+void UFlareCompanyAI::TrackStationConstructionStatus(UFlareSimulatedSpacecraft* Station)
+{
+	if (Station->IsUnderConstruction())
+	{
+		if (Station->GetLevel() > 1)
+		{
+			UnderConstructionUpgradeStations.Add(Station);
+		}
+		else if (Station->IsComplex())
+		{
+			bool UnderConstructionUpgrade = false;
+			for (UFlareSimulatedSpacecraft* Substation : Station->GetComplexChildren())
+			{
+				if (Substation->IsUnderConstruction(true))
+				{
+					if (Substation->GetLevel() > 1)
+					{
+						{
+							UnderConstructionUpgradeStations.Add(Station);
+							UnderConstructionUpgrade = true;
+							break;
+						}
+					}
+					else
+					{
+						UnderConstructionStations.Add(Station);
+					}
+				}
+			}
+			if (!UnderConstructionUpgrade)
+			{
+				UnderConstructionStations.Add(Station);
+			}
+		}
+		else
+		{
+			UnderConstructionStations.Add(Station);
+		}
+	}
+}
+
+
+void UFlareCompanyAI::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
+{
+	if (CapturedStation)
+	{
+		TrackStationConstructionStatus(CapturedStation);
+	}
+}
+
+void UFlareCompanyAI::FinishedConstruction(UFlareSimulatedSpacecraft* FinishedStation)
+{
+	if (FinishedStation)
+	{
+		UnderConstructionStations.Remove(FinishedStation);
+		UnderConstructionUpgradeStations.Remove(FinishedStation);
+	}
 }
 
 FFlareCompanyAISave* UFlareCompanyAI::Save()
@@ -107,7 +173,8 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		UpdateDiplomacy(GlobalWar);
 
 		WorldStats = WorldHelper::ComputeWorldResourceStats(Game, true);
-		Shipyards = GetGame()->GetGameWorld()->GetShipyards();
+//		Shipyards = GetGame()->GetGameWorld()->GetShipyards();
+		Shipyards = GetGame()->GetGameWorld()->GetShipyardsFor(Company);
 
 		// Compute input and output ressource equation (ex: 100 + 10/ day)
 		// TODO
@@ -870,9 +937,10 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	TArray<UFlareSpacecraftCatalogEntry*>& StationCatalog = Game->GetSpacecraftCatalog()->StationCatalog;
 
 	//Check if a construction is in progress
+
 	bool UnderConstruction = false;
 	bool UnderConstructionUpgrade = false;
-
+/*
 	for(UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
 	{
 		if(Station->IsUnderConstruction())
@@ -909,11 +977,12 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 			{
 				UnderConstruction = true;
 			}
-	//			return;
 		}
 	}
+*/
+//	if (UnderConstruction && UnderConstructionUpgrade)
+	if(UnderConstructionStations.Num()>0 && UnderConstructionUpgradeStations.Num() > 0)
 
-	if (UnderConstruction && UnderConstructionUpgrade)
 	{
 		ReservedResources = 75;
 		return;
@@ -924,15 +993,18 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	bool Resources_New = false;
 	bool Resources_Upgrade = false;
 
-	if (UnderConstruction)
+	if (UnderConstructionStations.Num() > 0)
+//	if (UnderConstruction)
 	{
 		ReservedResources += 50;
+		UnderConstruction = true;
 	}
 
-
-	if (UnderConstructionUpgrade)
+	if (UnderConstructionUpgradeStations.Num() > 0)
+//	if (UnderConstructionUpgrade)
 	{
 		ReservedResources += 25;
+		UnderConstructionUpgrade = true;
 	}
 
 	if (ComputeAvailableConstructionResourceAvailability(50 + (GlobalReservedResources-50)))
@@ -1191,11 +1263,16 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 				if (BestSector->UpgradeStation(BestStation))
 				{
 					BuiltStation = BestStation;
+					UnderConstructionUpgradeStations.Add(BuiltStation);
 				}
 			}
 			else if (!UnderConstruction && BestSector->CanBuildStation(BestStationDescription, Company, Reasons))
 			{
 				BuiltStation = BestSector->BuildStation(BestStationDescription, Company);
+				if (BuiltStation)
+				{
+					UnderConstructionStations.Add(BuiltStation);
+				}
 			}
 
 			if (BuiltStation)
@@ -2952,13 +3029,13 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
-
+/*
 		if (Shipyard->IsHostile(Company))
 		{
 			continue;
 		}
-
-		if (Shipyard->CanOrder(ShipDescription, Company))
+*/
+		if (Shipyard->CanOrder(ShipDescription, Company, true))
 		{
 			int64 ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipDescription->Identifier, Shipyard->GetCurrentSector(), true);
 
@@ -3041,12 +3118,12 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard =Shipyards[ShipyardIndex];
-
+/*
 		if (Shipyard->IsHostile(Company))
 		{
 			continue;
 		}
-
+*/
 		TArray<UFlareFactory*>& Factories = Shipyard->GetFactories();
 
 		for (int32 Index = 0; Index < Factories.Num(); Index++)
@@ -3340,13 +3417,13 @@ bool UFlareCompanyAI::IsBuildingShip(bool Military)
 {
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
-		UFlareSimulatedSpacecraft* Shipyard =Shipyards[ShipyardIndex];
-
+		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
+/*
 		if (Shipyard->IsHostile(Company))
 		{
 			continue;
 		}
-
+*/
 		TArray<UFlareFactory*>& Factories = Shipyard->GetFactories();
 
 		for (int32 Index = 0; Index < Factories.Num(); Index++)
@@ -3529,11 +3606,12 @@ float UFlareCompanyAI::GetShipyardUsageRatio() const
 
 	for (UFlareSimulatedSpacecraft* Shipyard: Shipyards)
 	{
+/*
 		if (Shipyard->IsHostile(Company))
 		{
 			continue;
 		}
-
+*/
 		for (UFlareFactory* Factory : Shipyard->GetFactories())
 		{
 			if (Factory->IsLargeShipyard())

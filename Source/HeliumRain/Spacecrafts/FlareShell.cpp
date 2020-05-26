@@ -55,10 +55,9 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	ImpactEffectTemplate = Description->WeaponCharacteristics.ImpactEffect;
 	ExplosionEffectScale = Description->WeaponCharacteristics.ExplosionEffectScale;
 	ImpactEffectScale = Description->WeaponCharacteristics.ImpactEffectScale;
-	
-	UParticleSystem* OldFlightEffectsTemplate = FlightEffectsTemplate;
-	FlightEffectsTemplate = Description->WeaponCharacteristics.GunCharacteristics.TracerEffect;
 
+//	UParticleSystem* OldFlightEffectsTemplate = FlightEffectsTemplate;
+	FlightEffectsTemplate = Description->WeaponCharacteristics.GunCharacteristics.TracerEffect;
 	ExplosionEffectMaterial = Description->WeaponCharacteristics.GunCharacteristics.ExplosionMaterial;
 	
 	float AmmoVelocity = Description->WeaponCharacteristics.GunCharacteristics.AmmoVelocity;
@@ -68,7 +67,8 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	ShellMass = 2 * KineticEnergy * 1000 / FMath::Square(AmmoVelocity); // ShellPower is in Kilo-Joule, reverse kinetic energy equation
 
 	LastLocation = GetActorLocation();
-
+	//TODO: further optimize shell cache by properly reusing existing flighteffects when possible
+/*
 	// Spawn the flight effects
 	if (TracerShell)
 	{
@@ -83,8 +83,7 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 			else
 			{
 				FLOGV("Reuse old flight effect")
-			}
-			*/
+			}	
 		}
 		else
 		{
@@ -98,6 +97,16 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 				true);
 		}
 	}
+*/
+
+	FlightEffects = UGameplayStatics::SpawnEmitterAttached(
+	FlightEffectsTemplate,
+	RootComponent,
+	NAME_None,
+	FVector(0, 0, 0),
+	FRotator(0, 0, 0),
+	EAttachLocation::KeepRelativeOffset,
+	true);
 
 	SetLifeSpan(ShellDescription->WeaponCharacteristics.GunCharacteristics.AmmoRange * 100 / ShellVelocity.Size()); // 10km
 	ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector()->RegisterShell(this);
@@ -895,9 +904,11 @@ void AFlareShell::FinishSafeDestroy()
 		ShellComp = nullptr;
 		ExplosionEffectTemplate = nullptr;
 		ImpactEffectTemplate = nullptr;
-//		FlightEffectsTemplate = nullptr;
-//		FlightEffects->Deactivate();
-//		FlightEffects = nullptr;
+
+		FlightEffectsTemplate = nullptr;
+		FlightEffects->Deactivate();
+		FlightEffects = NULL;
+
 		ExplosionEffectMaterial = nullptr;
 		ShellDescription = nullptr;
 		ParentWeapon = nullptr;

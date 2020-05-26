@@ -36,6 +36,24 @@ void UFlareSpacecraftSpinningComponent::Initialize(FFlareSpacecraftComponentSave
 
 	SetCollisionProfileName("IgnoreOnlyPawn");
 	NeedTackerInit = true;
+	// Rotation axis
+
+	if (RotationAxisRoll)
+	{
+		Axis = FRotator(0, 0, 1);
+	}
+	else if (RotationAxisYaw)
+	{
+		Axis = FRotator(0, 1, 0);
+	}
+	else
+	{
+		Axis = FRotator(1, 0, 0);
+	}
+
+	X = FVector (1, 0, 0);
+	Y = FVector (0, 1, 0);
+	Z = FVector (0, 0, 1);
 }
 
 void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -50,30 +68,12 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 	// Update
 	if (!Ship->IsPresentationMode() && Ship->GetParent()->GetDamageSystem()->IsAlive())
 	{
-		// Rotation axis
-		FRotator Axis;
-		if (RotationAxisRoll)
-		{
-			Axis = FRotator(0, 0, 1);
-		}
-		else if (RotationAxisYaw)
-		{
-			Axis = FRotator(0, 1, 0);
-		}
-		else
-		{
-			Axis = FRotator(1, 0, 0);
-		}
-
 		// Sun-looker
 		if (LookForSun)
 		{
 			AFlarePlanetarium* Planetarium = Ship->GetGame()->GetPlanetarium();
 			if (Planetarium && Planetarium->IsReady())
 			{
-				FVector X(1, 0, 0);
-				FVector Y(0, 1, 0);
-				FVector Z(0, 0, 1);
 
 				FVector SunDirection = Planetarium->GetSunDirection();
 				FVector LocalSunDirection = GetComponentToWorld().GetRotation().Inverse().RotateVector(SunDirection);
@@ -94,6 +94,7 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 
 				if(!LocalPlanarSunDirection.IsNearlyZero())
 				{
+//					FVector X(1, 0, 0);
 					float Angle = 0;
 					FVector RotationAxis = X;
 					LocalPlanarSunDirection.Normalize();
@@ -106,11 +107,13 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 					else if (RotationAxisYaw)
 					{
 						Angle =  - FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.X,LocalPlanarSunDirection.Y));
+//						FVector Z(0, 0, 1);
 						RotationAxis = Z;
 					}
 					else
 					{
 						Angle =  FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Z,LocalPlanarSunDirection.X));
+//						FVector Y(0, 1, 0);
 						RotationAxis = Y;
 					}
 
@@ -127,7 +130,6 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 					if(FMath::Abs(Angle) > 0.01)
 					{
 						FRotator Delta = FQuat(RotationAxis, FMath::DegreesToRadians(DeltaAngle)).Rotator();
-
 						AddLocalRotation(Delta);
 					}
 				}
@@ -137,6 +139,22 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 		// Simple spinner
 		else
 		{
+/*
+			// Rotation axis
+			FRotator Axis;
+			if (RotationAxisRoll)
+			{
+				Axis = FRotator(0, 0, 1);
+			}
+			else if (RotationAxisYaw)
+			{
+				Axis = FRotator(0, 1, 0);
+			}
+			else
+			{
+				Axis = FRotator(1, 0, 0);
+			}
+*/
 			AddLocalRotation(RotationSpeed * DeltaSeconds * Axis);
 		}
 	}

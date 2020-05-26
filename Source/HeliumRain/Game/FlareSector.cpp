@@ -576,11 +576,10 @@ void UFlareSector::UnregisterBomb(AFlareBomb* Bomb)
 	if (!IsDestroyingSector)
 	{ 
 		SectorBombs.RemoveSwap(Bomb);
-	}
-
-	for (AFlareSpacecraft* Spacecraft : SectorSpacecrafts)
-	{
-		Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
+		for (AFlareSpacecraft* Spacecraft : SectorSpacecrafts)
+		{
+			Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
+		}
 	}
 }
 

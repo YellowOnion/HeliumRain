@@ -64,13 +64,19 @@ void UFlareAIBehavior::Simulate()
 	// See how the player is doing
 
 	TArray<UFlareCompany*> SortedCompanyValues = Game->GetGameWorld()->GetSortedCompanyValues();
-	
+	int64 TotalCompaniesMoney = Game->GetGameWorld()->GetTotalCompaniesMoney();
+
 	//	TArray<UFlareCompany*> SortedCompany = Game->GetGameWorld()->GetCompanies();
 //	SortedCompany.Sort(&CompanyValueComparator);
 
 	int32 PlayerCompanyIndex = SortedCompanyValues.IndexOfByKey(GetGame()->GetPC()->GetCompany());
 	int32 PlayerArmy = GetGame()->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints;
+	int64 PlayerMoney = GetGame()->GetPC()->GetCompany()->GetMoney();
+
 	int32 GameDifficulty = GameDifficulty = GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+
+	float PlayerExcessiveMoneyRepLoss = 0.0f;
+	float PlayerExcessiveMoneyRatioRequirement = 0.0f;
 
 	float PirateRepLoss = -0.5f;
 	float RepLossDevisor = 30.f;
@@ -80,26 +86,38 @@ void UFlareAIBehavior::Simulate()
 		case -1: // Easy
 			PirateRepLoss = -0.25f;
 			RepLossDevisor = 32.f;
+			PlayerExcessiveMoneyRepLoss = -0.25f;
+			PlayerExcessiveMoneyRatioRequirement = 1.0f;
 			break;
 		case 0: // Normal
 			PirateRepLoss = -0.5f;
 			RepLossDevisor = 30.f;
+			PlayerExcessiveMoneyRepLoss = -0.75f;
+			PlayerExcessiveMoneyRatioRequirement = 0.95f;
 			break;
 		case 1: // Hard
 			PirateRepLoss = -0.75f;
 			RepLossDevisor = 25.f;
+			PlayerExcessiveMoneyRepLoss = -1.25f;
+			PlayerExcessiveMoneyRatioRequirement = 0.90f;
 			break;
 		case 2: // Very Hard
 			PirateRepLoss = -1.00f;
 			RepLossDevisor = 20.f;
+			PlayerExcessiveMoneyRepLoss = -1.50f;
+			PlayerExcessiveMoneyRatioRequirement = 0.85f;
 			break;
 		case 3: // Expert
 			PirateRepLoss = -1.50f;
 			RepLossDevisor = 10.f;
+			PlayerExcessiveMoneyRepLoss = -1.75f;
+			PlayerExcessiveMoneyRatioRequirement = 0.80f;
 			break;
 		case 4: // Unfair
 			PirateRepLoss = -2.00f;
 			RepLossDevisor = 5.f;
+			PlayerExcessiveMoneyRepLoss = -2.0f;
+			PlayerExcessiveMoneyRatioRequirement = 0.75f;
 			break;
 	}
 
@@ -114,6 +132,11 @@ void UFlareAIBehavior::Simulate()
 		EFlareNotification::NT_Info,
 		false);*/
 	// Pirates hate you
+
+	if (PlayerMoney >= (TotalCompaniesMoney * PlayerExcessiveMoneyRatioRequirement))
+	{
+		Company->GivePlayerReputation(PlayerExcessiveMoneyRepLoss);
+	}
 
 	if (PlayerCompanyIndex > 0 && Company == ST->Pirates)
 	{
@@ -598,13 +621,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 10.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
 		}
-		
-
-
-
-
-
-
 
 		// Budget
 		BudgetTechnologyWeight = 0.5;
@@ -717,8 +733,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		BuildEfficientTradeChance = 0.15;
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("science");
+		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("shipyard-station");
 	}
 	else if((Company && Company == ST->AxisSupplies) || (CompanyDescription && CompanyDescription->ShortName == FName("AXS")))
@@ -779,7 +795,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		ResearchOrder.Add("flak");
 		ResearchOrder.Add("bombing");
 		ResearchOrder.Add("pirate-tech");
-
 	}
 	else if ((Company && Company == ST->Quantalium) || (CompanyDescription && CompanyDescription->ShortName == FName("QNT")))
 	{
@@ -803,12 +818,13 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientTradeChance = 0.20;
 		BuildEfficientTradeChanceSmall = 0.30;
 		ResearchOrder.Reserve(3);
-		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("science");
+		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("fast-travel");
 	}
 	else
 	{
+		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
 	}
 }

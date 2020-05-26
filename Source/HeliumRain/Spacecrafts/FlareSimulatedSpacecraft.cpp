@@ -1486,6 +1486,7 @@ void UFlareSimulatedSpacecraft::FinishConstruction()
 		return;
 	}
 
+	Company->GetAI()->FinishedConstruction(this);
 	SpacecraftData.IsUnderConstruction = false;
 
 	Reload();
@@ -1997,13 +1998,13 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 
 	if (OrderCompany != GetCompany())
 	{
-		FFlareSpacecraftSave SpaceCraftData = GetData();
 		if (!IsAllowExternalOrder())
 		{
 			return false;
 		}
 
 		//TODO: make it apply to the AI if they have logic for disabling/enabling their own ship configuration settings
+		FFlareSpacecraftSave SpaceCraftData = GetData();
 		if (GetCompany() == PlayerCompany && SpaceCraftData.ShipyardOrderExternalConfig.Find(ShipDescription->Identifier) == INDEX_NONE)
 		{
 			return false;
@@ -2058,13 +2059,31 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 				}
 			}
 		}
-		else
+		else if (SpacecraftData.ShipyardOrderQueue.Num() > 0)
 		{
+/*
 			TArray<FFlareShipyardOrderSave> CurrentOrders = this->GetOngoingProductionList();
 			if (CurrentOrders.Num() >= this->GetShipyardFactoriesCount())
 			{
 				return false;
 			}
+*/
+			for (int i = SpacecraftData.ShipyardOrderQueue.Num() - 1; i >= 0; i--)
+				{
+					FFlareShipyardOrderSave& Order = SpacecraftData.ShipyardOrderQueue[i];
+					FFlareSpacecraftDescription* OrderShip = GetGame()->GetSpacecraftCatalog()->Get(Order.ShipClass);
+					if (OrderShip->Size == ShipDescription->Size)
+					{
+						if (Order.Company == PlayerCompany->GetIdentifier())
+						{
+							return true;
+						}
+						else
+						{
+							return false;
+						}
+					}
+				}
 		}
 	}
 
@@ -2092,6 +2111,7 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		}
 		return false;
 	}
+
 	return true;
 }
 

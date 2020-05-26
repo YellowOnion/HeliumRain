@@ -316,8 +316,7 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 		TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeFast;
 	}
 
-	PilotHelper::PilotTarget OldPilotTargetShip = PilotTarget;
-
+//	PilotHelper::PilotTarget OldPilotTargetShip = PilotTarget;
 	EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
 
 	PilotTarget = GetNearestHostileTarget(true, Tactic);
@@ -345,19 +344,32 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 	if (PilotTarget.IsEmpty())
 	{
 		PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
-		if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+		if (!PilotTarget.IsEmpty())
 		{
-			if (!Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
+			if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+			{
+				if (!Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
+				{
+					PilotTarget = PilotHelper::PilotTarget();
+				}
+				else if (PilotTarget.SpacecraftTarget->IsMilitary())
+				{
+					if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed())
+					{
+						PilotTarget = PilotHelper::PilotTarget();
+					}
+				}
+				else if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable())
+				{
+					PilotTarget = PilotHelper::PilotTarget();
+				}
+			}
+			else
 			{
 				PilotTarget = PilotHelper::PilotTarget();
 			}
 		}
-		else
-		{
-			PilotTarget = PilotHelper::PilotTarget();
-		}
-
-//		PilotTarget = GetNearestHostileTarget(false, Tactic);
+//PilotTarget = GetNearestHostileTarget(false, Tactic);
 	}
 }
 
