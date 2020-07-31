@@ -409,6 +409,11 @@ bool UFlareSimulatedSpacecraft::IsStation() const
 	return SpacecraftDescription->IsStation();
 }
 
+bool UFlareSimulatedSpacecraft::IsUncapturable() const
+{
+	return SpacecraftDescription->IsAnUncapturable();
+}
+
 bool UFlareSimulatedSpacecraft::IsImmobileStation() const
 {
 	return SpacecraftDescription->IsImmobileStation();
@@ -505,7 +510,7 @@ void UFlareSimulatedSpacecraft::SetCurrentSector(UFlareSimulatedSector* Sector)
 
 void UFlareSimulatedSpacecraft::TryMigrateDrones()
 {
-	UFlareSimulatedSector* CurrentSector = this->GetCurrentSector();
+//	UFlareSimulatedSector* CurrentSector = this->GetCurrentSector();
 	if (CurrentSector)
 	{
 		for (UFlareSimulatedSpacecraft* SectorShip : CurrentSector->GetSectorShips())
@@ -1054,6 +1059,9 @@ void UFlareSimulatedSpacecraft::Repair()
 
 		float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
 		float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
+		float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus("repair-bonus");
+		TechnologyBonus += TechnologyBonusSecondary;
+
 		float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 		float CurrentRepairRatio = FMath::Min(ComponentMaxRepairRatio, (1.f - DamageRatio));
 
@@ -1072,6 +1080,9 @@ void UFlareSimulatedSpacecraft::Repair()
 			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 
 			float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
+			float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus("repair-bonus");
+			TechnologyBonus += TechnologyBonusSecondary;
+
 			float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 			float ConsumedFS = GetDamageSystem()->Repair(ComponentDescription,ComponentData, MaxRepairRatio * ComponentMaxRepairRatio, SpacecraftData.RepairStock);
 
@@ -2042,6 +2053,11 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 		}
 	}
 
+	if (!GetCompany()->IsTechnologyUnlockedShip(ShipDescription))
+	{
+		return false;
+	}
+
 	if (LimitedQueues)
 	{
 		if (OrderCompany == PlayerCompany)
@@ -2688,6 +2704,9 @@ int32 UFlareSimulatedSpacecraft::GetRepairDuration()
 
 		float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
 		float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
+		float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus("repair-bonus");
+		TechnologyBonus += TechnologyBonusSecondary;
+
 		float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 		float CurrentRepairRatio = FMath::Min(ComponentMaxRepairRatio, (1.f - DamageRatio));
 
@@ -2707,6 +2726,9 @@ int32 UFlareSimulatedSpacecraft::GetRepairDuration()
 			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 
 			float TechnologyBonus = GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
+			float TechnologyBonusSecondary = GetCompany()->GetTechnologyBonus("repair-bonus");
+			TechnologyBonus += TechnologyBonusSecondary;
+
 			float ComponentMaxRepairRatio = SectorHelper::GetComponentMaxRepairRatio(ComponentDescription) * (GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
 			float DamageRatio = GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
 

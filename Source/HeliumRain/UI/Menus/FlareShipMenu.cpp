@@ -1953,7 +1953,7 @@ void SFlareShipMenu::ShowRCSs()
 			}
 		}
 
-		Catalog->GetRCSList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany());
+		Catalog->GetRCSList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany(), TargetSpacecraft);
 		FLOGV("SFlareShipMenu::ShowRCSs : %d parts", PartListData.Num());
 		UpdatePartList(PartDesc);
 	}
@@ -1980,7 +1980,7 @@ void SFlareShipMenu::ShowEngines()
 			}
 		}
 
-		Catalog->GetEngineList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany());
+		Catalog->GetEngineList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany(), TargetSpacecraft);
 		FLOGV("SFlareShipMenu::ShowEngines : %d parts", PartListData.Num());
 		UpdatePartList(PartDesc);
 	}
@@ -2023,7 +2023,7 @@ void SFlareShipMenu::ShowWeapons(TSharedPtr<int32> WeaponGroupIndex)
 		}
 	}
 
-	Catalog->GetWeaponList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany());
+	Catalog->GetWeaponList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany(), TargetSpacecraft);
 	FLOGV("SFlareShipMenu::ShowWeapons : %d parts", PartListData.Num());
 	UpdatePartList(PartDesc);
 }

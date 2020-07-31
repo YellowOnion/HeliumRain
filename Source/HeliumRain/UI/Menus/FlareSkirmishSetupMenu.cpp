@@ -1246,7 +1246,7 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 
 		// Find best weapons against specific archetypes
 		TArray<FFlareSpacecraftComponentDescription*> WeaponList;
-		PartsCatalog->GetWeaponList(WeaponList, Order->Description->Size);
+		PartsCatalog->GetWeaponList(WeaponList, Order->Description->Size,NULL,Order->Description->Identifier);
 		for (FFlareSpacecraftComponentDescription* Weapon : WeaponList)
 		{
 			int32 UpgradeCombatValue = Order->WeaponTypes.Num() * Weapon->CombatPoints;
@@ -1355,7 +1355,7 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 	UpgradeBox->SetVisibility(EVisibility::Visible);
 
 	// Engines
-	Catalog->GetEngineList(PartList, Desc->Size);
+	Catalog->GetEngineList(PartList, Desc->Size,NULL,Desc->Identifier);
 	for (auto Engine : PartList)
 	{
 		FLinearColor Color = (Order->EngineType == Engine->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
@@ -1375,7 +1375,7 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 
 	// RCS
 	PartList.Empty();
-	Catalog->GetRCSList(PartList, Desc->Size);
+	Catalog->GetRCSList(PartList, Desc->Size, NULL, Desc->Identifier);
 	for (auto RCS : PartList)
 	{
 		FLinearColor Color = (Order->RCSType == RCS->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
@@ -1395,7 +1395,7 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 
 	// Weapons
 	PartList.Empty();
-	Catalog->GetWeaponList(PartList, Desc->Size);
+	Catalog->GetWeaponList(PartList, Desc->Size, NULL, Desc->Identifier);
 	for (int32 Index = 0; Index < Order->Description->WeaponGroups.Num(); Index++)
 	{
 		// Create vertical structure

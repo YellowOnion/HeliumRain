@@ -32,7 +32,7 @@ void SFlareHelpMenu::Construct(const FArguments& InArgs)
 	MenuManager = InArgs._MenuManager;
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 //	AFlarePlayerController* PC = MenuManager->GetPC();
-	Game = MenuManager->GetPC()->GetGame();
+	Game = MenuManager->GetGame();
 	double TextWrappingBig = 1.75 * Theme.ContentWidth;
 
 	// Build structure
@@ -2699,8 +2699,8 @@ void SFlareHelpMenu::Enter()
 
 		// Engines
 		PartList.Empty();
-		Catalog->GetEngineList(PartList, EFlarePartSize::S);
-		Catalog->GetEngineList(PartList, EFlarePartSize::L);
+		Catalog->GetEngineList(PartList, EFlarePartSize::S, NULL, NULL);
+		Catalog->GetEngineList(PartList, EFlarePartSize::L, NULL, NULL);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartList)
 		{
@@ -2715,8 +2715,8 @@ void SFlareHelpMenu::Enter()
 
 		// Engines
 		PartList.Empty();
-		Catalog->GetRCSList(PartList, EFlarePartSize::S);
-		Catalog->GetRCSList(PartList, EFlarePartSize::L);
+		Catalog->GetRCSList(PartList, EFlarePartSize::S, NULL, NULL);
+		Catalog->GetRCSList(PartList, EFlarePartSize::L, NULL, NULL);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartList)
 		{
@@ -2731,8 +2731,8 @@ void SFlareHelpMenu::Enter()
 
 		// Engines
 		PartList.Empty();
-		Catalog->GetWeaponList(PartList, EFlarePartSize::S);
-		Catalog->GetWeaponList(PartList, EFlarePartSize::L);
+		Catalog->GetWeaponList(PartList, EFlarePartSize::S, NULL, NULL);
+		Catalog->GetWeaponList(PartList, EFlarePartSize::L, NULL, NULL);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartList)
 		{

@@ -150,7 +150,7 @@ struct FFlareTechnologyDescription
 	FName Identifier;
 
 	UPROPERTY(EditAnywhere, Category = Content)
-	int32 ResearchCost;
+	int32 ResearchCost = 20;
 
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 Level;
@@ -169,6 +169,14 @@ struct FFlareTechnologyDescription
 
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool AIOnly;
+
+	UPROPERTY(EditAnywhere, Category = Content) float RepairBonus;
+	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticPenaltyBonus;
+	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticBonus;
+	UPROPERTY(EditAnywhere, Category = Content) float TravelBonus;
+
+	/** All required unlocked technologies to unlock this technology*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
 
 	/** Companies that can unlock this research. Company ShortName, or PLAYER*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> ResearchableCompany;
@@ -417,6 +425,162 @@ struct FFlareCompanySave
 	float Retaliation;
 };
 
+USTRUCT()
+struct FFlareCompanyStartingShips
+{
+	GENERATED_USTRUCT_BODY()
+	UPROPERTY(EditAnywhere, Category = Company)
+	FName ShipIdentifier;
+	UPROPERTY(EditAnywhere, Category = Company)
+	FName SpawnSector;
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 Quantity = 1;
+	UPROPERTY(EditAnywhere, Category = Company)
+	uint32 Level = 1;
+	UPROPERTY(EditAnywhere, Category = Company)
+	bool IsStation = false;
+
+};
+
+USTRUCT()
+struct FFlareCompanyAIDescription
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** How strongly an faction wants to build stations that produce this resource */
+	UPROPERTY(EditAnywhere, Category = Company)
+	TMap<FName, float> ResourceAffilities;
+
+	/** How strongly an faction wants to build their stations in this sector */
+	UPROPERTY(EditAnywhere, Category = Company)
+	TMap<FName, float>		SectorAffilities;
+
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float TradingBuy;
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float TradingSell;
+
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float ShipyardAffility;
+	/** Default: 0.5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float ConsumerAffility;
+	/** Default: 0.1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float MaintenanceAffility;
+
+	/** Default: 0.25*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BudgetTechnologyWeight;
+	/** Default: 0.5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BudgetMilitaryWeight;
+	/** Default: 1.0*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BudgetStationWeight;
+	/** Default: 1.0*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BudgetTradeWeight;
+
+	/** Default: 0.99*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float AttackThreshold;
+	/** Default: 0.5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float RetreatThreshold;
+	/** Default: 0.01*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float DefeatAdaptation;
+
+	/** Default: -0.1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float ConfidenceTarget;
+	/** Default: 0.2*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float DeclareWarConfidence;
+	/** Default: -0.8*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float PayTributeConfidence;
+
+	/** While at war factions pacifism increases by this rate per day. Default: 0.8*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float PacifismIncrementRate;
+	/** While at peace and faction has 75% of its military available pacifism decreases by this rate per day. Multiplied by +0.50 if faction is in number #1 spot or +0.25 if the next weaker faction is at least 30% weaker. Default: 0.6*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float PacifismDecrementRate;
+
+	/** When building military ships faction requires (Price*CostSafetyMargin) + (TotalDailyProductionCost*DailyProductionCostSensitivityEconomic) money avilable.  Default: 30*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float DailyProductionCostSensitivityMilitary;
+	/** When building stations or trade ships faction requires (Price*CostSafetyMargin) + (TotalDailyProductionCost*DailyProductionCostSensitivityEconomic) money avilable. Default: 7*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float DailyProductionCostSensitivityEconomic;
+
+	/** When building a military ship faction must have ship cost * CostSafetyMarginMilitaryShip money to build. Default: 1.1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float CostSafetyMarginMilitaryShip;
+	/** When building a trade ship faction must have ship cost * CostSafetyMarginTradeShip money to build. Default: 1.05*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float CostSafetyMarginTradeShip;
+	/** When building a station faction must have station cost * CostSafetyMarginStation money to build. Default: 1.1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float CostSafetyMarginStation;
+
+	/** How many ships should faction own before switching to building L sized ships exclusively. Default: 50*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildLTradeOnlyTreshhold;
+	/** How many ships should faction own before switching to building L sized ships exclusively. Default: 50*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildLMilitaryOnlyTreshhold;
+
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildMilitaryDiversity;
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildTradeDiversity;
+
+	/** Default: 5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildMilitaryDiversitySize;
+	/** Default: 5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildTradeDiversitySize;
+	/** Default: 5*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildMilitaryDiversitySizeBase;
+	/** Default: 10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 BuildTradeDiversitySizeBase;
+
+	/** Chance faction will ignore its diversity ratio and try to build a better military ship. Default: 0.05*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildEfficientMilitaryChance;
+	/** Chance faction will ignore its diversity ratio and try to build a better trade ship. Default: 0.10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildEfficientTradeChance;
+	/** Extra chance ontop of BuildEfficientMilitaryChance that faction will ignore its diversity ratio and build a better small military ship. Default: 0.10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildEfficientMilitaryChanceSmall;
+	/** Extra chance ontop of BuildEfficientTradeChance that faction will ignore its diversity ratio and build a better small trade ship.  Default: 0.30*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildEfficientTradeChanceSmall;
+
+	/** Maximum possible percentage of Military S ships equipped with capture harpoons. Default: 0.10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float UpgradeMilitarySalvagerSRatio;
+	/** Maximum possible percentage of Military L ships equipped with capture harpoons. Default: 0.10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float UpgradeMilitarySalvagerLRatio;
+
+	/** Preset research order. If unable to research anything in array will choose random available research. Default: science,instruments*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	TArray<FName> ResearchOrder;
+};
+
 /** Catalog data */
 USTRUCT()
 struct FFlareCompanyDescription
@@ -463,9 +627,27 @@ struct FFlareCompanyDescription
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 CustomizationPatternIndex;
 
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 StartingResearchPoints;
+
 	/** Passive daily research generating ability for this company */
 	UPROPERTY(EditAnywhere, Category = Company)
 	int32 PassiveResearchGeneration;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	int64 StartingMoney;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	TArray<FName> StartingSectorKnowledge;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	TArray<FName> StartingTechnology;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	TArray<FFlareCompanyStartingShips> StartingShips;
+
+	UPROPERTY(EditAnywhere, Category = Content)
+	FFlareCompanyAIDescription AI_Behaviours;
 };
 
 /** Incoming event description */

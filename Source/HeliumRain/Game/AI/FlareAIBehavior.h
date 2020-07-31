@@ -65,7 +65,7 @@ protected:
 
 	// Gameplay data
 	UFlareCompany*			               Company;
-	FFlareCompanyDescription*			   CompanyDescription;
+	const FFlareCompanyDescription*			   CompanyDescription;
 	AFlareGame*                            Game;
 	UFlareScenarioTools*                   ST;
 

@@ -225,31 +225,34 @@ void UFlareTravel::EndTravel()
 	// Each company has a chance of discovering the source sector
 	if (GetSourceSector() && DestinationSector != GetSourceSector())
 	{
-		float DiscoveryChance = 0.005;
-		TArray<UFlareCompany*> SectorCompanies;
 		UFlareSimulatedSector* Source = GetSourceSector();
-
-		// List companies
-		for (auto Spacecraft : DestinationSector->GetSectorSpacecrafts())
+		if (!Source->GetDescription()->IsHiddenFromMovement)
 		{
-			SectorCompanies.AddUnique(Spacecraft->GetCompany());
-		}
+			float DiscoveryChance = 0.005;
+			TArray<UFlareCompany*> SectorCompanies;
 
-		for (auto Company : SectorCompanies)
-		{
-			if (!Company->IsKnownSector(Source) && Company != Fleet->GetFleetCompany())
+			// List companies
+			for (auto Spacecraft : DestinationSector->GetSectorSpacecrafts())
 			{
-				if (FMath::FRand() < DiscoveryChance)
+				SectorCompanies.AddUnique(Spacecraft->GetCompany());
+			}
+
+			for (auto Company : SectorCompanies)
+			{
+				if (!Company->IsKnownSector(Source) && Company != Fleet->GetFleetCompany())
 				{
-					if (Company == Game->GetPC()->GetCompany())
+					if (FMath::FRand() < DiscoveryChance)
 					{
-						FLOGV("UFlareTravel::EndTravel : player discovered '%s'", *Source->GetSectorName().ToString());
-						Game->GetPC()->DiscoverSector(Source, false, true);
-					}
-					else
-					{
-						FLOGV("UFlareTravel::EndTravel : '%s' discovered '%s'", *Company->GetCompanyName().ToString(), *Source->GetSectorName().ToString());
-						Company->DiscoverSector(Source);
+						if (Company == Game->GetPC()->GetCompany())
+						{
+							FLOGV("UFlareTravel::EndTravel : player discovered '%s'", *Source->GetSectorName().ToString());
+							Game->GetPC()->DiscoverSector(Source, false, true);
+						}
+						else
+						{
+							FLOGV("UFlareTravel::EndTravel : '%s' discovered '%s'", *Company->GetCompanyName().ToString(), *Source->GetSectorName().ToString());
+							Company->DiscoverSector(Source);
+						}
 					}
 				}
 			}
@@ -481,9 +484,14 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 	}
 
 
-	if(Company && Company->IsTechnologyUnlocked("fast-travel"))
+	if(Company)//Company->IsTechnologyUnlocked("fast-travel"))
 	{
-		TravelDuration /= 2;
+
+		float TechnologyBonus = Company->IsTechnologyUnlocked("fast-travel") ? 0.5f : 1.f;
+		float TechnologyBonusSecondary = Company->GetTechnologyBonus("travel-bonus");
+		TechnologyBonus -= TechnologyBonusSecondary;
+		TravelDuration *= TechnologyBonus;
+//		TravelDuration /= 2;
 	}
 	return FMath::Max((int64) 2, TravelDuration+1);
 }

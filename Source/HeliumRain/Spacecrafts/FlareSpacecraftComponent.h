@@ -312,9 +312,15 @@ struct FFlareSpacecraftComponentDescription
 	/** Component armor, in percent. 100 for full absorb */
 	UPROPERTY(EditAnywhere, Category = Content) float Armor;
 
-	/** Hit point for component fonctionnaly. Component not working when no more hit points */
+	/** Hit point for component functionality. Component not working when no more hit points */
 	UPROPERTY(EditAnywhere, Category = Content) float HitPoints;
 
+	/** All required unlocked technologies to equip component onto ship.*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
+
+	/** Restrict this module to only be installable on the selected ships*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RestrictedShips;
+	
 	/** Part mesh name */
 	UPROPERTY(EditAnywhere, Category = Content) UStaticMesh* Mesh;
 

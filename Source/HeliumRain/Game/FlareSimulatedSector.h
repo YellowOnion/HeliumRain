@@ -184,9 +184,13 @@ struct FFlareSectorDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsSolarPoor;
 
-	/** Is this sector impossible to discover */
+	/** Is this sector impossible to discover via telescopes */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsHiddenFromTelescopes;
+
+	/** Is this sector impossible to discover via ship movement */
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool IsHiddenFromMovement;
 
 	/** Auto-discovered from the start */
 	UPROPERTY(EditAnywhere, Category = Content)

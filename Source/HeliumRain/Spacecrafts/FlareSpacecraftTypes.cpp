@@ -105,6 +105,10 @@ int32 FFlareSpacecraftDescription::GetCapacity() const
 	return CargoBayCapacity * CargoBayCount;
 }
 
+bool FFlareSpacecraftDescription::IsAnUncapturable() const
+{
+	return IsUncapturable;
+}
 
 bool FFlareSpacecraftDescription::IsStation() const
 {

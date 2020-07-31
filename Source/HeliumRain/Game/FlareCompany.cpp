@@ -45,6 +45,11 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	CompanyData = Data;
 	CompanyData.Identifier = FName(*GetName());
 
+	ResearchBonuses.Add("repair-bonus", 0.f);
+	ResearchBonuses.Add("diplomatic-penaltybonus", 0.f);
+	ResearchBonuses.Add("diplomatic-bonus", 0.f);
+	ResearchBonuses.Add("travel-bonus", 0.f);
+
 	// Player description ID is -1
 	if (Data.CatalogIdentifier >= 0)
 	{
@@ -927,6 +932,11 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 		}
 	}
 
+	if (Spacecraft->IsStation())
+	{
+		Spacecraft->GetCompany()->GetAI()->FinishedConstruction(Spacecraft);
+	}
+
 	Spacecraft->ResetCapture();
 
 	CompanySpacecrafts.Remove(Spacecraft);
@@ -1114,12 +1124,21 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 	{
 		// Clamp
 		float MaxReputation = FMath::Max(Max, CompanyData.PlayerReputation);
-		float TechnologyBonus = this->IsTechnologyUnlocked("diplomacy") ? 0.5f : 1.f;
+
 		if (Amount < 0)
 		{
+			float TechnologyBonus = this->IsTechnologyUnlocked("diplomacy") ? 0.5f : 1.f;
+			float TechnologyBonusSecondary = this->GetTechnologyBonus("diplomatic-penaltybonus");
+			TechnologyBonus -= TechnologyBonusSecondary;
 			Amount *= TechnologyBonus;
 		}
-
+		else
+		{
+			float TechnologyBonus = 1.f;
+			float TechnologyBonusSecondary = this->GetTechnologyBonus("diplomatic-bonus");
+			TechnologyBonus += TechnologyBonusSecondary;
+			Amount *= TechnologyBonusSecondary;
+		}
 		CompanyData.PlayerReputation = FMath::Max(-100.f, CompanyData.PlayerReputation + Amount);
 		CompanyData.PlayerReputation = FMath::Min(MaxReputation, CompanyData.PlayerReputation);
 	}
@@ -1670,7 +1689,11 @@ bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 		return false;
 	}
 
-
+	if (Station->GetDescription()->IsUncapturable)
+	{
+		return false;
+	}
+	
 	return true;
 
 }
@@ -1775,6 +1798,36 @@ bool UFlareCompany::IsTechnologyAvailable(FName Identifier, FText& Reason, bool 
 		Reason = LOCTEXT("CantUnlockTechAlready", "You have already researched this technology");
 		return false;
 	}
+	else if (Technology->RequiredTechnologies.Num() > 0)
+	{
+		bool AllTechsUnlocked = true;
+		TArray<FName> RequiredTechnologiesEntries;
+		for (int32 i = 0; i < Technology->RequiredTechnologies.Num(); i++)
+		{
+			FName CurrentTechnology = Technology->RequiredTechnologies[i];
+			if (!IsTechnologyUnlocked(CurrentTechnology))
+			{
+				AllTechsUnlocked = false;
+				RequiredTechnologiesEntries.Add(CurrentTechnology);
+			}
+		}
+
+		if (RequiredTechnologiesEntries.Num() > 0)
+		{
+			FString RequiredTechsString;
+			for (int32 i = 0; i < RequiredTechnologiesEntries.Num(); i++)
+			{
+				FName CurrentTechnology = RequiredTechnologiesEntries[i];
+				if (RequiredTechsString.Len())
+				{
+					RequiredTechsString += ", ";
+				}
+				RequiredTechsString += FString::Printf(TEXT("%s"), *CurrentTechnology.ToString());
+			}
+			Reason = FText::Format(LOCTEXT("MissingTechnologiesFormat", "Missing required technologies: {0}"), FText::FromString(RequiredTechsString));
+		}
+		return AllTechsUnlocked;
+	}
 	else
 	{
 		return true;
@@ -1796,11 +1849,47 @@ bool UFlareCompany::HasStationTechnologyUnlocked() const
 	return false;
 }
 
+bool UFlareCompany::IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* Description) const
+{
+	FName Identifier = Description->Identifier;
+
+	if (Description->RequiredTechnologies.Num() > 0)
+	{
+		bool AllTechsUnlocked = true;
+		for (int32 i = 0; i < Description->RequiredTechnologies.Num(); i++)
+		{
+			FName CurrentTechnology = Description->RequiredTechnologies[i];
+			if (!IsTechnologyUnlocked(CurrentTechnology))
+			{
+				AllTechsUnlocked = false;
+				break;
+			}
+		}
+		return AllTechsUnlocked;
+	}
+	return true;
+}
+
 bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const
 {
 	FName Identifier = Description->Identifier;
 
-	if (    Identifier == "station-habitation" ||
+	if (Description->RequiredTechnologies.Num() > 0)
+	{
+		bool AllTechsUnlocked = true;
+		for (int32 i = 0; i < Description->RequiredTechnologies.Num(); i++)
+		{
+			FName CurrentTechnology = Description->RequiredTechnologies[i];
+			if (!IsTechnologyUnlocked(CurrentTechnology))
+			{
+				AllTechsUnlocked = false;
+				break;
+			}
+		}
+		return AllTechsUnlocked;
+	}
+
+	else if (Identifier == "station-habitation" ||
 			Identifier == "station-outpost" ||
 			Identifier == "station-solar-plant")
 	{
@@ -1852,9 +1941,60 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	return true;
 }
 
+bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription* Description, UFlareSimulatedSpacecraft* Ship) const
+{
+	FName Identifier = Description->Identifier;
+
+	if (Description->RestrictedShips.Num() > 0)
+	{
+		if (Description->RestrictedShips.Contains(Ship->GetDescription()->Identifier))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription* Description, FName Ship) const
+{
+	FName Identifier = Description->Identifier;
+
+	if (Description->RestrictedShips.Num() > 0)
+	{
+		if (Description->RestrictedShips.Contains(Ship))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool UFlareCompany::IsTechnologyUnlockedPart(const FFlareSpacecraftComponentDescription* Description) const
 {
 	FName Identifier = Description->Identifier;
+
+	if (Description->RequiredTechnologies.Num() > 0)
+	{
+		bool AllTechsUnlocked = true;
+		for (int32 i = 0; i < Description->RequiredTechnologies.Num(); i++)
+		{
+			FName CurrentTechnology = Description->RequiredTechnologies[i];
+			if (!IsTechnologyUnlocked(CurrentTechnology))
+			{
+				AllTechsUnlocked = false;
+				break;
+			}
+		}
+		return AllTechsUnlocked;
+	}
 
 	if (Identifier == "weapon-heavy-salvage" ||
 		Identifier == "weapon-light-salvage")
@@ -1880,7 +2020,20 @@ bool UFlareCompany::IsTechnologyUnlockedPart(const FFlareSpacecraftComponentDesc
 
 int32 UFlareCompany::GetTechnologyCost(const FFlareTechnologyDescription* Technology) const
 {
+	if (Technology->ResearchCost)
+	{
+		return Technology->ResearchCost * Technology->Level * CompanyData.ResearchRatio;
+	}
 	return 20 * Technology->Level * CompanyData.ResearchRatio;
+}
+
+float UFlareCompany::GetTechnologyBonus(FName Identifier) const
+{
+	if (ResearchBonuses.Contains(Identifier))
+	{
+		return ResearchBonuses[Identifier];
+	}
+	return 0;
 }
 
 int32 UFlareCompany::GetTechnologyLevel() const
@@ -1916,11 +2069,13 @@ void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 
 	if (Identifier != NAME_None && Technology && (IsTechnologyAvailable(Identifier, Unused) || FromSave || Force))
 	{
-		// Check before research
-		float CurrentResearchInflation = IsTechnologyUnlocked("instruments") ? 1.22 : 1.3;
-
 		// Unlock
 		UnlockedTechnologies.Add(Identifier, Technology);
+
+		ResearchBonuses["repair-bonus"] += Technology->RepairBonus;
+		ResearchBonuses["diplomatic-penaltybonus"] += Technology->DiplomaticPenaltyBonus;
+		ResearchBonuses["diplomatic-bonus"] += Technology->DiplomaticBonus;
+		ResearchBonuses["travel-bonus"] += Technology->TravelBonus;
 
 		if (!FromSave)
 		{
@@ -1933,6 +2088,8 @@ void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 
 			CompanyData.ResearchSpent += Cost;
 
+			// Check before research
+			float CurrentResearchInflation = IsTechnologyUnlocked("instruments") ? 1.22 : 1.3;
 			CompanyData.ResearchRatio *= CurrentResearchInflation;
 
 			if (this == Game->GetPC()->GetCompany())

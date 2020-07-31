@@ -41,6 +41,7 @@ void UFlareAIBehavior::Load(UFlareCompany* ParentCompany)
 	{
 		Company = ParentCompany;
 		check(Company);
+		CompanyDescription = Company->GetDescription();
 		Game = Company->GetGame();
 		ST = Game->GetScenarioTools();
 		check(ST);
@@ -826,6 +827,210 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
+	}
+
+		if (!Basic)
+		{
+			if (CompanyDescription->AI_Behaviours.SectorAffilities.Num() > 0)
+			{
+				UFlareWorld* World = Game->GetGameWorld();
+				TArray<FName> Keys;
+				CompanyDescription->AI_Behaviours.SectorAffilities.GetKeys(Keys);
+				for (int32 ROIndex = 0; ROIndex < Keys.Num(); ROIndex++)
+				{
+					FName CurrentSectorID = Keys[ROIndex];
+					UFlareSimulatedSector* RealSector = World->FindSector(CurrentSectorID);
+					if (RealSector != NULL)
+					{
+						float Value = CompanyDescription->AI_Behaviours.SectorAffilities[CurrentSectorID];
+						SetSectorAffility(RealSector, Value);
+					}
+				}
+			}
+		}
+
+		if (CompanyDescription->AI_Behaviours.ResourceAffilities.Num() > 0)
+		{
+			TArray<FName> Keys;
+			CompanyDescription->AI_Behaviours.ResourceAffilities.GetKeys(Keys);
+
+			for (int32 ROIndex = 0; ROIndex < Keys.Num(); ROIndex++)
+			{
+				FName CurrentResource = Keys[ROIndex];
+				float Value = CompanyDescription->AI_Behaviours.ResourceAffilities[CurrentResource];
+				SetResourceAffility(Game->GetResourceCatalog()->Get(CurrentResource), Value);
+			}
+		}
+
+		if (CompanyDescription->AI_Behaviours.ResearchOrder.Num() > 0)
+		{
+			ResearchOrder.Empty();
+			for (int32 ROIndex = 0; ROIndex < CompanyDescription->AI_Behaviours.ResearchOrder.Num(); ROIndex++)
+			{
+				FName CurrentResearch = CompanyDescription->AI_Behaviours.ResearchOrder[ROIndex];
+				ResearchOrder.Add(CurrentResearch);
+			}
+		}
+
+		if (CompanyDescription->AI_Behaviours.AttackThreshold)
+		{
+			AttackThreshold = CompanyDescription->AI_Behaviours.AttackThreshold;
+		}
+		if (CompanyDescription->AI_Behaviours.TradingBuy)
+		{
+			TradingBuy = CompanyDescription->AI_Behaviours.TradingBuy;
+		}
+		if (CompanyDescription->AI_Behaviours.TradingSell)
+		{
+			TradingSell = CompanyDescription->AI_Behaviours.TradingSell;
+		}
+
+		if (CompanyDescription->AI_Behaviours.ShipyardAffility)
+		{
+			ShipyardAffility = CompanyDescription->AI_Behaviours.ShipyardAffility;
+		}
+		if (CompanyDescription->AI_Behaviours.ConsumerAffility)
+		{
+			ConsumerAffility = CompanyDescription->AI_Behaviours.ConsumerAffility;
+		}
+		if (CompanyDescription->AI_Behaviours.MaintenanceAffility)
+		{
+			MaintenanceAffility = CompanyDescription->AI_Behaviours.MaintenanceAffility;
+		}
+
+		if (CompanyDescription->AI_Behaviours.BudgetTechnologyWeight)
+		{
+			BudgetTechnologyWeight = CompanyDescription->AI_Behaviours.BudgetTechnologyWeight;
+		}
+		if (CompanyDescription->AI_Behaviours.BudgetMilitaryWeight)
+		{
+			BudgetMilitaryWeight = CompanyDescription->AI_Behaviours.BudgetMilitaryWeight;
+		}
+		if (CompanyDescription->AI_Behaviours.BudgetStationWeight)
+		{
+			BudgetStationWeight = CompanyDescription->AI_Behaviours.BudgetStationWeight;
+		}
+		if (CompanyDescription->AI_Behaviours.BudgetTradeWeight)
+		{
+			BudgetTradeWeight = CompanyDescription->AI_Behaviours.BudgetTradeWeight;
+		}
+
+		if (CompanyDescription->AI_Behaviours.AttackThreshold)
+		{
+			AttackThreshold = CompanyDescription->AI_Behaviours.AttackThreshold;
+		}
+		if (CompanyDescription->AI_Behaviours.RetreatThreshold)
+		{
+			RetreatThreshold = CompanyDescription->AI_Behaviours.RetreatThreshold;
+		}
+		if (CompanyDescription->AI_Behaviours.DefeatAdaptation)
+		{
+			DefeatAdaptation = CompanyDescription->AI_Behaviours.DefeatAdaptation;
+		}
+
+		if (CompanyDescription->AI_Behaviours.ConfidenceTarget)
+		{
+			ConfidenceTarget = CompanyDescription->AI_Behaviours.ConfidenceTarget;
+		}
+		if (CompanyDescription->AI_Behaviours.DeclareWarConfidence)
+		{
+			DeclareWarConfidence = CompanyDescription->AI_Behaviours.DeclareWarConfidence;
+		}
+		if (CompanyDescription->AI_Behaviours.PayTributeConfidence)
+		{
+			PayTributeConfidence = CompanyDescription->AI_Behaviours.PayTributeConfidence;
+		}
+
+		if (CompanyDescription->AI_Behaviours.PacifismIncrementRate)
+		{
+			PacifismIncrementRate = CompanyDescription->AI_Behaviours.PacifismIncrementRate;
+		}
+		if (CompanyDescription->AI_Behaviours.PacifismDecrementRate)
+		{
+			PacifismDecrementRate = CompanyDescription->AI_Behaviours.PacifismDecrementRate;
+		}
+
+		if (CompanyDescription->AI_Behaviours.DailyProductionCostSensitivityMilitary)
+		{
+			DailyProductionCostSensitivityMilitary = CompanyDescription->AI_Behaviours.DailyProductionCostSensitivityMilitary;
+		}
+		if (CompanyDescription->AI_Behaviours.DailyProductionCostSensitivityEconomic)
+		{
+			DailyProductionCostSensitivityEconomic = CompanyDescription->AI_Behaviours.DailyProductionCostSensitivityEconomic;
+		}
+
+		if (CompanyDescription->AI_Behaviours.CostSafetyMarginMilitaryShip)
+		{
+			CostSafetyMarginMilitaryShip = CompanyDescription->AI_Behaviours.CostSafetyMarginMilitaryShip;
+		}
+		if (CompanyDescription->AI_Behaviours.CostSafetyMarginTradeShip)
+		{
+			CostSafetyMarginTradeShip = CompanyDescription->AI_Behaviours.CostSafetyMarginTradeShip;
+		}
+		if (CompanyDescription->AI_Behaviours.CostSafetyMarginStation)
+		{
+			CostSafetyMarginStation = CompanyDescription->AI_Behaviours.CostSafetyMarginStation;
+		}
+
+		if (CompanyDescription->AI_Behaviours.BuildLTradeOnlyTreshhold)
+		{
+			BuildLTradeOnlyTreshhold = CompanyDescription->AI_Behaviours.BuildLTradeOnlyTreshhold;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildLMilitaryOnlyTreshhold)
+		{
+			BuildLMilitaryOnlyTreshhold = CompanyDescription->AI_Behaviours.BuildLMilitaryOnlyTreshhold;
+		}
+
+		if (CompanyDescription->AI_Behaviours.BuildMilitaryDiversity)
+		{
+			BuildMilitaryDiversity = CompanyDescription->AI_Behaviours.BuildMilitaryDiversity;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildTradeDiversity)
+		{
+			BuildTradeDiversity = CompanyDescription->AI_Behaviours.BuildTradeDiversity;
+		}
+
+		if (CompanyDescription->AI_Behaviours.BuildMilitaryDiversitySize)
+		{
+			BuildMilitaryDiversitySize = CompanyDescription->AI_Behaviours.BuildMilitaryDiversitySize;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildTradeDiversitySize)
+		{
+			BuildTradeDiversitySize = CompanyDescription->AI_Behaviours.BuildTradeDiversitySize;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildMilitaryDiversitySizeBase)
+		{
+			BuildMilitaryDiversitySizeBase = CompanyDescription->AI_Behaviours.BuildMilitaryDiversitySizeBase;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildTradeDiversitySizeBase)
+		{
+			BuildTradeDiversitySizeBase = CompanyDescription->AI_Behaviours.BuildTradeDiversitySizeBase;
+		}
+
+		if (CompanyDescription->AI_Behaviours.BuildEfficientMilitaryChance)
+		{
+			BuildEfficientMilitaryChance = CompanyDescription->AI_Behaviours.BuildEfficientMilitaryChance;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildEfficientTradeChance)
+		{
+			BuildEfficientTradeChance = CompanyDescription->AI_Behaviours.BuildEfficientTradeChance;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildEfficientMilitaryChanceSmall)
+		{
+			BuildEfficientMilitaryChanceSmall = CompanyDescription->AI_Behaviours.BuildEfficientMilitaryChanceSmall;
+		}
+		if (CompanyDescription->AI_Behaviours.BuildEfficientTradeChanceSmall)
+		{
+			BuildEfficientTradeChanceSmall = CompanyDescription->AI_Behaviours.BuildEfficientTradeChanceSmall;
+		}
+
+		if (CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerSRatio)
+		{
+			UpgradeMilitarySalvagerSRatio = CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerSRatio;
+		}
+		if (CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerLRatio)
+		{
+			UpgradeMilitarySalvagerLRatio = CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerLRatio;
 	}
 }
 

@@ -562,7 +562,7 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	}
 
 	// Ship salvage
-	if (!HitSpacecraft->IsStation() &&
+	if (!HitSpacecraft->IsUncapturable() &&!HitSpacecraft->IsStation() &&
 		((WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage && HitSpacecraft->GetDescription()->Size == EFlarePartSize::S)
 	 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && HitSpacecraft->GetDescription()->Size == EFlarePartSize::L)))
 	{

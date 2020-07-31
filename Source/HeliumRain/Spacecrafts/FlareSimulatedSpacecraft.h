@@ -49,6 +49,9 @@ public:
 	/** Check if this is a station ship */
 	virtual bool IsStation() const;
 
+	/** Check if description disables ship capture */
+	virtual bool IsUncapturable() const;
+
 	virtual bool IsImmobileStation() const;
 
 	virtual bool CanFight() const;

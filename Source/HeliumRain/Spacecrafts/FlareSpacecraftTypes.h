@@ -696,6 +696,9 @@ struct FFlareSpacecraftDescription
 	/** If this is a drone it is not buildable via shipyards and has a different method*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
 
+	/** All required unlocked technologies to build station or ship.*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
+
 	/** Size of the ship components */
 	UPROPERTY(EditAnywhere, Category = Save)
 	TEnumAsByte<EFlarePartSize::Type> Size;
@@ -708,6 +711,9 @@ struct FFlareSpacecraftDescription
 
 	/** Enable this if you want a ship with engines to be considered a station */
 	UPROPERTY(EditAnywhere, Category = Save) bool IsAStation;
+
+	/** Enable this if you want a ship or station to not be capturable*/
+	UPROPERTY(EditAnywhere, Category = Save) bool IsUncapturable;
 
 	/** Weapon groups */
 	UPROPERTY(EditAnywhere, Category = Content)
@@ -791,6 +797,8 @@ struct FFlareSpacecraftDescription
 	int32 StationConnectorCount;
 
 	int32 GetCapacity() const;
+
+	bool IsAnUncapturable() const;
 
 	bool IsStation() const;
 

@@ -209,7 +209,6 @@ UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateRecoveryPlayerShip()
 	return CreatePlayerShip(FirstLight, "ship-solen");
 }
 
-
 /*----------------------------------------------------
 	Common world
 ----------------------------------------------------*/
@@ -314,7 +313,70 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	AxisSupplies->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 
 	FFlareStationSpawnParameters SpawnParameters;
-/*
+
+	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+		int64 StartingMoney = Company->GetDescription()->StartingMoney;
+		int32 StartingResearchPoints = Company->GetDescription()->StartingMoney;
+		
+		TArray<FName> StartingSectorKnowledge = Company->GetDescription()->StartingSectorKnowledge;
+		TArray<FName> StartingTechnology = Company->GetDescription()->StartingTechnology;
+		TArray<FFlareCompanyStartingShips> StartingShips = Company->GetDescription()->StartingShips;
+		if (StartingMoney)
+		{
+			Company->GiveMoney(StartingMoney * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
+		}
+
+		if (StartingResearchPoints)
+		{
+			Company->GiveResearch(StartingResearchPoints);
+		}
+
+		if (StartingSectorKnowledge.Num()>0)
+		{
+			for (int KnowIndex = 0; KnowIndex < StartingSectorKnowledge.Num(); KnowIndex++)
+			{
+				FName CurrentSectorID = StartingSectorKnowledge[KnowIndex];
+				UFlareSimulatedSector* RealSector = World->FindSector(CurrentSectorID);
+				if (RealSector != NULL)
+				{
+					Company->DiscoverSector(RealSector, true);
+				}
+			}
+		}
+
+		if (StartingTechnology.Num() > 0)
+		{
+			for (int KnowIndex = 0; KnowIndex < StartingTechnology.Num(); KnowIndex++)
+			{
+				FName CurrentTech = StartingTechnology[KnowIndex];
+				Company->UnlockTechnology(CurrentTech, false, true);
+			}
+		}
+
+		if (StartingShips.Num() > 0)
+		{
+			for (int KnowIndex = 0; KnowIndex < StartingShips.Num(); KnowIndex++)
+			{
+				FFlareCompanyStartingShips CurrentShips = StartingShips[KnowIndex];
+				UFlareSimulatedSector* RealSector = World->FindSector(CurrentShips.SpawnSector);
+				if (RealSector != NULL)
+				{
+					if (CurrentShips.IsStation == true)
+					{
+						CreateStations(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity, CurrentShips.Level + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+					}
+					else
+					{
+						CreateShips(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity);
+					}
+				}
+			}
+		}
+	}
+
+	/*
 	//for testing
 	CreateShips("ship-carrier", PlayerCompany, FirstLight, 2);
 	CreateShips(ShipInvader, PlayerCompany, FirstLight, 1);

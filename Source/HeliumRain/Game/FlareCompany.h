@@ -167,6 +167,9 @@ public:
 	/** Check if a technology has been unlocked and is used */
 	bool IsTechnologyUnlocked(FName Identifier) const;
 
+	/** Check current technology multiplier bonus */
+	float GetTechnologyBonus(FName Identifier) const;
+	
 	/** Check if a technology can be unlocked */
 	bool IsTechnologyAvailable(FName Identifier, FText& Reason, bool IgnoreCost=false) const;
 
@@ -190,7 +193,12 @@ public:
 
 	bool HasStationTechnologyUnlocked() const;
 
+	bool IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* Description) const;
+
 	bool IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const;
+
+	bool IsPartRestricted(const FFlareSpacecraftComponentDescription* Description, UFlareSimulatedSpacecraft* Ship) const;
+	bool IsPartRestricted(const FFlareSpacecraftComponentDescription* Description, FName Ship) const;
 
 	bool IsTechnologyUnlockedPart(const FFlareSpacecraftComponentDescription* Description) const;
 
@@ -249,6 +257,8 @@ protected:
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
+
+	TMap<FName, float> ResearchBonuses;
 
 public:
 	/*----------------------------------------------------

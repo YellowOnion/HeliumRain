@@ -129,38 +129,76 @@ FFlareSpacecraftComponentDescription* UFlareSpacecraftComponentsCatalog::Get(FNa
 	return Part;
 }
 
-const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany)
+const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, UFlareSimulatedSpacecraft* FilterShip)
 {
 	for (int32 i = 0; i < EngineCatalog.Num(); i++)
 	{
 		FFlareSpacecraftComponentDescription& Candidate = EngineCatalog[i]->Data;
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
 		{
 			OutData.Add(&Candidate);
 		}
 	}
 }
 
-const void UFlareSpacecraftComponentsCatalog::GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany)
+const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, FName FilterShip)
+{
+	for (int32 i = 0; i < EngineCatalog.Num(); i++)
+	{
+		FFlareSpacecraftComponentDescription& Candidate = EngineCatalog[i]->Data;
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		{
+			OutData.Add(&Candidate);
+		}
+	}
+}
+
+const void UFlareSpacecraftComponentsCatalog::GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, UFlareSimulatedSpacecraft* FilterShip)
 {
 	for (int32 i = 0; i < RCSCatalog.Num(); i++)
 	{
 		FFlareSpacecraftComponentDescription& Candidate = RCSCatalog[i]->Data;
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
 		{
 			OutData.Add(&Candidate);
 		}
 	}
 }
 
-const void UFlareSpacecraftComponentsCatalog::GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany)
+const void UFlareSpacecraftComponentsCatalog::GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, FName FilterShip)
+{
+	for (int32 i = 0; i < RCSCatalog.Num(); i++)
+	{
+		FFlareSpacecraftComponentDescription& Candidate = RCSCatalog[i]->Data;
+
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		{
+			OutData.Add(&Candidate);
+		}
+	}
+}
+
+const void UFlareSpacecraftComponentsCatalog::GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, UFlareSimulatedSpacecraft* FilterShip)
 {
 	for (int32 i = 0; i < WeaponCatalog.Num(); i++)
 	{
 		FFlareSpacecraftComponentDescription& Candidate = WeaponCatalog[i]->Data;
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate,FilterShip))))
+		{
+			OutData.Add(&Candidate);
+		}
+	}
+}
+
+const void UFlareSpacecraftComponentsCatalog::GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany, FName FilterShip)
+{
+	for (int32 i = 0; i < WeaponCatalog.Num(); i++)
+	{
+		FFlareSpacecraftComponentDescription& Candidate = WeaponCatalog[i]->Data;
+
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
 		{
 			OutData.Add(&Candidate);
 		}

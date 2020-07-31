@@ -989,7 +989,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	}
 	
 	ReservedResources = 0;
-
 	bool Resources_New = false;
 	bool Resources_Upgrade = false;
 
@@ -1254,7 +1253,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 		CompanyValue TotalValue = Company->GetCompanyValue();
 		float CostSafetyMargin = Behavior->CostSafetyMarginStation;
 
-		if ((StationPrice * CostSafetyMargin) + TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityEconomic < CompanyMoney)
+		if ((StationPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityEconomic) < CompanyMoney)
 		{
 			UFlareSimulatedSpacecraft* BuiltStation = NULL;
 			TArray<FText> Reasons;
@@ -2440,11 +2439,16 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 	{
 		FFlareSpacecraftComponentDescription* BestWeapon = NULL;
 		TArray< FFlareSpacecraftComponentDescription* > PartListData;
-		Catalog->GetWeaponList(PartListData, Ship->GetSize());
+		Catalog->GetWeaponList(PartListData, Ship->GetSize(), Ship->GetCompany(),Ship);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartListData)
 		{
 			if (!Ship->GetCompany()->IsTechnologyUnlockedPart(Part))
+			{
+				continue;
+			}
+
+			if (Ship->GetCompany()->IsPartRestricted(Part, Ship))
 			{
 				continue;
 			}
@@ -2546,7 +2550,7 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 		FFlareSpacecraftComponentDescription* OldPart = Ship->GetCurrentPart(EFlarePartType::RCS, 0);
 		FFlareSpacecraftComponentDescription* BestPart = OldPart;
 		TArray< FFlareSpacecraftComponentDescription* > PartListData;
-		Catalog->GetRCSList(PartListData, Ship->GetSize());
+		Catalog->GetRCSList(PartListData, Ship->GetSize(),Ship->GetCompany(),Ship);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartListData)
 		{
@@ -2577,7 +2581,7 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 		FFlareSpacecraftComponentDescription* OldPart = Ship->GetCurrentPart(EFlarePartType::OrbitalEngine, 0);
 		FFlareSpacecraftComponentDescription* BestPart = OldPart;
 		TArray< FFlareSpacecraftComponentDescription* > PartListData;
-		Catalog->GetEngineList(PartListData, Ship->GetSize());
+		Catalog->GetEngineList(PartListData, Ship->GetSize(),Ship->GetCompany(),Ship);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartListData)
 		{

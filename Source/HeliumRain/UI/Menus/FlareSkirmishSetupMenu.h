@@ -7,7 +7,7 @@
 #include "../Components/FlareListItem.h"
 
 #include "SBackgroundBlur.h"
-
+#include "Engine.h"
 
 struct FFlareCompanyDescription;
 struct FFlareSectorCelestialBodyDescription;

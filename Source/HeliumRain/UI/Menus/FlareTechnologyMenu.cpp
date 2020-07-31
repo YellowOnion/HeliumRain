@@ -268,7 +268,7 @@ void SFlareTechnologyMenu::Enter()
 		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
 		if (TechnologyData->ResearchableCompany.Num() > 0)
 		{
-			//buildable company has something, check if shipyard owning faction is allowed to build this
+			//company array has something, check if faction is allowed to research this
 			if (!TechnologyData->ResearchableCompany.Contains(FName("PLAYER")))
 			{
 				continue;
@@ -278,7 +278,6 @@ void SFlareTechnologyMenu::Enter()
 		{
 			continue;
 		}
-
 		Technologies.Add(&Technology->Data);
 	}
 

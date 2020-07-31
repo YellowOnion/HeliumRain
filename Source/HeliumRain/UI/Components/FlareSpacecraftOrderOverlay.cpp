@@ -272,17 +272,20 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSpacecraft* Shipyard, boo
 					}
 				}
 
-				// Filter by spacecraft size and add
-				if(IsConfig)
+				if (TargetShipyard->GetCompany()->IsTechnologyUnlockedShip(Description))
 				{
-					SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
-				}
-				else
-				{
-					bool LargeSpacecraft = Description->Size >= EFlarePartSize::L;
-					if (IsHeavy == LargeSpacecraft)
+					// Filter by spacecraft size and add
+					if (IsConfig)
 					{
 						SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
+					}
+					else
+					{
+						bool LargeSpacecraft = Description->Size >= EFlarePartSize::L;
+						if (IsHeavy == LargeSpacecraft)
+						{
+							SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
+						}
 					}
 				}
 			}

@@ -493,6 +493,11 @@ public:
 		return Parent->IsStation();
 	}
 
+	bool IsUncapturable() const
+	{
+		return Parent->IsUncapturable();
+	}
+
 	bool IsImmobileStation() const
 	{
 		return Parent->IsImmobileStation();
