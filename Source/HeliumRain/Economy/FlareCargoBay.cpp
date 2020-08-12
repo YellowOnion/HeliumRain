@@ -11,10 +11,13 @@
 
 #include "../Spacecrafts/FlareSimulatedSpacecraft.h"
 
+//#include "../Player/FlarePlayerController.h"
 
 /*----------------------------------------------------
 	Constructor
 ----------------------------------------------------*/
+
+#define LOCTEXT_NAMESPACE "FlareCargoBay"
 
 UFlareCargoBay::UFlareCargoBay(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -151,7 +154,7 @@ TArray<FFlareCargoSave>* UFlareCargoBay::Save()
    Gameplay
 ----------------------------------------------------*/
 
-bool UFlareCargoBay::HasResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client)
+bool UFlareCargoBay::HasResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext,bool IgnoresRestrictionNobody)
 {
 	int32 PresentQuantity = 0;
 
@@ -164,7 +167,7 @@ bool UFlareCargoBay::HasResources(FFlareResourceDescription* Resource, int32 Qua
 	{
 		FFlareCargo* Cargo = &CargoBay[CargoIndex];
 
-		if(!CheckRestriction(Cargo, Client))
+		if(!CheckRestriction(Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 		{
 			continue;
 		}
@@ -181,7 +184,7 @@ bool UFlareCargoBay::HasResources(FFlareResourceDescription* Resource, int32 Qua
 	return false;
 }
 
-int32 UFlareCargoBay::TakeResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client)
+int32 UFlareCargoBay::TakeResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext, bool IgnoresRestrictionNobody)
 {
 	int32 QuantityToTake = Quantity;
 
@@ -200,7 +203,7 @@ int32 UFlareCargoBay::TakeResources(FFlareResourceDescription* Resource, int32 Q
 		FFlareCargo& Cargo = CargoBay[CargoIndex];
 		if (Cargo.Resource == Resource)
 		{
-			if(!CheckRestriction(&Cargo, Client))
+			if(!CheckRestriction(&Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 			{
 				continue;
 			}
@@ -239,7 +242,7 @@ int32 UFlareCargoBay::TakeResources(FFlareResourceDescription* Resource, int32 Q
 		FFlareCargo& Cargo = CargoBay[CargoIndex];
 		if (Cargo.Resource == Resource)
 		{
-			if(!CheckRestriction(&Cargo, Client))
+			if(!CheckRestriction(&Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 			{
 				continue;
 			}
@@ -274,7 +277,7 @@ void UFlareCargoBay::DumpCargo(FFlareCargo* Cargo)
 	}
 }
 
-int32 UFlareCargoBay::GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client)
+int32 UFlareCargoBay::GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext, bool IgnoresRestrictionNobody)
 {
 	int32 QuantityToGive = Quantity;
 
@@ -289,7 +292,7 @@ int32 UFlareCargoBay::GiveResources(FFlareResourceDescription* Resource, int32 Q
 		FFlareCargo& Cargo = CargoBay[CargoIndex];
 		if (Resource == Cargo.Resource)
 		{
-			if(!CheckRestriction(&Cargo, Client))
+			if(!CheckRestriction(&Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 			{
 				continue;
 			}
@@ -316,7 +319,7 @@ int32 UFlareCargoBay::GiveResources(FFlareResourceDescription* Resource, int32 Q
 		FFlareCargo& Cargo = CargoBay[CargoIndex];
 		if (Cargo.Resource == NULL)
 		{
-			if(!CheckRestriction(&Cargo, Client))
+			if(!CheckRestriction(&Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 			{
 				continue;
 			}
@@ -406,18 +409,16 @@ int32 UFlareCargoBay::GetResourceQuantitySimple(FFlareResourceDescription* Resou
 	return Quantity;
 }
 
-int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client) const
+int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client, uint8 CheckRestrictionContext, bool IgnoresRestrictionNobody) const
 {
 	int32 Quantity = 0;
 
 	for (int CargoIndex = 0; CargoIndex < CargoBay.Num() ; CargoIndex++)
 	{
-
-
 		const FFlareCargo& Cargo = CargoBay[CargoIndex];
 		if (Cargo.Resource == Resource)
 		{
-			if(!CheckRestriction(&Cargo, Client))
+			if(!CheckRestriction(&Cargo, Client, CheckRestrictionContext, IgnoresRestrictionNobody))
 			{
 				continue;
 			}
@@ -426,9 +427,9 @@ int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, U
 		}
 	}
 
-	if((Client && !Client->IsPlayerCompany())  && Parent->GetGame()->GetQuestManager() != nullptr)
+	if((Client && !Client->IsPlayerCompany())  && Game->GetQuestManager() != nullptr)
 	{
-		int32 ReservedQuantity = Parent->GetGame()->GetQuestManager()->GetReservedQuantity(Parent, Resource);
+		int32 ReservedQuantity = Game->GetQuestManager()->GetReservedQuantity(Parent, Resource);
 		int32 QuantityAfterReservation = FMath::Max(0, Quantity - ReservedQuantity);
 		return QuantityAfterReservation;
 	}
@@ -436,11 +437,9 @@ int32 UFlareCargoBay::GetResourceQuantity(FFlareResourceDescription* Resource, U
 	{
 		return Quantity;
 	}
-
-
 }
 
-int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly) const
+int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly, uint8 Context, bool IgnoresRestrictionNobody) const
 {
 	int32 Quantity = 0;
 
@@ -448,7 +447,7 @@ int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resourc
 	{
 		const FFlareCargo& Cargo = CargoBay[CargoIndex];
 
-		if(!CheckRestriction(&Cargo, Client))
+		if(!CheckRestriction(&Cargo, Client, Context, IgnoresRestrictionNobody))
 		{
 			continue;
 		}
@@ -469,9 +468,9 @@ int32 UFlareCargoBay::GetFreeSpaceForResource(FFlareResourceDescription* Resourc
 	}
 
 
-	if((!Client || !Client->IsPlayerCompany()) && Parent->GetGame()->GetQuestManager() != nullptr)
+	if((!Client || !Client->IsPlayerCompany()) && Game->GetQuestManager() != nullptr)
 	{
-		int32 ReservedCapacity = Parent->GetGame()->GetQuestManager()->GetReservedCapacity(Parent, Resource);
+		int32 ReservedCapacity = Game->GetQuestManager()->GetReservedCapacity(Parent, Resource);
 		int32 CapacityAfterReservation = FMath::Max(0, Quantity - ReservedCapacity);
 		return CapacityAfterReservation;
 	}
@@ -622,6 +621,60 @@ void UFlareCargoBay::UnlockAll(bool IgnoreManualLock)
 	}
 }
 
+TEnumAsByte<EFlareResourceRestriction::Type> UFlareCargoBay::RotateSlotRestriction(int32 SlotIndex)
+{
+	if (SlotIndex >= CargoBay.Num())
+	{
+		FLOGV("Invalid index %d for rotate slot restriction (cargo bay size: %d)", SlotIndex, CargoBay.Num());
+	}
+
+	if (CargoBay[SlotIndex].Lock == EFlareResourceLock::Output || CargoBay[SlotIndex].Lock == EFlareResourceLock::Input)
+	{
+		if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::Everybody)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::OwnerOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::OwnerOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::Nobody);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::Nobody)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::Everybody);
+		}
+	}
+	else if (CargoBay[SlotIndex].Lock == EFlareResourceLock::Trade)
+		if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::Everybody)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::OwnerOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::OwnerOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::BuyersOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::BuyersOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::BuyersOwnerOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::BuyersOwnerOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::SellersOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::SellersOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::SellersOwnerOnly);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::SellersOwnerOnly)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::Nobody);
+		}
+		else if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::Nobody)
+		{
+			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::Everybody);
+		}
+	return CargoBay[SlotIndex].Restriction;
+}
+
 void UFlareCargoBay::SetSlotRestriction(int32 SlotIndex, EFlareResourceRestriction::Type RestrictionType)
 {
 	if(SlotIndex >= CargoBay.Num())
@@ -629,6 +682,11 @@ void UFlareCargoBay::SetSlotRestriction(int32 SlotIndex, EFlareResourceRestricti
 		FLOGV("Invalid index %d for set slot restriction (cargo bay size: %d)", SlotIndex, CargoBay.Num());
 	}
 	CargoBay[SlotIndex].Restriction = RestrictionType;
+}
+
+TEnumAsByte<EFlareResourceRestriction::Type> UFlareCargoBay::GetRestriction(int32 SlotIndex)
+{
+	return CargoBay[SlotIndex].Restriction;
 }
 
 bool UFlareCargoBay::WantSell(FFlareResourceDescription* Resource, UFlareCompany* Client, bool RequireStock) const
@@ -641,7 +699,7 @@ bool UFlareCargoBay::WantSell(FFlareResourceDescription* Resource, UFlareCompany
 			continue;
 		}
 
-		if (!CheckRestriction(&Cargo, Client))
+		if (!CheckRestriction(&Cargo, Client, 1))
 		{
 			continue;
 		}
@@ -672,7 +730,7 @@ bool UFlareCargoBay::WantBuy(FFlareResourceDescription* Resource, UFlareCompany*
 			continue;
 		}
 
-		if(!CheckRestriction(&Cargo, Client))
+		if(!CheckRestriction(&Cargo, Client, 2))
 		{
 			continue;
 		}
@@ -687,21 +745,34 @@ bool UFlareCargoBay::WantBuy(FFlareResourceDescription* Resource, UFlareCompany*
 	return false;
 }
 
-bool UFlareCargoBay::CheckRestriction(const FFlareCargo* Cargo, UFlareCompany* Client) const
+bool UFlareCargoBay::CheckRestriction(const FFlareCargo* Cargo, UFlareCompany* Client, uint8 Context, bool IgnoresRestrictionNobody) const
 {
 	// Check restrictions
-	if(Cargo->Restriction == EFlareResourceRestriction::Nobody)
+	if(Cargo->Restriction == EFlareResourceRestriction::Nobody && IgnoresRestrictionNobody == false)
 	{
 		// Restricted slot
 		return false;
 	}
 
-	if(Cargo->Restriction == EFlareResourceRestriction::OwnerOnly && Client != Parent->GetCompany())
+	else if (Cargo->Restriction == EFlareResourceRestriction::OwnerOnly && Client != Parent->GetCompany())
 	{
 		// Restricted slot
 		return false;
 	}
 
+	if (Context != 0)
+	{
+		if ((Cargo->Restriction == EFlareResourceRestriction::BuyersOnly || (Cargo->Restriction == EFlareResourceRestriction::BuyersOwnerOnly && Client != Parent->GetCompany())) && Context != 1)
+		{
+			//restricted if not trying to sell to another ship
+			return false;
+		}
+		else if ((Cargo->Restriction == EFlareResourceRestriction::SellersOnly || (Cargo->Restriction == EFlareResourceRestriction::SellersOwnerOnly && Client != Parent->GetCompany())) && Context != 2)
+		{
+			//restricted if not trying to buy from another ship
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -709,3 +780,5 @@ bool UFlareCargoBay::SortBySlotType(const FSortableCargoInfo& A, const FSortable
 {
 	return A.Cargo->Lock > B.Cargo->Lock;
 }
+
+#undef LOCTEXT_NAMESPACE

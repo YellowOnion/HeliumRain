@@ -147,6 +147,16 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 					.WrapTextAt(Theme.ContentWidth)
 				]
 
+				// Complex resource info
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				[
+					SAssignNew(ObjectProductionBreakdown, STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.WrapTextAt(Theme.ContentWidth)
+				]
+
 				// Station complex
 				+ SVerticalBox::Slot()
 				.Padding(Theme.ContentPadding)
@@ -534,6 +544,7 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	LoadTargetSpacecraft();
 
 	// Update lists
+	UpdateProductionBreakdown();
 	UpdateComplexList();
 	UpdateShipyardList();
 	UpdateFactoryList();
@@ -608,6 +619,8 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 void SFlareShipMenu::Exit()
 {
 	ObjectActionMenu->Hide();
+	ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
+
 	PartListData.Empty();
 	PartList->RequestListRefresh();
 	ShipList->Reset();
@@ -657,6 +670,15 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 		if (TargetSpacecraft->GetCompany()->IsPlayerCompany())
 		{
+			if (TargetSpacecraft->IsComplex())
+			{
+				ObjectProductionBreakdown->SetVisibility(EVisibility::Visible);
+			}
+			else
+			{
+				ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
+			}
+
 			if (TargetSpacecraft->IsShipyard())
 			{
 				ExternalOrdersConfigurationButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
@@ -688,6 +710,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		}
 		else
 		{
+			ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
 			ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
 			AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
 			RenameBox->SetVisibility(EVisibility::Collapsed);
@@ -803,6 +826,7 @@ void SFlareShipMenu::LoadPart(FName InternalName)
 
 	// Make the right box visible
 	ObjectActionMenu->Hide();
+	ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
 	ShipList->SetVisibility(EVisibility::Collapsed);
 	OwnedList->SetVisibility(EVisibility::Collapsed);
 	ObjectName->SetVisibility(EVisibility::Collapsed);
@@ -876,6 +900,114 @@ void SFlareShipMenu::UpdatePartList(FFlareSpacecraftComponentDescription* Select
 	}
 
 	LoadPart(SelectItem->Identifier);
+}
+
+void SFlareShipMenu::UpdateProductionBreakdown()
+{
+	if (TargetSpacecraft)
+	{
+		TArray<UFlareFactory*>& Factories = TargetSpacecraft->GetFactories();
+
+		if (TargetSpacecraft->IsComplex())
+		{
+			TMap<FName, uint32> ResourceCosts;
+			int32 DailyProductionCostEstimate = 0;
+			FString ResourcesString;
+
+			bool IsProducing = false;
+			float Efficiency = TargetSpacecraft->GetStationEfficiency();
+			int DurationMalus = FMath::RoundToInt(UFlareFactory::GetProductionMalus(Efficiency));
+			const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+			for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
+			{
+				UFlareFactory* Factory = TargetSpacecraft->GetFactories()[FactoryIndex];
+				if (Factory->IsActive())
+				{
+					uint32 CycleProductionCost = Factory->GetProductionCost();
+					int64 ProductionTime = Factory->GetDescription()->CycleCost.ProductionTime;
+					FText ProductionTimeDisplay = UFlareGameTools::FormatDate(Factory->GetDescription()->CycleCost.ProductionTime, 2);
+
+					DailyProductionCostEstimate += CycleProductionCost / (ProductionTime * DurationMalus);
+					for (int32 ReservedResourceIndex = 0; ReservedResourceIndex < Factory->GetReservedResources().Num(); ReservedResourceIndex++)
+					{
+						FName ResourceIdentifier = Factory->GetReservedResources()[ReservedResourceIndex].ResourceIdentifier;
+						int32 Quantity = Factory->GetReservedResources()[ReservedResourceIndex].Quantity;
+						if (ResourceCosts.Contains(ResourceIdentifier))
+						{
+							ResourceCosts[ResourceIdentifier] -= (Quantity / (ProductionTime * DurationMalus));
+						}
+						else
+						{
+							ResourceCosts.Add(ResourceIdentifier, 0 - (Quantity / (ProductionTime * DurationMalus)));
+						}
+						IsProducing = true;
+					}
+
+					TArray<FFlareFactoryResource> OutputResources = Factory->GetLimitedOutputResources();
+					for (int32 ResourceIndex = 0; ResourceIndex < OutputResources.Num(); ResourceIndex++)
+					{
+						const FFlareFactoryResource* Resource = &OutputResources[ResourceIndex];
+						FName ResourceIdentifier = Resource->Resource->Data.Identifier;
+						if (ResourceCosts.Contains(ResourceIdentifier))
+						{
+							ResourceCosts[ResourceIdentifier] += (Resource->Quantity / (ProductionTime * DurationMalus));
+						}
+						else
+						{
+							ResourceCosts.Add(ResourceIdentifier, (Resource->Quantity / (ProductionTime * DurationMalus)));
+						}
+						IsProducing = true;
+					}
+				}
+
+			}
+
+			FString FormattedNumber;
+			if (DailyProductionCostEstimate > 0)
+			{
+				FormattedNumber = FString::FormatAsNumber(UFlareGameTools::DisplayMoney(DailyProductionCostEstimate));
+				ResourcesString += FString::Printf(TEXT("-%s credits"), *FormattedNumber);
+				IsProducing = true;
+			}
+
+			TArray<FName> Keys;
+			ResourceCosts.GetKeys(Keys);
+			for (int32 CostIndex = 0; CostIndex < Keys.Num(); CostIndex++)
+			{
+				FName CurrentKey = Keys[CostIndex];
+				int32 Quantity = ResourceCosts[CurrentKey];
+				FString FormattedQuantity;
+				if (Quantity > 0)
+				{
+					FormattedQuantity = FString::FormatAsNumber(Quantity);
+				}
+				else
+				{
+					FormattedQuantity = FString::Printf(TEXT("%i"), Quantity); // FString needed here
+				}
+				FFlareResourceDescription* RealResource = MenuManager->GetGame()->GetResourceCatalog()->Get(CurrentKey);
+
+				if (Quantity > 0)
+				{
+					ResourcesString += FString::Printf(TEXT(", +%s %s"), *FormattedQuantity, *RealResource->Name.ToString()); // FString needed here
+				}
+				else
+				{
+					ResourcesString += FString::Printf(TEXT(", %s %s"), *FormattedQuantity, *RealResource->Name.ToString()); // FString needed here
+				}
+			}
+
+			if (IsProducing)
+			{
+				ObjectProductionBreakdown->SetText(FText::Format(LOCTEXT("StationComplexAggregate", "Estimated daily production:\n{0}"),
+				FText::FromString(ResourcesString)));
+			}
+			else
+			{
+				ObjectProductionBreakdown->SetText(FText::FText());
+			}
+		}
+	}
 }
 
 void SFlareShipMenu::UpdateFactoryList()
@@ -1286,7 +1418,7 @@ void SFlareShipMenu::OnScrapComplexElement(UFlareSimulatedSpacecraft* Spacecraft
 
 	if(NotDistributedScrapResources.Num() > 0)
 	{
-		LossesText = FText::Format(LOCTEXT("LooseOnScrap", "\nThere is not enough space in your local stations and ships to store all resources.\n You will loose {0}."),
+		LossesText = FText::Format(LOCTEXT("LooseOnScrap", "\nThere is not enough space in your local stations and ships to store all resources.\n You will lose {0}."),
 					  GenerateResourceList(NotDistributedScrapResources));
 	}
 
@@ -1327,7 +1459,7 @@ void SFlareShipMenu::UpdateShipyardList()
 			FText Duration;
 			if(OrderCompany ==  MenuManager->GetPC()->GetCompany())
 			{
-				Duration = FText::Format(LOCTEXT("ShipInQueueDurationFormat"," for {0} days"), Order.RemainingProductionDuration);
+				Duration = FText::Format(LOCTEXT("ShipInQueueDurationFormat","for {0} days "), Order.RemainingProductionDuration);
 			}
 
 			ShipyardList->AddSlot()
@@ -1343,10 +1475,10 @@ void SFlareShipMenu::UpdateShipyardList()
 				[
 					SNew(STextBlock)
 					.TextStyle(&Theme.TextFont)
-					.Text(FText::Format(LOCTEXT("ShipInProductionFormat", "\u2022 In production{2} : {0} for {1}"),
+					.Text(FText::Format(LOCTEXT("ShipInProductionFormat", "\u2022 In production {0}: {1} for {2}"),
+						Duration,
 						OrderDescription->Name,
-						OrderCompany->GetCompanyName(),
-						Duration))
+						OrderCompany->GetCompanyName()))
 					.WrapTextAt(Theme.ContentWidth)
 				]
 			];

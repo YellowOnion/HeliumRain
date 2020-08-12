@@ -512,6 +512,10 @@ struct FFlareCompanyAIDescription
 	UPROPERTY(EditAnywhere, Category = Company)
 	float PacifismDecrementRate;
 
+	/** When accepting a tribute, reset pacifism to this value. Default 75.*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float PacifismAfterTribute;
+
 	/** When building military ships faction requires (Price*CostSafetyMargin) + (TotalDailyProductionCost*DailyProductionCostSensitivityEconomic) money avilable.  Default: 30*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float DailyProductionCostSensitivityMilitary;

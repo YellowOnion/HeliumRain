@@ -2122,8 +2122,13 @@ UFlareSimulatedSpacecraft* UFlareWorld::FindSpacecraft(FName ShipImmatriculation
 		{
 			return Spacecraft;
 		}
+		Spacecraft = Company->FindSpacecraft(ShipImmatriculation, true);
+		if (Spacecraft)
+		{
+			return Spacecraft;
+		}
 	}
-
+/*
 	// Now check destroyed ships
 	for (UFlareCompany* Company : Companies)
 	{
@@ -2133,7 +2138,7 @@ UFlareSimulatedSpacecraft* UFlareWorld::FindSpacecraft(FName ShipImmatriculation
 			return Spacecraft;
 		}
 	}
-
+*/
 	return NULL;
 }
 

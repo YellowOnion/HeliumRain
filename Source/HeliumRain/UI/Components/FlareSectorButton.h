@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Flare.h"
+#include "../FlareUITypes.h"
 #include "FlareButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SBorder.h"
@@ -101,6 +102,10 @@ protected:
 	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
 	TSharedPtr<SHorizontalBox>     FleetBoxThree;
 	bool							CachedFleets;
+	int32							NeutralShips;
+	int32							NeutralStations;
+	int32							OwnedShips;
+	int32							OwnedStations;
 	int32							EnemyShips;
 	int32							EnemyStations;
 	int32							CurrentCount;

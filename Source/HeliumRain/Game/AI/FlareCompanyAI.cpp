@@ -940,47 +940,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 	bool UnderConstruction = false;
 	bool UnderConstructionUpgrade = false;
-/*
-	for(UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
-	{
-		if(Station->IsUnderConstruction())
-		{
-			if (Station->GetLevel() > 1)
-			{
-				UnderConstructionUpgrade = true;
-			}
-			else if(Station->IsComplex())
-			{
-				for (UFlareSimulatedSpacecraft* Substation : Station->GetComplexChildren())
-				{
-					if (Substation->IsUnderConstruction(true))
-					{
-						if (Substation->GetLevel() > 1)
-						{
-							{
-								UnderConstructionUpgrade = true;
-								break;
-							}
-						}
-						else
-						{
-							UnderConstruction = true;
-						}
-					}
-				}
-				if(!UnderConstructionUpgrade)
-				{
-					UnderConstruction = true;
-				}
-			}
-			else
-			{
-				UnderConstruction = true;
-			}
-		}
-	}
-*/
-//	if (UnderConstruction && UnderConstructionUpgrade)
+
 	if(UnderConstructionStations.Num()>0 && UnderConstructionUpgradeStations.Num() > 0)
 
 	{
@@ -993,14 +953,12 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	bool Resources_Upgrade = false;
 
 	if (UnderConstructionStations.Num() > 0)
-//	if (UnderConstruction)
 	{
 		ReservedResources += 50;
 		UnderConstruction = true;
 	}
 
 	if (UnderConstructionUpgradeStations.Num() > 0)
-//	if (UnderConstructionUpgrade)
 	{
 		ReservedResources += 25;
 		UnderConstructionUpgrade = true;
@@ -1019,7 +977,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	// Loop on sector list
 	TArray<UFlareSimulatedSector*> KnownSectors = Company->GetKnownSectors();
 
-//	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 	while (KnownSectors.Num())
 	{
 		int32 SectorIndex = FMath::RandRange(0, KnownSectors.Num() - 1);
@@ -3930,24 +3887,26 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 			if (MaxVolume > 0)
 			{
 				float OverflowRatio = WorldStats[&Resource->Resource->Data].Balance / MaxVolume;
-/*
-				float UnderflowRatio = WorldStats[&Resource->Resource->Data].Stock / WorldStats[&Resource->Resource->Data].Capacity;
-				if (UnderflowRatio <= 0)
-				{
-					UnderflowRatio = 1;
-				}
-*/
+//				float StockCapacityRatio = WorldStats[&Resource->Resource->Data].Stock / WorldStats[&Resource->Resource->Data].Capacity;
+
+//				FLOGV("    %s", *Resource->Resource->Data.Name.ToString());
 				if (OverflowRatio > 0)
 				{
 					float OverflowMalus = FMath::Clamp(1.f - ((OverflowRatio - 0.1f) * 100) / ResourceAffility, 0.f, 1.f);
 					Score *= OverflowMalus;
-					//FLOGV("    MaxVolume %f", MaxVolume);
-					//FLOGV("    OverflowRatio %f", OverflowRatio);
-					//FLOGV("    OverflowMalus %f", OverflowMalus);
+//					FLOGV("    MaxVolume %f", MaxVolume);
+//					FLOGV("    OverflowRatio %f", OverflowRatio);
+//					FLOGV("    OverflowMalus %f", OverflowMalus);
 				}
-
-//				float UnderflowMalus = FMath::Clamp(UnderflowRatio, 0.f, 1.f);
-//				Score *= 1.f + UnderflowMalus;
+/*
+				if (StockCapacityRatio > 0)
+				{
+					float StockCapacityMalus = FMath::Clamp(1.f - ((StockCapacityRatio - 0.1f) * 100) / ResourceAffility, 0.f, 1.f);
+					Score *= StockCapacityRatio;
+//					FLOGV("    StockCapacityRatio %f", StockCapacityRatio);
+//					FLOGV("    StockCapacityMalus %f", StockCapacityMalus);
+				}
+				*/
 			}
 			else
 			{

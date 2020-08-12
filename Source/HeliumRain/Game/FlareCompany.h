@@ -176,6 +176,9 @@ public:
 	/** Get the current technology cost */
 	int32 GetTechnologyCost(const FFlareTechnologyDescription* Technology) const;
 
+	/** Get the current technology cost */
+	int32 GetTechnologyCostFromID(FName Identifier) const;
+
 	/** Get the current technology level */
 	int32 GetTechnologyLevel() const;
 
@@ -254,6 +257,7 @@ protected:
 
 	TArray<UFlareCompany*>					OtherCompaniesCache;
 	TArray<UFlareSimulatedSpacecraft*>      CompanyCarriers;
+	TMap<FName, UFlareSimulatedSpacecraft*>	CompanySpacecraftsCache;
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;

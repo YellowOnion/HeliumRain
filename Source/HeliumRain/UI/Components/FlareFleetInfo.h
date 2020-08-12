@@ -63,7 +63,7 @@ public:
 	/** Visibility setting for the refill button */
 	bool IsRefillDisabled() const;
 
-	/** Refill all fleets */
+	/** Refill fleet*/
 	void OnRefillClicked();
 
 	/** Get the repair text */

@@ -340,14 +340,38 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 		int32 MaxAffordableQuantity = FMath::Max(0, int32(DestinationSpacecraft->GetCompany()->GetMoney() / ResourcePrice));
 		QuantityToTake = FMath::Min(QuantityToTake, MaxAffordableQuantity);
 	}
-	int32 ResourceCapacity = DestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, SourceSpacecraft->GetCompany());
-	int32 AvailableQuantity = SourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(Resource, DestinationSpacecraft->GetCompany());
+
+	int32 ResourceCapacity;
+	int32 AvailableQuantity;
+
+	if (SourceSpacecraft->GetCompany() == DestinationSpacecraft->GetCompany())
+	{
+		ResourceCapacity = DestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, SourceSpacecraft->GetCompany(),false,0,true);
+		AvailableQuantity = SourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(Resource, DestinationSpacecraft->GetCompany(),0,true);
+	}
+	else
+	{
+		ResourceCapacity = DestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, SourceSpacecraft->GetCompany());
+		AvailableQuantity = SourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(Resource, DestinationSpacecraft->GetCompany());
+	}
 
 	QuantityToTake = FMath::Min(QuantityToTake, ResourceCapacity);
 	QuantityToTake = FMath::Min(QuantityToTake, AvailableQuantity);
 	
-	int32 TakenResources = SourceSpacecraft->GetActiveCargoBay()->TakeResources(Resource, QuantityToTake, DestinationSpacecraft->GetCompany());
-	int32 GivenResources = DestinationSpacecraft->GetActiveCargoBay()->GiveResources(Resource, TakenResources, SourceSpacecraft->GetCompany());
+	int32 TakenResources;
+	int32 GivenResources;
+
+	if (SourceSpacecraft->GetCompany() == DestinationSpacecraft->GetCompany())
+	{
+		TakenResources = SourceSpacecraft->GetActiveCargoBay()->TakeResources(Resource, QuantityToTake, DestinationSpacecraft->GetCompany(),0,true);
+		GivenResources = DestinationSpacecraft->GetActiveCargoBay()->GiveResources(Resource, TakenResources, SourceSpacecraft->GetCompany(),0,true);
+	}
+	else
+	{
+		TakenResources = SourceSpacecraft->GetActiveCargoBay()->TakeResources(Resource, QuantityToTake, DestinationSpacecraft->GetCompany());
+		GivenResources = DestinationSpacecraft->GetActiveCargoBay()->GiveResources(Resource, TakenResources, SourceSpacecraft->GetCompany());
+
+	}
 
 	// Pay
 	if (GivenResources > 0 && SourceSpacecraft->GetCompany() != DestinationSpacecraft->GetCompany())
@@ -757,8 +781,8 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	}
 	else
 	{
-		SectorHelper::GetRepairFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
-		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		GetRepairFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
+		GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
 		ShipsLookingAt = Fleet->GetShips();
 	}
 

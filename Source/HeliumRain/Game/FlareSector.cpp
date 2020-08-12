@@ -156,13 +156,19 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
 		}
 
 		SectorSpacecrafts.Remove(Spacecraft);
+
+		FName SpacecraftImmatriculation = Spacecraft->GetImmatriculation();
+//		if (SectorSpacecraftsCache.Contains(SpacecraftImmatriculation))
+//		{
+		SectorSpacecraftsCache.Remove(SpacecraftImmatriculation);
+//		}
+
 		UFlareCompany* Company = Spacecraft->GetCompany();
 
 		if (CompanyShipsPerCompanyCache.Contains(Company))
 		{
 			CompanyShipsPerCompanyCache[Company].Remove(Spacecraft);
 		}
-
 		if (CompanySpacecraftsPerCompanyCache.Contains(Company))
 		{
 			CompanySpacecraftsPerCompanyCache[Company].Remove(Spacecraft);
@@ -172,6 +178,7 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
 //		Spacecraft->Destroy();
 	}
 }
+
 void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
@@ -190,15 +197,8 @@ void UFlareSector::DestroySector()
 	// Remove spacecrafts from world
 	for (int SpacecraftIndex = 0 ; SpacecraftIndex < SectorSpacecrafts.Num(); SpacecraftIndex++)
 	{
-		if (PlayerShip == SectorSpacecrafts[SpacecraftIndex])
-		{
-//todo: find and cleanup playership variables "properly" so it can use safedestroy too, instead of freezing the game when exiting main menu screen after moving sectors
-			SectorSpacecrafts[SpacecraftIndex]->Destroy();
-		}
-		else
-		{
-			SectorSpacecrafts[SpacecraftIndex]->SafeDestroy();
-		}
+		SectorSpacecrafts[SpacecraftIndex]->FinishAutoPilots();
+		SectorSpacecrafts[SpacecraftIndex]->SafeDestroy();
 	}
 
 	for (int BombIndex = 0 ; BombIndex < SectorBombs.Num(); BombIndex++)
@@ -239,8 +239,8 @@ void UFlareSector::DestroySector()
 	CompanyShipsPerCompanyCache.Empty();
 	CompanySpacecraftsPerCompanyCache.Empty();
 	SectorCachedShells.Empty();
-//	SectorSpacecraftsCache.Empty();
-	IsDestroyingSector = false;
+	SectorSpacecraftsCache.Empty();
+//	IsDestroyingSector = false;
 }
 
 
@@ -311,7 +311,8 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 			SectorShips.Add(Spacecraft);
 		}
 		SectorSpacecrafts.Add(Spacecraft);
-
+		SectorSpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
+	
 		switch (ParentSpacecraft->GetData().SpawnMode)
 		{
 			// Already known to be correct
@@ -827,12 +828,11 @@ TArray<AFlareSpacecraft*> UFlareSector::GetCompanySpacecrafts(UFlareCompany* Com
 
 AFlareSpacecraft* UFlareSector::FindSpacecraft(FName Immatriculation)
 {
-/*
-	if (SectorSpacecraftsCache.Contains(&Immatriculation))
+	if (SectorSpacecraftsCache.Contains(Immatriculation))
 	{
-		return SectorSpacecraftsCache[&Immatriculation];
+		return SectorSpacecraftsCache[Immatriculation];
 	}
-*/
+/*
 	for (int i = 0 ; i < SectorSpacecrafts.Num(); i++)
 	{
 		if (SectorSpacecrafts[i]->GetImmatriculation() == Immatriculation)
@@ -841,6 +841,7 @@ AFlareSpacecraft* UFlareSector::FindSpacecraft(FName Immatriculation)
 			return SectorSpacecrafts[i];
 		}
 	}
+*/
 	return NULL;
 }
 

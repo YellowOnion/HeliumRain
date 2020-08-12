@@ -1269,9 +1269,9 @@ void SFlareTradeMenu::UpdatePrice()
 	{
 		if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionDestinationSpacecraft->GetCompany() != TransactionSourceSpacecraft->GetCompany() && ResourceUnitPrice > 0)
 		{
-			if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany()&& DonationButton->IsActive())
+			if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() && DonationButton->IsActive())
 			{
-					PriceBox->Show(0, MenuManager->GetPC()->GetCompany());
+				PriceBox->Show(0, MenuManager->GetPC()->GetCompany());
 			}
 			else
 			{
@@ -1369,8 +1369,17 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 	{
 		int32 ResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
 		int32 MaxAffordableQuantity =  FMath::Max(int64(0), TransactionDestinationSpacecraft->GetCompany()->GetMoney() / ResourcePrice);
-		int32 ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
+		int32 ResourceMaxQuantity;
+		if (TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany())
+		{
+			ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(),0,true),
+			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false,0,true));
+		}
+		else
+		{
+			ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
 			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
+		}
 
 		// Cases of failure + reason
 		if (!TransactionSourceSpacecraft->CanTradeWith(TransactionDestinationSpacecraft, Reason))
@@ -1444,7 +1453,6 @@ int32 SFlareTradeMenu::GetMaxTransactionAmount() const
 	if(TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany() || MenuManager->GetGame()->GetQuestManager()->IsTradeQuestUseStation(TransactionDestinationSpacecraft, false)
 	|| (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() && DonationButton->IsActive())
 	)
-
 	{
 		MaxAffordableQuantity = INT_MAX;
 	}
@@ -1453,9 +1461,17 @@ int32 SFlareTradeMenu::GetMaxTransactionAmount() const
 		MaxAffordableQuantity = FMath::Max(int64(0), TransactionDestinationSpacecraft->GetCompany()->GetMoney()) / ResourcePrice;
 	}
 
-	int32 ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
-		TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
-
+	int32 ResourceMaxQuantity;
+	if (TransactionDestinationSpacecraft->GetCompany() == TransactionSourceSpacecraft->GetCompany())
+	{
+		ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany(), 0, true),
+			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany(),false, 0, true));
+	}
+	else
+	{
+		ResourceMaxQuantity = FMath::Min(TransactionSourceSpacecraft->GetActiveCargoBay()->GetResourceQuantity(TransactionResource, MenuManager->GetPC()->GetCompany()),
+			TransactionDestinationSpacecraft->GetActiveCargoBay()->GetFreeSpaceForResource(TransactionResource, MenuManager->GetPC()->GetCompany()));
+	}
 	return FMath::Min(MaxAffordableQuantity, ResourceMaxQuantity);
 }
 

@@ -42,7 +42,8 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 			.Transparent(true)
 			.Toggle(true)
 			.Small(true)
-			.Text(LOCTEXT("PermissionButton", "Trade"))
+			.Text(this, &SFlareCargoInfo::GetPermissionButtonText)
+//			.Text(LOCTEXT("PermissionButton", "Trade"))
 			.HelpText(LOCTEXT("PermissionButtonHelp", "Set whether resources in this cargo slot can be traded with other companies"))
 			.OnClicked(this, &SFlareCargoInfo::OnPermissionClicked)
 			.Visibility(this, &SFlareCargoInfo::GetPermissionVisibility)
@@ -118,7 +119,7 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 	}
 	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
 	FCHECK(Cargo);
-	PermissionButton->SetActive(Cargo->Restriction == EFlareResourceRestriction::Everybody);
+	PermissionButton->SetActive(Cargo->Restriction == EFlareResourceRestriction::Everybody || Cargo->Restriction == EFlareResourceRestriction::BuyersOnly || Cargo->Restriction == EFlareResourceRestriction::SellersOnly);
 
 	// Don't intercept clicks if it's not interactive
 	if (!OnClicked.IsBound())
@@ -305,11 +306,51 @@ void SFlareCargoInfo::OnDumpConfirmed()
 	}
 }
 
+FText SFlareCargoInfo::GetPermissionButtonText() const
+{
+	FText ButtonText;
+	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetSpacecraft->GetActiveCargoBay()->GetRestriction(CargoIndex);
+	if (NewSlotRestriction == EFlareResourceRestriction::Everybody || NewSlotRestriction == EFlareResourceRestriction::OwnerOnly)
+	{
+		ButtonText = LOCTEXT("PermissionButtonTrade", "Trade");
+	}
+	else if (NewSlotRestriction == EFlareResourceRestriction::BuyersOnly || NewSlotRestriction == EFlareResourceRestriction::BuyersOwnerOnly)
+	{
+		ButtonText = LOCTEXT("PermissionButtonBuyers", "Sell");
+	}
+	else if (NewSlotRestriction == EFlareResourceRestriction::SellersOnly || NewSlotRestriction == EFlareResourceRestriction::SellersOwnerOnly)
+	{
+		ButtonText = LOCTEXT("PermissionButtonSellers", "Buy");
+	}
+	else if(NewSlotRestriction == EFlareResourceRestriction::Nobody)
+	{
+		ButtonText = LOCTEXT("PermissionButtonTrade", "None");
+	}
+	else
+	{
+		ButtonText = LOCTEXT("PermissionButtonTrade", "");
+	}
+
+	return ButtonText;
+}
+
 void SFlareCargoInfo::OnPermissionClicked()
 {
-	TargetSpacecraft->GetActiveCargoBay()->SetSlotRestriction(
+	TEnumAsByte<EFlareResourceRestriction::Type> NewSlotRestriction = TargetSpacecraft->GetActiveCargoBay()->RotateSlotRestriction(CargoIndex);
+	if(NewSlotRestriction == EFlareResourceRestriction::Everybody || NewSlotRestriction == EFlareResourceRestriction::BuyersOnly || NewSlotRestriction == EFlareResourceRestriction::SellersOnly)
+	{
+		PermissionButton->SetActive(true);
+	}
+	else
+	{
+		PermissionButton->SetActive(false);
+	}
+
+		/*
+TargetSpacecraft->GetActiveCargoBay()->SetSlotRestriction(
 		CargoIndex,
 		PermissionButton->IsActive() ? EFlareResourceRestriction::Everybody : EFlareResourceRestriction::OwnerOnly);
+*/
 }
 
 EVisibility SFlareCargoInfo::GetPermissionVisibility() const

@@ -648,6 +648,17 @@ void AFlareSpacecraft::SafeDestroy()
 	}
 }
 
+void AFlareSpacecraft::FinishAutoPilots()
+{
+	if (NavigationSystem)
+	{
+		if (NavigationSystem->IsAutoPilot())
+		{
+			NavigationSystem->ForceFinishAutoPilots();
+		}
+	}
+}
+
 void AFlareSpacecraft::AddToInsectorSquad(AFlareSpacecraft* Adding)
 {
 	InSectorSquad.AddUnique(Adding);

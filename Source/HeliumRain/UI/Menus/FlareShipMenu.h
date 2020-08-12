@@ -50,6 +50,8 @@ public:
 	/** Update shipyard */
 	void UpdateShipyard();
 
+	/** Update complex production breakdown*/
+	void UpdateProductionBreakdown();
 
 protected:
 
@@ -263,6 +265,7 @@ protected:
 	TSharedPtr<STextBlock>                          ObjectName;
 	TSharedPtr<STextBlock>                          ObjectClassName;
 	TSharedPtr<STextBlock>                          ObjectDescription;
+	TSharedPtr<STextBlock>                          ObjectProductionBreakdown;
 	TSharedPtr<SFlareSpacecraftInfo>                ObjectActionMenu;
 	TSharedPtr<SFlareList>                          ShipList;
 	TSharedPtr<SFlareList>                          OwnedList;

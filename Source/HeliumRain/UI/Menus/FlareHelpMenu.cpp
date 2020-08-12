@@ -1,4 +1,4 @@
-
+ï»¿
 #include "FlareHelpMenu.h"
 #include "../../Flare.h"
 #include "../Components/FlareButton.h"
@@ -201,10 +201,10 @@ Helium Rain does not support Mac OS X or other platforms."))
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("OverviewAboutTeamMain", "\
 Helium Rain was made by:\n\n\
-    \u2022Gwennaël ARBONA 'Stranger' - Art, UI & Game design\n\
-	\u2022Frédéric BERTOLUS 'Niavok' - Gameplay & Game design\n\
+    \u2022GwennaÃ«l ARBONA 'Stranger' - Art, UI & Game design\n\
+	\u2022FrÃ©dÃ©ric BERTOLUS 'Niavok' - Gameplay & Game design\n\
 	\u2022Daisy HERBAUT - Music\n\n\
-We'd also like to thank Jérôme MILLION-ROUSSEAU for the game logo.\n\
+We'd also like to thank JÃ©rÃ´me MILLION-ROUSSEAU for the game logo.\n\
 Some of us are employed by another company on top of their work in this project. This game is our own personal work and is not supported by any of our employers in any way."))
 										]
 									]
@@ -1380,9 +1380,9 @@ Companies are the factions which control the entire environment in Helium Rain. 
 		Physical characteristics\n\n\
 			\u2022Mass : 2.472 - 10 ^ 30 kg\n\
 			\u2022Radius: 739 886 km\n\
-			\u2022Surface : 6.879 - 10 ^ 12 km²\n\
+			\u2022Surface : 6.879 - 10 ^ 12 kmÂ²\n\
 			\u2022Surface temperature : 5916 K\n\
-			\u2022Solar surface power : 69 MW / m²\n\
+			\u2022Solar surface power : 69 MW / mÂ²\n\
 			\u2022Solar power : 4.777 - 10 ^ 26 W"))
 											]
 
@@ -1408,13 +1408,13 @@ Companies are the factions which control the entire environment in Helium Rain. 
 		\u2022Flattening : 0.0316\n\
 		\u2022Equatorial radius : 70 706 km\n\
 		\u2022Polar radius : 68 465 km\n\
-		\u2022Surface gravity : 11.60 m / s²(1.18 g)\n\
-		\u2022Axial tilt : 3.886 °\n\
+		\u2022Surface gravity : 11.60 m / sÂ²(1.18 g)\n\
+		\u2022Axial tilt : 3.886 Â°\n\
 		\u2022Sidereal rotation period : 26 h 50 min 33 s\n\
-		\u2022Volume : 1.411 - 10 ^ 24 m³\n\
-		\u2022Mean density : 596.635 kg / m³\n\
+		\u2022Volume : 1.411 - 10 ^ 24 mÂ³\n\
+		\u2022Mean density : 596.635 kg / mÂ³\n\
 		\u2022Albedo : 0.313\n\
-		\u2022Solar constant : 3.094 KW / m²\n\n\
+		\u2022Solar constant : 3.094 KW / mÂ²\n\n\
 	Orbital characteristics\n\n\
 		\u2022Orbital period : 207.95 days\n\
 		\u2022Semi - major axis : 110 491 584 km\n\

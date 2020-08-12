@@ -905,9 +905,17 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 				CompanyShips.AddUnique((Spacecraft));
 			}
 
-			if(!Spacecraft->IsComplexElement())
+			if (!Spacecraft->IsComplexElement())
 			{
 				CompanySpacecrafts.AddUnique((Spacecraft));
+				if (CompanySpacecraftsCache.Contains(Spacecraft->GetImmatriculation()))
+				{
+					CompanySpacecraftsCache[Spacecraft->GetImmatriculation()]=Spacecraft;
+				}
+				else
+				{
+					CompanySpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
+				}
 			}
 		}
 	}
@@ -939,6 +947,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 
 	Spacecraft->ResetCapture();
 
+	CompanySpacecraftsCache.Remove(Spacecraft->GetImmatriculation());
 	CompanySpacecrafts.Remove(Spacecraft);
 	CompanyStations.Remove(Spacecraft);
 	CompanyChildStations.Remove(Spacecraft);
@@ -1200,8 +1209,9 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 	// The enemies are people at war with me, the reference company if provide, people than want war with me but are not allied
 	// The allies are all the people at war the reference company or that want war with Reference company
 
-	Allies.Empty();
+	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
 
+	Allies.Empty();
 	// Find allies
 	for (UFlareCompany* CompanyCandidate : TargetCompany->GetOtherCompanies())
 	{
@@ -1209,8 +1219,6 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 		{
 			continue;
 		}
-		UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
-
 
 		if (CompanyCandidate == this)
 		{
@@ -1238,8 +1246,6 @@ float UFlareCompany::GetConfidenceLevel(UFlareCompany* TargetCompany, TArray<UFl
 	}
 
 	TArray<UFlareCompany*> Enemies;
-	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
-
 
 	// Find enemies
 	for (UFlareCompany* OtherCompany : GetOtherCompanies())
@@ -1630,11 +1636,14 @@ void UFlareCompany::PayTribute(UFlareCompany* Company, bool AllowDepts)
 		Company->GiveMoney(Cost, FFlareTransactionLogEntry::LogReceiveTribute(this));
 
 		// Reset pacifism
-		GetAI()->GetData()->Pacifism = FMath::Max(50.f, GetAI()->GetData()->Pacifism);
-		Company->GetAI()->GetData()->Pacifism = FMath::Max(50.f, Company->GetAI()->GetData()->Pacifism);
-
-
+		GetAI()->GetData()->Pacifism = FMath::Max(GetAI()->GetBehavior()->PacifismAfterTribute, GetAI()->GetData()->Pacifism);
+		Company->GetAI()->GetData()->Pacifism = FMath::Max(Company->GetAI()->GetBehavior()->PacifismAfterTribute, Company->GetAI()->GetData()->Pacifism);
 		// Reset hostilities
+
+		if (this == Company->GetGame()->GetPC()->GetCompany())
+		{
+			Company->GivePlayerReputation(1);
+		}
 		SetHostilityTo(Company, false);
 		Company->SetHostilityTo(this, false);
 
@@ -2027,6 +2036,22 @@ int32 UFlareCompany::GetTechnologyCost(const FFlareTechnologyDescription* Techno
 	return 20 * Technology->Level * CompanyData.ResearchRatio;
 }
 
+int32 UFlareCompany::GetTechnologyCostFromID(const FName Identifier) const
+{
+	FFlareTechnologyDescription* Technology = GetGame()->GetTechnologyCatalog()->Get(Identifier);
+	FText Unused;
+
+	if (Identifier != NAME_None && Technology)
+	{
+		if (Technology->ResearchCost)
+		{
+			return Technology->ResearchCost * Technology->Level * CompanyData.ResearchRatio;
+		}
+		return 20 * Technology->Level * CompanyData.ResearchRatio;
+	}
+	return 0;
+}
+
 float UFlareCompany::GetTechnologyBonus(FName Identifier) const
 {
 	if (ResearchBonuses.Contains(Identifier))
@@ -2335,6 +2360,22 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 
 UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculation, bool Destroyed)
 {
+	if (CompanySpacecraftsCache.Contains(ShipImmatriculation))
+	{
+		return CompanySpacecraftsCache[ShipImmatriculation];
+	}
+
+	if (Destroyed)
+	{
+		for (UFlareSimulatedSpacecraft* Spacecraft : CompanyDestroyedSpacecrafts)
+		{
+			if (Spacecraft->GetImmatriculation() == ShipImmatriculation)
+			{
+				return Spacecraft;
+			}
+		}
+	}
+/*
 	if(!Destroyed )
 	{
 		for (UFlareSimulatedSpacecraft* Spacecraft : CompanySpacecrafts)
@@ -2355,7 +2396,7 @@ UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculati
 			}
 		}
 	}
-
+*/
 	return NULL;
 }
 

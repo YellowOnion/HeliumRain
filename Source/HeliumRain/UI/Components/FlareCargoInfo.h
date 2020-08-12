@@ -52,6 +52,9 @@ protected:
 	/** Get the resource small name */
 	FText GetResourceAcronym() const;
 
+	/** Get the text for the "Trade""Buyers" etc button*/
+	FText GetPermissionButtonText() const;
+
 	/** Get the quantity text */
 	FText GetResourceQuantity() const;
 

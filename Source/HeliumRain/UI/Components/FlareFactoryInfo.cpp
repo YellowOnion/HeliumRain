@@ -7,6 +7,8 @@
 #include "../../Economy/FlareFactory.h"
 #include "../../Economy/FlareCargoBay.h"
 #include "../../Data/FlareSpacecraftCatalog.h"
+#include "../../UI/Menus/FlareShipMenu.h"
+
 #include "../FlareUITypes.h"
 #include "FlareButton.h"
 
@@ -381,6 +383,7 @@ void SFlareFactoryInfo::OnStartProduction()
 	TargetFactory->Start();
 	UpdateFactoryLimits();
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->InfoSound);
+	RefreshShipMenu();
 }
 
 void SFlareFactoryInfo::OnStopProduction()
@@ -389,6 +392,15 @@ void SFlareFactoryInfo::OnStopProduction()
 	TargetFactory->Stop();
 	UpdateFactoryLimits();
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->NegativeClickSound);
+	RefreshShipMenu();
+}
+
+void SFlareFactoryInfo::RefreshShipMenu()
+{
+	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Station)
+	{
+		MenuManager->GetShipMenu()->UpdateProductionBreakdown();
+	}
 }
 
 void SFlareFactoryInfo::OnDecreaseOutputLimit(FFlareResourceDescription* Resource)

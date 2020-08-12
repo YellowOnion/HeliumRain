@@ -12,6 +12,8 @@
 #include "../../Game/FlareGame.h"
 #include "../../Game/FlareCompany.h"
 #include "../../Game/FlareGameTools.h"
+#include "../../Game/FlareSectorHelper.h"
+#include "../../Game/FlareScenarioTools.h"
 
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlareMenuPawn.h"
@@ -94,9 +96,58 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 				.WidthOverride(Theme.ContentWidth)
 				.HAlign(HAlign_Left)
 				[
-					SAssignNew(ShipList, SFlareList)
-					.MenuManager(MenuManager)
-					.Title(LOCTEXT("Property", "Property"))
+					SNew(SVerticalBox)
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.SmallContentPadding)
+					.HAlign(HAlign_Left)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							// Refill fleets
+							SNew(SFlareButton)
+							.Width(17)
+							.Text(this, &SFlareCompanyMenu::GetRefillText)
+							.HelpText(LOCTEXT("RefillInfoAll", "Refill all assets so that they have the necessary fuel, ammo and resources to fight."))
+							.Icon(FFlareStyleSet::GetIcon("Tank"))
+							.OnClicked(this, &SFlareCompanyMenu::OnRefillClicked)
+							.IsDisabled(this, &SFlareCompanyMenu::IsRefillDisabled)
+						]
+					]
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.SmallContentPadding)
+					.HAlign(HAlign_Left)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							// Repair fleets
+							SNew(SFlareButton)
+							.Width(17)
+							.Text(this, &SFlareCompanyMenu::GetRepairText)
+							.HelpText(LOCTEXT("RepairInfoAll", "Repair all assets"))
+							.Icon(FFlareStyleSet::GetIcon("Repair"))
+							.OnClicked(this, &SFlareCompanyMenu::OnRepairClicked)
+							.IsDisabled(this, &SFlareCompanyMenu::IsRepairDisabled)
+						]
+					]
+			
+					+ SVerticalBox::Slot()
+					.Padding(Theme.TitlePadding)
+					.AutoHeight()
+					[
+						SAssignNew(ShipList, SFlareList)
+						.MenuManager(MenuManager)
+						.Title(LOCTEXT("Property", "Property"))
+					]
 				]
 			]
 
@@ -662,6 +713,239 @@ void SFlareCompanyMenu::Exit()
 /*----------------------------------------------------
 	Content helpers
 ----------------------------------------------------*/
+
+void SFlareCompanyMenu::OnRepairClicked()
+{
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		SectorHelper::RepairFleets(TargetSector, MenuManager->GetPC()->GetCompany());
+	}
+}
+
+FText SFlareCompanyMenu::GetRepairText() const
+{
+	if (IsRepairDisabled())
+	{
+		// No refill needed
+		return LOCTEXT("NoAssetsToRepair", "No assets needs repairing");
+	}
+
+	int32 TotalUsedOwnedFs = 0;
+	int64 TotalUsedNotOwnedFsCost = 0;
+	int64 TotalMaxDuration = 0;
+	FFlareResourceDescription* FleetSupply = Company->GetGame()->GetScenarioTools()->FleetSupply;
+
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+		int32 NeededFS;
+		int32 TotalNeededFS;
+		int64 MaxDuration = 0;
+
+		SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+		TotalUsedOwnedFs += UsedOwnedFs;
+		TotalUsedNotOwnedFsCost += UsedNotOwnedFsCost;
+		if (UsedOwnedFs > 0 || TotalUsedNotOwnedFsCost > 0)
+		{
+			if (MaxDuration > TotalMaxDuration)
+			{
+				TotalMaxDuration = MaxDuration;
+			}
+		}
+	}
+
+	FText OwnedCostText;
+	FText CostSeparatorText;
+	FText NotOwnedCostText;
+
+	if (TotalUsedOwnedFs > 0)
+	{
+		OwnedCostText = FText::Format(LOCTEXT("RepairOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(TotalUsedOwnedFs));
+	}
+
+	if (TotalUsedNotOwnedFsCost > 0)
+	{
+		NotOwnedCostText = FText::Format(LOCTEXT("RepairNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(TotalUsedNotOwnedFsCost)));
+	}
+
+	if (TotalUsedOwnedFs > 0 && TotalUsedNotOwnedFsCost > 0)
+	{
+		CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+	}
+
+	FText CostText = FText::Format(LOCTEXT("RepairCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+	return FText::Format(LOCTEXT("RepairOkayFormatAll", "Repair all assets ({0}, {1} days)"),
+		CostText,
+		FText::AsNumber(TotalMaxDuration));
+}
+
+bool SFlareCompanyMenu::IsRepairDisabled() const
+{
+	bool ReturnValue = true;
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		if (!TargetSector || TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+		{
+			continue;
+		}
+
+		int32 NeededFS;
+		int32 TotalNeededFS;
+		int64 MaxDuration;
+
+		SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+		if (TotalNeededFS > 0)
+		{
+			// Repair needed
+
+			int32 AvailableFS;
+			int32 OwnedFS;
+			int32 AffordableFS;
+
+			SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+			if (AffordableFS == 0) {
+				continue;
+			}
+
+			// There is somme affordable FS, can repair
+			ReturnValue = false;
+		}
+	}
+	return ReturnValue;
+}
+
+void SFlareCompanyMenu::OnRefillClicked()
+{
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		SectorHelper::RefillFleets(TargetSector, MenuManager->GetPC()->GetCompany());
+	}
+}
+
+FText SFlareCompanyMenu::GetRefillText() const
+{
+	if (IsRefillDisabled())
+	{
+		// No refill needed
+		return LOCTEXT("NoFleetToRefillAll", "No fleet needs refilling");
+	}
+
+	int32 TotalUsedOwnedFs = 0;
+	int64 TotalUsedNotOwnedFsCost = 0;
+	int64 TotalMaxDuration = 0;
+	FFlareResourceDescription* FleetSupply = Company->GetGame()->GetScenarioTools()->FleetSupply;
+
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+
+		int32 AvailableFS;
+		int32 OwnedFS;
+		int32 AffordableFS;
+		int32 NeededFS;
+		int32 TotalNeededFS;
+		int64 MaxDuration = 0;
+
+		SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+		int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+		int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+		int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+
+		int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+		TotalUsedOwnedFs += UsedOwnedFs;
+		TotalUsedNotOwnedFsCost += UsedNotOwnedFsCost;
+		if (UsedOwnedFs > 0 || UsedNotOwnedFsCost > 0)
+		{
+			if (MaxDuration > TotalMaxDuration)
+			{
+				TotalMaxDuration = MaxDuration;
+			}
+		}
+	}
+
+	FText OwnedCostText;
+	FText CostSeparatorText;
+	FText NotOwnedCostText;
+
+	if (TotalUsedOwnedFs > 0)
+	{
+		OwnedCostText = FText::Format(LOCTEXT("RefillOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(TotalUsedOwnedFs));
+	}
+
+	if (TotalUsedNotOwnedFsCost > 0)
+	{
+		NotOwnedCostText = FText::Format(LOCTEXT("RefillNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(TotalUsedNotOwnedFsCost)));
+	}
+
+	if (TotalUsedOwnedFs > 0 && TotalUsedNotOwnedFsCost > 0)
+	{
+		CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+	}
+
+	FText CostText = FText::Format(LOCTEXT("RefillCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+	return FText::Format(LOCTEXT("RefillOkayFormatAll", "Refill all assets ({0}, {1} days)"),
+	CostText,
+	FText::AsNumber(TotalMaxDuration));
+}
+
+bool SFlareCompanyMenu::IsRefillDisabled() const
+{
+	bool ReturnValue = true;
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* TargetSector = Company->GetKnownSectors()[SectorIndex];
+		if (!TargetSector || TargetSector->IsInDangerousBattle(MenuManager->GetPC()->GetCompany()))
+		{
+			continue;
+		}
+
+		int32 NeededFS;
+		int32 TotalNeededFS;
+		int64 MaxDuration;
+
+		SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, MenuManager->GetPC()->GetCompany(), NeededFS, TotalNeededFS, MaxDuration, false);
+
+		if (TotalNeededFS > 0)
+		{
+			// Refill needed
+
+			int32 AvailableFS;
+			int32 OwnedFS;
+			int32 AffordableFS;
+
+			SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+
+			if (AffordableFS == 0)
+			{
+				continue;
+			}
+
+			// There is somme affordable FS, can refill
+			ReturnValue = false;
+		}
+	}
+	return ReturnValue;
+}
 
 void SFlareCompanyMenu::ShowProperty(UFlareCompany* Target)
 {

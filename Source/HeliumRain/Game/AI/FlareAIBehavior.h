@@ -106,6 +106,7 @@ public:
 
 	float PacifismIncrementRate;
 	float PacifismDecrementRate;
+	float PacifismAfterTribute;
 
 	float DailyProductionCostSensitivityMilitary;
 	float DailyProductionCostSensitivityEconomic;

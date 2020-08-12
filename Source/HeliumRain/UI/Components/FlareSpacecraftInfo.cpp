@@ -1088,7 +1088,7 @@ void SFlareSpacecraftInfo::OnScrap()
 
 			if(NotDistributedScrapResources.Num() > 0)
 			{
-				LossesText = FText::Format(LOCTEXT("LooseOnScrap", "\nThere is not enough space in your local stations and ships to store all resources.\n You will loose {0}."),
+				LossesText = FText::Format(LOCTEXT("LooseOnScrap", "\nThere is not enough space in your local stations and ships to store all resources.\n You will lose {0}."),
 							  GenerateResourceList(NotDistributedScrapResources));
 			}
 

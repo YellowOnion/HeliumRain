@@ -6,6 +6,7 @@
 
 
 struct FFlareResourceDescription;
+//class AFlarePlayerController;
 class AFlareGame;
 class UFlareCompany;
 class UFlareSimulatedSpacecraft;
@@ -40,21 +41,25 @@ public:
 	----------------------------------------------------*/
 
 	/* If client is not null, restriction are used*/
-	bool HasResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client);
+	bool HasResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false);
 
 	/* If client is not null, restriction are used*/
-	int32 TakeResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client);
+	int32 TakeResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false);
 
 	void DumpCargo(FFlareCargo* Cargo);
 
 	/* If client is not null, restriction are used*/
-	int32 GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client);
+	int32 GiveResources(FFlareResourceDescription* Resource, int32 Quantity, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false);
 
 	void UnlockAll(bool IgnoreManualLock = true);
 
 	void HideUnlockedSlots();
 
 	bool LockSlot(FFlareResourceDescription* Resource, EFlareResourceLock::Type LockType, bool ManualLock);
+
+	TEnumAsByte<EFlareResourceRestriction::Type> RotateSlotRestriction(int32 SlotIndex);
+
+	TEnumAsByte<EFlareResourceRestriction::Type> GetRestriction(int32 SlotIndex);
 
 	void SetSlotRestriction(int32 SlotIndex, EFlareResourceRestriction::Type RestrictionType);
 
@@ -73,8 +78,9 @@ protected:
 	// Cache
 	int32								       CargoBayCount;
 	int32								       CargoBaySlotCapacity;
-	AFlareGame*                                Game;
 
+public:
+	AFlareGame*                                Game;
 
 public:
 
@@ -93,7 +99,7 @@ public:
 	int32 GetFreeCargoSpace() const;
 
 	/* If client is not null, consider as not identified company*/
-	int32 GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client) const;
+	int32 GetResourceQuantity(FFlareResourceDescription* Resource, UFlareCompany* Client, uint8 CheckRestrictionContext = 0, bool IgnoresRestrictionNobody = false) const;
 
 	/* Quantity only, simple method*/
 	int32 GetResourceQuantitySimple(FFlareResourceDescription* Resource) const;
@@ -101,7 +107,7 @@ public:
 	
 
 	/* If client is not null, consider as not identified company*/
-	int32 GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false) const;
+	int32 GetFreeSpaceForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false, uint8 Context = 2, bool IgnoresRestrictionNobody = false) const;
 
 	int32 GetTotalCapacityForResource(FFlareResourceDescription* Resource, UFlareCompany* Client, bool LockOnly = false) const;
 
@@ -128,7 +134,7 @@ public:
 	/* If client is not null, consider as not identified company*/
 	bool WantBuy(FFlareResourceDescription* Resource, UFlareCompany* Client) const;
 
-	bool CheckRestriction(const FFlareCargo* Cargo, UFlareCompany* Client) const;
+	bool CheckRestriction(const FFlareCargo* Cargo, UFlareCompany* Client, uint8 Context = 0, bool IgnoresRestrictionNobody = false) const;
 
 	static bool SortBySlotType(const FSortableCargoInfo& A, const FSortableCargoInfo& B);
 

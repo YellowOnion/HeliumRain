@@ -93,31 +93,31 @@ void UFlareAIBehavior::Simulate()
 		case 0: // Normal
 			PirateRepLoss = -0.5f;
 			RepLossDevisor = 30.f;
-			PlayerExcessiveMoneyRepLoss = -0.75f;
+			PlayerExcessiveMoneyRepLoss = -0.50f;
 			PlayerExcessiveMoneyRatioRequirement = 0.95f;
 			break;
 		case 1: // Hard
 			PirateRepLoss = -0.75f;
 			RepLossDevisor = 25.f;
-			PlayerExcessiveMoneyRepLoss = -1.25f;
+			PlayerExcessiveMoneyRepLoss = -0.75f;
 			PlayerExcessiveMoneyRatioRequirement = 0.90f;
 			break;
 		case 2: // Very Hard
 			PirateRepLoss = -1.00f;
 			RepLossDevisor = 20.f;
-			PlayerExcessiveMoneyRepLoss = -1.50f;
+			PlayerExcessiveMoneyRepLoss = -1.0f;
 			PlayerExcessiveMoneyRatioRequirement = 0.85f;
 			break;
 		case 3: // Expert
 			PirateRepLoss = -1.50f;
 			RepLossDevisor = 10.f;
-			PlayerExcessiveMoneyRepLoss = -1.75f;
+			PlayerExcessiveMoneyRepLoss = -1.25f;
 			PlayerExcessiveMoneyRatioRequirement = 0.80f;
 			break;
 		case 4: // Unfair
 			PirateRepLoss = -2.00f;
 			RepLossDevisor = 5.f;
-			PlayerExcessiveMoneyRepLoss = -2.0f;
+			PlayerExcessiveMoneyRepLoss = -1.50f;
 			PlayerExcessiveMoneyRatioRequirement = 0.75f;
 			break;
 	}
@@ -431,6 +431,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	ArmySize = 5.0;
 	DiplomaticReactivity = 1;
 
+	PacifismAfterTribute = 75;
 	PacifismIncrementRate = 0.8;
 	PacifismDecrementRate = 0.6;
 
@@ -517,6 +518,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BudgetStationWeight = 0.1;
 		BudgetTradeWeight = 0.1;
 
+		PacifismAfterTribute = 50;
 		PacifismIncrementRate = 1.f;
 		PacifismDecrementRate = 0.8f;
 
@@ -536,19 +538,19 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	else if((Company && Company == ST->GhostWorksShipyards) || (CompanyDescription && CompanyDescription->ShortName == FName("GWS")))
 	{
 		// Loves Hela and doesn't like Nema
-		ShipyardAffility = 5.0;
+		ShipyardAffility = 6.0;
 
 		if (!Basic)
 		{
 			SetSectorAffilitiesByMoon(ST->Nema, 0.5f);
 			SetSectorAffilitiesByMoon(ST->Hela, 6.f);
-			SetResourceAffility(ST->Steel, 1.5f);
+			SetResourceAffility(ST->Steel, 2.f);
 			SetResourceAffility(ST->Plastics, 1.5f);
 			SetResourceAffility(ST->Tools, 1.25f);
 		}
 		else
 		{
-			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 1.5f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 2.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("plastics"), 1.5f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 1.25f);
 		}
@@ -612,13 +614,13 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		{
 			SetSectorAffilitiesByMoon(ST->Anka, 6.f);
 			SetSectorAffility(ST->Outpost, 10.f);
-			SetResourceAffility(ST->Steel, 11.f);
+			SetResourceAffility(ST->Steel, 15.f);
 			SetResourceAffility(ST->Tools, 10.f);
 			SetResourceAffility(ST->Tech, 5.f);
 		}
 		else
 		{
-			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 11.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 15.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 10.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
 		}
@@ -710,14 +712,14 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		{
 			SetSectorAffilitiesByMoon(ST->Nema, 5.f);
 			SetResourceAffility(ST->FleetSupply, 2.f);
-			SetResourceAffility(ST->Steel, 6.f);
+			SetResourceAffility(ST->Steel, 7.f);
 			SetResourceAffility(ST->Tools, 5.f);
 			SetResourceAffility(ST->Tech, 5.f);
 		}
 		else
 		{
 			SetResourceAffility(Game->GetResourceCatalog()->Get("fleet-supply"), 2.f);
-			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 6.f);
+			SetResourceAffility(Game->GetResourceCatalog()->Get("steel"), 7.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 5.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
 		}
@@ -788,7 +790,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildMilitaryDiversity = 2;
 		BuildMilitaryDiversitySize = 4;
 		BuildMilitaryDiversitySizeBase = 0;
-
+		PacifismAfterTribute = 50;
 		BuildEfficientMilitaryChance = 0.10;
 		BuildEfficientMilitaryChanceSmall = 0.15;
 		ResearchOrder.Reserve(4);
@@ -945,6 +947,12 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		{
 			PacifismIncrementRate = CompanyDescription->AI_Behaviours.PacifismIncrementRate;
 		}
+
+		if (CompanyDescription->AI_Behaviours.PacifismAfterTribute)
+		{
+			PacifismAfterTribute = CompanyDescription->AI_Behaviours.PacifismAfterTribute;
+		}	
+
 		if (CompanyDescription->AI_Behaviours.PacifismDecrementRate)
 		{
 			PacifismDecrementRate = CompanyDescription->AI_Behaviours.PacifismDecrementRate;

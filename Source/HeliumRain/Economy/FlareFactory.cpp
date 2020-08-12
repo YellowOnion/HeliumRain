@@ -98,8 +98,8 @@ void UFlareFactory::Simulate()
 		DoProduction();
 
 	}
-	TryBeginProduction();
 
+	TryBeginProduction();
 	if (GetProductionTime(GetCycleData()) == 0  && HasCostReserved())
 	{
 		DoProduction();
@@ -274,7 +274,7 @@ bool UFlareFactory::HasInputResources()
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
-		if (!Parent->GetActiveCargoBay()->HasResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany()))
+		if (!Parent->GetActiveCargoBay()->HasResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
 		{
 			return false;
 		}
@@ -291,7 +291,7 @@ bool UFlareFactory::HasOutputFreeSpace()
 	// First, fill already existing locked slots
 	for (int32 CargoIndex = 0 ; CargoIndex < CargoBay->GetSlotCount() ; CargoIndex++)
 	{
-		if(!CargoBay->CheckRestriction(CargoBay->GetSlot(CargoIndex), Parent->GetCompany()))
+		if(!CargoBay->CheckRestriction(CargoBay->GetSlot(CargoIndex), Parent->GetCompany(),0,true))
 		{
 			continue;
 		}
@@ -362,13 +362,11 @@ void UFlareFactory::BeginProduction()
 		return;
 	}
 
-
 	// Consume input resources
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
 		FFlareCargoSave* AlreadyReservedCargo = NULL;
-
 
 		// Check in reserved resources
 		for (int32 ReservedResourceIndex = 0; ReservedResourceIndex < FactoryData.ResourceReserved.Num(); ReservedResourceIndex++)
@@ -392,7 +390,8 @@ void UFlareFactory::BeginProduction()
 			continue;
 		}
 
-		if (Parent->GetActiveCargoBay()->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany()) < Resource->Quantity)
+		// < Resource->Quantity
+		if (Parent->GetActiveCargoBay()->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
 		{
 			FLOGV("Fail to take %d resource '%s' to %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString());
 		}
@@ -423,7 +422,7 @@ void UFlareFactory::CancelProduction()
 	{
 		FFlareResourceDescription*Resource = Game->GetResourceCatalog()->Get(FactoryData.ResourceReserved[ReservedResourceIndex].ResourceIdentifier);
 
-		int32 GivenQuantity = Parent->GetActiveCargoBay()->GiveResources(Resource, FactoryData.ResourceReserved[ReservedResourceIndex].Quantity, Parent->GetCompany());
+		int32 GivenQuantity = Parent->GetActiveCargoBay()->GiveResources(Resource, FactoryData.ResourceReserved[ReservedResourceIndex].Quantity, Parent->GetCompany(),0,true);
 
 		if (GivenQuantity >= FactoryData.ResourceReserved[ReservedResourceIndex].Quantity)
 		{
@@ -481,7 +480,7 @@ void UFlareFactory::DoProduction()
 	for (int32 ResourceIndex = 0 ; ResourceIndex < OutputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &OutputResources[ResourceIndex];
-		if (Parent->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany()) < Resource->Quantity)
+		if (Parent->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
 		{
 			FLOGV("Fail to give %d resource '%s' to %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString());
 		}
@@ -838,7 +837,10 @@ uint32 UFlareFactory::GetProductionCost(const FFlareProductionData* Data)
 	FCHECK(CycleData);
 
 	ScaledProductionCost = CycleData->ProductionCost;
-	
+	if (Parent->IsComplexElement())
+	{
+		ScaledProductionCost *= 1.25;
+	}
 	return ScaledProductionCost;
 }
 
@@ -856,7 +858,7 @@ TArray<FFlareFactoryResource> UFlareFactory::GetLimitedOutputResources()
 		int32 MaxCapacity = CargoBay->GetSlotCapacity() * FactoryData.OutputCargoLimit[CargoLimitIndex].Quantity;
 		FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(FactoryData.OutputCargoLimit[CargoLimitIndex].ResourceIdentifier);
 		int32 MaxAddition;
-		int32 CurrentQuantity = CargoBay->GetResourceQuantity(Resource, GetParent()->GetCompany());
+		int32 CurrentQuantity = CargoBay->GetResourceQuantity(Resource, GetParent()->GetCompany(),0,true);
 
 		if (CurrentQuantity >= MaxCapacity)
 		{

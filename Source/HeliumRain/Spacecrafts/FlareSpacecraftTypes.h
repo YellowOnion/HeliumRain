@@ -125,6 +125,10 @@ namespace EFlareResourceRestriction
 	{
 		Everybody, // Everybody can trade with this slot
 		OwnerOnly, // Only the owner can trade with this slot
+		BuyersOnly, // Only potential buyers can trade with this slot
+		BuyersOwnerOnly,  // Only potential owner buyers can trade with this slot
+		SellersOnly, // Only potential sellers can trade with this slot
+		SellersOwnerOnly, // Only potential owner sellers can trade with this slot
 		Nobody, // Nobody can trade with this slot
 	};
 }

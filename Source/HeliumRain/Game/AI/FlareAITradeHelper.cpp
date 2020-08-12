@@ -131,18 +131,29 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 	}
 
 	bool IsFleetStranded = !Fleet->CanTravel();
-	if(IsFleetStranded)
+	bool CheckedRepairing = false;
+	bool IsRepairing = false;
+	if (IsFleetStranded)
 	{
-		AFlarePlayerController* PC = Fleet->GetGame()->GetPC();
-		FFlareMenuParameterData Data;
-		Data.Fleet = Fleet;
-		PC->Notify(LOCTEXT("AutoTradeStranded", "Stranded fleet"),
+		if (!CheckedRepairing)
+		{
+			CheckedRepairing = true;
+			IsRepairing = Fleet->IsRepairing();
+		}
+
+		if (!IsRepairing)
+		{
+			AFlarePlayerController* PC = Fleet->GetGame()->GetPC();
+			FFlareMenuParameterData Data;
+			Data.Fleet = Fleet;
+			PC->Notify(LOCTEXT("AutoTradeStranded", "Stranded fleet"),
 			FText::Format(LOCTEXT("StrandedAutoTradeFormat", "Your fleet {0} is stranded and has limited trading capabilities."), Fleet->GetFleetName()),
 			FName("auto-trade-stranded"),
 			EFlareNotification::NT_Economy,
 			false,
 			EFlareMenu::MENU_Fleet,
 			Data);
+		}
 	}
 
 	TArray<UFlareSimulatedSpacecraft*> ExcludeList;
@@ -156,20 +167,28 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 
 		if(UsableShipCount == 0)
 		{
-			AFlarePlayerController* PC = Fleet->GetGame()->GetPC();
-			FFlareMenuParameterData Data;
-			Data.Fleet = Fleet;
-			PC->Notify(LOCTEXT("NoAutoTradeCapability", "No auto-trading capability"),
-				FText::Format(LOCTEXT("NoAutoTradeCapabilityFormat", "Your fleet {0} doesn't have any trading ship."), Fleet->GetFleetName()),
-				FName("no-auto-trade-capability"),
-				EFlareNotification::NT_Economy,
-				false,
-				EFlareMenu::MENU_Fleet,
-				Data);
+			if (!CheckedRepairing)
+			{
+				CheckedRepairing = true;
+				IsRepairing = Fleet->IsRepairing();
+			}
+
+			if (!IsRepairing)
+			{
+				AFlarePlayerController* PC = Fleet->GetGame()->GetPC();
+				FFlareMenuParameterData Data;
+				Data.Fleet = Fleet;
+				PC->Notify(LOCTEXT("NoAutoTradeCapability", "No auto-trading capability"),
+					FText::Format(LOCTEXT("NoAutoTradeCapabilityFormat", "Your fleet {0} doesn't have any trading ship."), Fleet->GetFleetName()),
+					FName("no-auto-trade-capability"),
+					EFlareNotification::NT_Economy,
+					false,
+					EFlareMenu::MENU_Fleet,
+					Data);
+			}
 			return;
 		}
-
-
+		
 		if(MasterShip == nullptr)
 		{
 			// No deal possible
@@ -1067,7 +1086,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 
 			if(CargoBay->WantSell(Resource, ClientCompany))
 			{
-				Stock = CargoBay->GetResourceQuantity(Resource, ClientCompany);
+				Stock = CargoBay->GetResourceQuantity(Resource, ClientCompany,1);
 
 
 				if (Company != Station->GetCompany() && Station->HasCapability(EFlareSpacecraftCapability::Maintenance) && Resource == Sector->GetGame()->GetScenarioTools()->FleetSupply)
@@ -1094,19 +1113,21 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 #endif
 			}
 
-			if (!IsConstruction && Station->HasCapability(EFlareSpacecraftCapability::Storage))
+			if (!IsConstruction)
 			{
-				// Don't buy to hub
-				Capacity = 0;
-			}
-
-			if (!IsConstruction && Station->IsComplex())
-			{
-				if(Station->GetActiveCargoBay()->WantBuy(Resource, ClientCompany) && Station->GetActiveCargoBay()->WantSell(Resource, ClientCompany))
+				if (Station->HasCapability(EFlareSpacecraftCapability::Storage))
 				{
-					int32 TotalCapacity = CargoBay->GetTotalCapacityForResource(Resource, ClientCompany);
-					Capacity = FMath::Max(0, Capacity - TotalCapacity / 2);
-					Stock = FMath::Max(0, Stock - TotalCapacity / 2);
+					// Don't buy to hub
+					Capacity = 0;
+				}
+				if (Station->IsComplex())
+				{
+					if (Station->GetActiveCargoBay()->WantBuy(Resource, ClientCompany) && Station->GetActiveCargoBay()->WantSell(Resource, ClientCompany))
+					{
+						int32 TotalCapacity = CargoBay->GetTotalCapacityForResource(Resource, ClientCompany);
+							Capacity = FMath::Max(0, Capacity - TotalCapacity / 2);
+							Stock = FMath::Max(0, Stock - TotalCapacity / 2);
+					}
 				}
 			}
 
@@ -1673,7 +1694,8 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 			for(UFlareResourceCatalogEntry* ResourceEntry : World->GetGame()->GetResourceCatalog()->Resources)
 			{
 				FFlareResourceDescription* Resource = &ResourceEntry->Data;
-				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, nullptr);
+				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
+//				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, nullptr);
 				if(Quantity > 0)
 				{
 					bool Traveling = Ship->GetCurrentFleet()->IsTraveling();

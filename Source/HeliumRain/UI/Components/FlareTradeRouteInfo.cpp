@@ -45,15 +45,48 @@ void SFlareTradeRouteInfo::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(Theme.ContentPadding)
-			.HAlign(HAlign_Left)
 			[
-				SNew(SFlareButton)
-				.Width(9)
-				.Text(LOCTEXT("NewTradeRouteButton", "Add new trade route"))
-				.HelpText(LOCTEXT("NewTradeRouteInfo", "Create a new trade route and edit it. You need an available fleet to create a new trade route."))
-				.Icon(FFlareStyleSet::GetIcon("New"))
-				.OnClicked(this, &SFlareTradeRouteInfo::OnNewTradeRouteClicked)
-				.IsDisabled(this, &SFlareTradeRouteInfo::IsNewTradeRouteDisabled)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SFlareButton)
+					.Width(9)
+					.Text(LOCTEXT("NewTradeRouteButton", "Add new trade route"))
+					.HelpText(LOCTEXT("NewTradeRouteInfo", "Create a new trade route and edit it. You need an available fleet to create a new trade route."))
+					.Icon(FFlareStyleSet::GetIcon("New"))
+					.OnClicked(this, &SFlareTradeRouteInfo::OnNewTradeRouteClicked)
+					.IsDisabled(this, &SFlareTradeRouteInfo::IsNewTradeRouteDisabled)
+				]
+			]
+
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SFlareButton)
+					.Width(4.5)
+					.Text(LOCTEXT("PauseTradeRouteButton", "Pause trade routes"))
+					.HelpText(LOCTEXT("PauseTradeRouteInfo", "Pause all currently active trade routes"))
+					.Icon(FFlareStyleSet::GetIcon("Pause"))
+					.OnClicked(this, &SFlareTradeRouteInfo::OnPauseTradeRoutes)
+					.IsDisabled(this, &SFlareTradeRouteInfo::IsPauseTradeRoutesDisabled)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SFlareButton)
+					.Width(4.5)
+					.Text(LOCTEXT("UnpauseTradeRouteButton", "Unpause trade routes"))
+					.HelpText(LOCTEXT("UnpauseTradeRouteInfo", "Unpause all currently inactive trade routes"))
+					.Icon(FFlareStyleSet::GetIcon("Load"))
+					.OnClicked(this, &SFlareTradeRouteInfo::OnUnpauseTradeRoutes)
+					.IsDisabled(this, &SFlareTradeRouteInfo::IsPauseTradeRoutesDisabled)
+				]
 			]
 
 			// Trade route list
@@ -258,6 +291,13 @@ FText SFlareTradeRouteInfo::GetDetailText(UFlareTradeRoute* TradeRoute) const
 	}
 }
 
+
+bool SFlareTradeRouteInfo::IsPauseTradeRoutesDisabled() const
+{
+	int32 TradeRouteCount = MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes().Num();
+	return (TradeRouteCount == 0);
+}
+
 bool SFlareTradeRouteInfo::IsNewTradeRouteDisabled() const
 {
 	int32 FleetCount = 0;
@@ -304,6 +344,37 @@ void SFlareTradeRouteInfo::OnDeleteTradeRouteConfirmed(UFlareTradeRoute* TradeRo
 	TradeRoute->Dissolve();
 	Update();
 }
+
+void SFlareTradeRouteInfo::OnPauseTradeRoutes()
+{
+	MenuManager->Confirm(LOCTEXT("AreYouSure", "ARE YOU SURE ?"),
+		LOCTEXT("ConfirmPauseTRS", "Do you really want to pause all trade routes ?"),
+		FSimpleDelegate::CreateSP(this, &SFlareTradeRouteInfo::OnPauseTradeRoutesConfirmed));
+}
+
+void SFlareTradeRouteInfo::OnPauseTradeRoutesConfirmed()
+{
+	for (UFlareTradeRoute* TradeRoute : MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes())
+	{
+		TradeRoute->SetPaused(true);
+	}
+}
+
+void SFlareTradeRouteInfo::OnUnpauseTradeRoutes()
+{
+	MenuManager->Confirm(LOCTEXT("AreYouSure", "ARE YOU SURE ?"),
+		LOCTEXT("ConfirmUnpauseTRS", "Do you really want to unpause all trade routes ?"),
+		FSimpleDelegate::CreateSP(this, &SFlareTradeRouteInfo::OnUnpauseTradeRoutesConfirmed));
+}
+
+void SFlareTradeRouteInfo::OnUnpauseTradeRoutesConfirmed()
+{
+	for (UFlareTradeRoute* TradeRoute : MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes())
+	{
+		TradeRoute->SetPaused(false);
+	}
+}
+
 
 FText SFlareTradeRouteInfo::GetTradeRouteName(UFlareTradeRoute* TradeRoute) const
 {

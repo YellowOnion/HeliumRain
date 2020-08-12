@@ -1,7 +1,8 @@
 #pragma once
 
 #include "../../Flare.h"
-
+#include "Widgets/SCompoundWidget.h"
+#include "../FlareUITypes.h"
 
 class UFlareFactory;
 struct FFlareResourceDescription;
@@ -84,6 +85,9 @@ protected:
 
 	/** Stop production */
 	void OnStopProduction();
+
+	/** Refresh ship menu*/
+	void RefreshShipMenu();
 	
 	/** Decrease the output storage limit */
 	void OnDecreaseOutputLimit(FFlareResourceDescription* Resource);

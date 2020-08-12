@@ -108,8 +108,7 @@ protected:
 
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
-//	TMap<FName*, AFlareSpacecraft*> SectorSpacecraftsCache;
-
+	TMap<FName, AFlareSpacecraft*> SectorSpacecraftsCache;
 
 public:
 

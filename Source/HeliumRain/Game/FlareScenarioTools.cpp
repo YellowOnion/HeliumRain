@@ -178,7 +178,15 @@ void UFlareScenarioTools::GenerateFreighterScenario(bool RandomizeStationLocatio
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
 	CreatePlayerShip(FirstLight, "ship-solen");
-	PlayerCompany->GiveResearch(20);
+	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID("auto-docking");
+	if (AutoPilotCost)
+	{
+		PlayerCompany->GiveResearch(AutoPilotCost);
+	}
+	else
+	{
+		PlayerCompany->GiveResearch(20);
+	}
 }
 
 void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, int32 EconomyIndex)
@@ -479,7 +487,8 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateStations(StationHabitation, MiningSyndicate, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, MiningSyndicate, TheDepths, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
-	CreateStations(StationIronMine, MiningSyndicate, MinersHome, 5, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationIronMine, MiningSyndicate, MinersHome, 4, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationIronMine, MiningSyndicate, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationSteelworks, NemaHeavyWorks, MinersHome, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationToolFactory, NemaHeavyWorks, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
@@ -504,7 +513,8 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateTheFarm(StationLevelBonus);
 
 	// Anka HFR factory
-	CreateStations(StationSteelworks, HelixFoundries, TheForge, 4, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationToolFactory, HelixFoundries, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 //	CreateStations(StationHabitation, Sunwatch, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, Sunwatch, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);

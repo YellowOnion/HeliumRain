@@ -153,6 +153,8 @@ public:
 	/** Slower actor destruction*/
 	void SafeDestroy();
 
+	void FinishAutoPilots();
+
 	void FinishSafeDestroy();
 
 	bool IsSafeEither();

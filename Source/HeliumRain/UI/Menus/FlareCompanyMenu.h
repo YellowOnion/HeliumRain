@@ -47,6 +47,22 @@ public:
 		Content helpers
 	----------------------------------------------------*/
 
+	void OnRefillClicked();
+
+	void OnRepairClicked();
+
+	/** Get the repair text */
+	FText GetRepairText() const;
+
+	/** Visibility setting for the repair button */
+	bool IsRepairDisabled() const;
+
+	/** Get the refill text */
+	FText GetRefillText() const;
+
+	/** Visibility setting for the refill button */
+	bool IsRefillDisabled() const;
+
 	/** Show the company property */
 	void ShowProperty(UFlareCompany* Target);
 

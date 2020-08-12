@@ -44,6 +44,8 @@ public:
 	/** Can we add more fleets ? */
 	bool IsNewTradeRouteDisabled() const;
 
+	bool IsPauseTradeRoutesDisabled() const;
+
 	/** Create a new trade route and open trade route menu */
 	void OnNewTradeRouteClicked();
 
@@ -55,6 +57,11 @@ public:
 
 	/** Delete trade route (confirmed) */
 	void OnDeleteTradeRouteConfirmed(UFlareTradeRoute* TradeRoute);
+
+	void OnPauseTradeRoutes();
+	void OnPauseTradeRoutesConfirmed();
+	void OnUnpauseTradeRoutes();
+	void OnUnpauseTradeRoutesConfirmed();
 
 	/** Get the trade route name */
 	FText GetTradeRouteName(UFlareTradeRoute* TradeRoute) const;

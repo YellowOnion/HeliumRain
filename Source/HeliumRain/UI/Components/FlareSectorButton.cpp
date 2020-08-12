@@ -33,6 +33,10 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 	OnClicked = InArgs._OnClicked;
 	Sector = InArgs._Sector;
 	PlayerCompany = InArgs._PlayerCompany;
+	OwnedShips = -1;
+	OwnedStations = -1;
+	NeutralShips = -1;
+	NeutralStations = -1;
 	EnemyShips = -1;
 	EnemyStations = -1;
 	CachedFleets = false;
@@ -105,21 +109,6 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				[
 					SAssignNew(FleetBoxOne, SHorizontalBox)
 				]
-/*
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Center)
-				[
-					SAssignNew(FleetBoxTwo, SHorizontalBox)
-				]
-
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Center)
-				[
-					SAssignNew(FleetBoxThree, SHorizontalBox)
-				]
-*/
 
 			+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -205,9 +194,13 @@ TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 void SFlareSectorButton::ClearCaches()
 {
 	CachedFleets = false;
+	OwnedShips = -1;
+	OwnedStations = -1;
+	NeutralShips = -1;
+	NeutralStations = -1;
 	EnemyStations = -1;
 	EnemyShips = -1;
-//	FLOGV("Clear caches recieved in %s", *Sector->GetSectorName().ToString());
+	//	FLOGV("Clear caches recieved in %s", *Sector->GetSectorName().ToString());
 }
 
 void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
@@ -347,55 +340,71 @@ void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double In
 		}
 		else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 		{
-			UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
-			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
-
-			if (Warcount > 0)
+//			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
+//			if (Warcount > 0)
+			//TODO better way of getting active server comparison?
+			if (EnemyShips == -1 || OwnedShips == -1 || NeutralShips == -1 || ActiveSector)
 			{
-				//TODO better way of getting active server comparison?
-				if (EnemyShips == -1 || ActiveSector)
+				EnemyShips = 0;
+				OwnedShips = 0;
+				NeutralShips = 0;
+
+				TArray<UFlareSimulatedSpacecraft*> TotalShips = Sector->GetSectorShips();
+				int32 TotalSectorShips = TotalShips.Num();
+
+				for (int32 CountIndex = 0; CountIndex < TotalSectorShips; CountIndex++)
 				{
-					EnemyShips = 0;
-					TArray<UFlareSimulatedSpacecraft*> TotalShips = Sector->GetSectorShips();
-					int32 TotalSectorShips = TotalShips.Num();
+					UFlareSimulatedSpacecraft* Ship = TotalShips[CountIndex];
 
-					for (int32 CountIndex = 0; CountIndex < TotalSectorShips; CountIndex++)
+					if (Ship->GetCompany() == PlayerCompany)
 					{
-						UFlareSimulatedSpacecraft* Ship = TotalShips[CountIndex];
-
-						if (Ship->IsHostile(PlayerCompany))
-						{
-							++EnemyShips;
-							continue;
-						}
+						++OwnedShips;
+						continue;
+					}
+					else if (Ship->IsHostile(PlayerCompany))
+					{
+						++EnemyShips;
+						continue;
+					}
+					else
+					{
+						++NeutralShips;
+						continue;
 					}
 				}
-
 			}
 		}
 
 		else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
 		{
-			UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
-			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
-
-			if (Warcount > 0)
+//			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
+//			if (Warcount > 0)
+			//TODO better way of getting active server comparison?
+			if (EnemyStations == -1 || OwnedStations == -1 || NeutralStations == -1 || ActiveSector)
 			{
-				//TODO better way of getting active server comparison?
-				if (EnemyStations == -1 || ActiveSector)
-				{
-					EnemyStations = 0;
-					TArray<UFlareSimulatedSpacecraft*> TotalStations = Sector->GetSectorStations();
-					int32 TotalSectorStations = TotalStations.Num();
+				EnemyStations = 0;
+				OwnedStations = 0;
+				NeutralStations = 0;
+				TArray<UFlareSimulatedSpacecraft*> TotalStations = Sector->GetSectorStations();
+				int32 TotalSectorStations = TotalStations.Num();
 
-					for (int32 CountIndex = 0; CountIndex < TotalSectorStations; CountIndex++)
+				for (int32 CountIndex = 0; CountIndex < TotalSectorStations; CountIndex++)
+				{
+					UFlareSimulatedSpacecraft* Station = TotalStations[CountIndex];
+					if (Station->GetCompany() == PlayerCompany)
 					{
-						UFlareSimulatedSpacecraft* Station = TotalStations[CountIndex];
-						if (Station->IsHostile(PlayerCompany))
-						{
-							++EnemyStations;
-							continue;
-						}
+						++OwnedStations;
+						continue;
+					}
+					else if (Station->IsHostile(PlayerCompany))
+					{
+						++EnemyStations;
+						continue;
+					}
+					else
+					{
+						++NeutralStations;
+						continue;
 					}
 				}
 			}
@@ -518,94 +527,107 @@ FText SFlareSectorButton::GetSectorText() const
 		if (DisplayMode == EFlareOrbitalMode::Fleets)
 		{
 		}
-		/*
-				else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
-				{
-					SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations");
-					SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorStations().Num()));
-				}
-
-				else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
-				{
-					SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships");
-					SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorShips().Num()));
-				}
-		*/
 
 		else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
 		{
-			AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-			UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
 			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
+			int32 TotalSectorStations = Sector->GetSectorStations().Num();
+			FString DetailedStationString;
+
+			if (OwnedStations > 0)
+			{
+//				DetailedStationString += "\n";
+				FString FormattedNumber = FString::FormatAsNumber(OwnedStations);
+				DetailedStationString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
+			}
+			if (NeutralStations > 0 && NeutralStations != TotalSectorStations)
+			{
+/*
+				if (DetailedStationString.Len() <= 0)
+				{
+					DetailedStationString += "\n";
+				}
+*/
+				FString FormattedNumber = FString::FormatAsNumber(NeutralStations);
+				DetailedStationString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
+			}
 
 			if (Warcount > 0)
+			{
+				if (EnemyStations > 0)
 				{
-//					int32 PlayerStations = 0;
-//					int32 NeutralStations = 0;
+					FString FormattedNumber = FString::FormatAsNumber(EnemyStations);
 /*
-					EnemyStations = 0;
-					TArray<UFlareSimulatedSpacecraft*> TotalStations = Sector->GetSectorStations();
-					int32 TotalSectorStations = TotalStations.Num();
-
-					for (int32 CountIndex = 0; CountIndex < TotalSectorStations; CountIndex++)
-						{
-							UFlareSimulatedSpacecraft* Station = TotalStations[CountIndex];
-/*
-							if (Station->IsHostile(PlayerCompany))
-							{
-								++EnemyStations;
-								continue;
-							}
-						}
-*/
-					if (EnemyStations > 0)
+					if (DetailedStationString.Len() <= 0)
 					{
-						FText EnemyText = FText::Format(LOCTEXT("EnemyInfoFormat", "{0} {1}"),
-						FText::AsNumber(EnemyStations), (EnemyStations == 1 ? LOCTEXT("Enemy", "enemy") : LOCTEXT("Enemies", "enemies")));
-
-						SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station\n{1}") : LOCTEXT("Stations", "{0} stations\n{1}");
-						SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorStations().Num()), EnemyText);
+						DetailedStationString += "\n";
+					}
+*/
+					DetailedStationString += FString::Printf(TEXT(", %s"), *FormattedNumber);
+					if (EnemyStations == 1)
+					{
+						DetailedStationString += FString::Printf(TEXT(" foe"));
 					}
 					else
 					{
-						SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations");
-						SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorStations().Num()), FText::AsNumber(Sector->GetSectorStations().Num()));
+						DetailedStationString += FString::Printf(TEXT(" foes"));
 					}
 				}
-			else
-				{
-					SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations");
-					SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorStations().Num()));
-				}
+			}
+
+			SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations{1}");
+			SectorText = FText::Format(SectorText, FText::AsNumber(TotalSectorStations), FText::FromString(DetailedStationString));
 			}
 
 		else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 		{
-			AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-			UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
 			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
+			int32 TotalSectorShips = Sector->GetSectorShips().Num();
+			FString DetailedShipString;
+
+			if (OwnedShips > 0)
+			{
+//				DetailedShipString += "\n";
+				FString FormattedNumber = FString::FormatAsNumber(OwnedShips);
+				DetailedShipString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
+			}
+
+			if (NeutralShips > 0 && NeutralShips != TotalSectorShips)
+			{
+/*
+				if (DetailedShipString.Len() <= 0)
+				{
+					DetailedShipString += "\n";
+				}
+*/
+				FString FormattedNumber = FString::FormatAsNumber(NeutralShips);
+				DetailedShipString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
+			}
 
 			if (Warcount > 0)
 			{
 				if (EnemyShips > 0)
 				{
-					FText EnemyText = FText::Format(LOCTEXT("EnemyInfoFormat", "{0} {1}"),
-					FText::AsNumber(EnemyShips), (EnemyShips == 1 ? LOCTEXT("Enemy", "enemy") : LOCTEXT("Enemies", "enemies")));
-
-					SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship\n{1}\n{2}") : LOCTEXT("Ships", "{0} ships\n{1}");
-					SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorShips().Num()), EnemyText);
-				}
-				else
-				{
-					SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships");
-					SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorShips().Num()));
+					FString FormattedNumber = FString::FormatAsNumber(EnemyShips);
+/*
+					if (DetailedShipString.Len() <= 0)
+					{
+						DetailedShipString += "\n";
+					}
+*/
+					DetailedShipString += FString::Printf(TEXT(", %s"), *FormattedNumber);
+					if (EnemyShips == 1)
+					{
+						DetailedShipString += FString::Printf(TEXT(" foe"));
+					}
+					else
+					{
+						DetailedShipString += FString::Printf(TEXT(" foes"));
+					}
 				}
 			}
-			else
-			{
-				SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships");
-				SectorText = FText::Format(SectorText, FText::AsNumber(Sector->GetSectorShips().Num()));
-			}
+			SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships{1}");
+			SectorText = FText::Format(SectorText, FText::AsNumber(TotalSectorShips), FText::FromString(DetailedShipString));
 		}
 
 		else if (DisplayMode == EFlareOrbitalMode::Battles)

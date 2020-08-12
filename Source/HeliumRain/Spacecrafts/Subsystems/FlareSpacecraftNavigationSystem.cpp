@@ -471,6 +471,9 @@ AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation()
 {
 	if (IsDocked())
 	{
+		AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->FindSpacecraft(Data->DockedTo);
+		return Station;
+/*
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Spacecraft->GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
@@ -480,6 +483,7 @@ AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation()
 				return Station;
 			}
 		}
+*/
 	}
 	return NULL;
 }
@@ -944,6 +948,33 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	}
 }
 
+
+void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
+{
+	FFlareShipCommandData CurrentCommand;
+	if (CommandData.Peek(CurrentCommand))
+	{
+		if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
+		{
+			AFlareSpacecraft* DockStation = CurrentCommand.ActionTarget;
+			int32 DockId = CurrentCommand.ActionTargetParam;
+/*
+			AFlarePlayerController* PC = Spacecraft->GetPC();
+			FText Formatted = FText::Format(LOCTEXT("Message1", "Navigation system is autopilot {0}"),
+				DockId);
+			PC->Notify(
+				LOCTEXT("Test 1", "Test 2"),
+				Formatted,
+				"upgrade-success1",
+				EFlareNotification::NT_Info);
+*/
+			if (DockStation)
+			{
+				ConfirmDock(DockStation, DockId, false);
+			}
+		}
+	}
+}
 
 void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation, int32 DockId, bool TellUser)
 {
