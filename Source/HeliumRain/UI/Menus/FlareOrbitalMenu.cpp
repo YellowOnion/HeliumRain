@@ -81,7 +81,7 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 				.Padding(Theme.SmallContentPadding)
 				[
 					SNew(SHorizontalBox)
-
+/*
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
@@ -91,7 +91,7 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 					.HelpText(LOCTEXT("ShipyardsInfo", "Display shipyards menu"))
 					.OnClicked(this, &SFlareOrbitalMenu::OnShipyard)
 					]
-
+*/
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[

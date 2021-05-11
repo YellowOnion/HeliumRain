@@ -34,6 +34,7 @@ struct FFlareTradeRouteSectorSave;
 struct FFlareTradeRouteSectorOperationSave;
 struct FFlareCompanySectorKnowledge;
 struct FFlareCompanyAISave;
+struct FFlareCompanyLicensesSave;
 struct FFlareCompanyReputationSave;
 
 struct FFlareSectorSave;
@@ -92,6 +93,7 @@ protected:
 	TSharedRef<FJsonObject> SaveSectorKnowledge(FFlareCompanySectorKnowledge* Data);
 	TSharedRef<FJsonObject> SaveTransactionLogEntry(FFlareTransactionLogEntry* Data);
 	TSharedRef<FJsonObject> SaveCompanyAI(FFlareCompanyAISave* Data);
+	TSharedRef<FJsonObject> SaveCompanyLicenses(FFlareCompanyLicensesSave* Data);
 	TSharedRef<FJsonObject> SaveCompanyReputation(FFlareCompanyReputationSave* Data);
 
 

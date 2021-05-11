@@ -11,6 +11,7 @@
 
 
 class UFlareSimulatedSector;
+//class UFlarePeople;
 class AFlareMenuManager;
 struct FFlareResourceDescription;
 class UFlareResourceCatalogEntry;
@@ -47,6 +48,7 @@ public:
 	void Exit();
 
 	void GenerateSectorList();
+	void GenerateSectorPopList();
 
 
 protected:
@@ -58,8 +60,15 @@ protected:
 	/** Get the current sort icon to use */
 	const FSlateBrush* GetSortIcon(EFlareEconomySort::Type Type) const;
 
+	/** Get the current sort icon to use */
+	const FSlateBrush* GetSortIconPop(EFlareEconomySort::Type Type) const;
+
 	/** Set the current sort type to use */
 	void ToggleSortType(EFlareEconomySort::Type Type);
+
+	/** Set the current sort type to use */
+	void ToggleSortTypePop(EFlareEconomySort::Type Type);
+
 
 	FSlateColor GetPriceColor(UFlareSimulatedSector* Sector) const;
 
@@ -102,6 +111,18 @@ protected:
 	/** Get the resource price info */
 	FText GetResourcePriceInfo(UFlareSimulatedSector* Sector) const;
 
+	/** Get the population quantity info */
+	FText GetPopTotalInfo(UFlareSimulatedSector* Sector) const;
+
+	/** Get the population money info */
+	FText GetPopMoneyInfo(UFlareSimulatedSector* Sector) const;
+
+	/** Get the population wealth info */
+	FText GetPopWealthInfo(UFlareSimulatedSector* Sector) const;
+
+	/** Get the population happiness info */
+	FText GetPopHappinessInfo(UFlareSimulatedSector* Sector) const;
+
 	/** Get the resource price variation info */
 	FText GetResourcePriceVariationInfo(UFlareSimulatedSector* Sector, TSharedPtr<int32> MeanDuration) const;
 
@@ -124,6 +145,10 @@ protected:
 	
 	/** Refresh Station List */
 	void RefreshStationList();
+	bool PassesFilterList(UFlareSimulatedSpacecraft* StationCandidate);
+
+	void RefreshAddRemoveSelectedCompanyButton();
+	void AddRemoveCompanyFilter();
 
 	/** Update filters */
 	void OnToggleShowFlags();
@@ -165,22 +190,31 @@ protected:
 	TWeakObjectPtr<class AFlareMenuManager>         MenuManager;
 	FFlareResourceDescription*                      TargetResource;
 	UFlareCompany*									TargetCompany;
+	TArray<UFlareCompany*>						    TargetCompanies;
+	TSharedPtr<STextBlock>						    SelectedCompaniesText;
+
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 
 	// Slate data
 	TSharedPtr<SVerticalBox>                        SectorList;
+	TSharedPtr<SVerticalBox>                        SectorPopList;
 	TSharedPtr<SFlareDropList<UFlareResourceCatalogEntry*>> ResourceSelector;
+	TSharedPtr<SFlareButton>                        IncludeTravelersButton;
 	TSharedPtr<SFlareButton>                        IncludeTradingHubsButton;
 
 	// Data
 	bool                                            IsCurrentSortDescending;
+	bool                                            IsCurrentPopSortDescending;
 	TEnumAsByte<EFlareEconomySort::Type>            CurrentSortType;
+	TEnumAsByte<EFlareEconomySort::Type>            CurrentSortTypePop;
+	
 
 	TSharedPtr<SFlareDropList<UFlareResourceCatalogEntry*>> StationResourceSelector;
 	TSharedPtr<SFlareDropList<UFlareCompany*>>              StationCompanySelector;
 	TArray<UFlareCompany*>						            CompanyList;
 
 	TArray<UFlareSimulatedSpacecraft*>						  ShipsArray;
+	TArray<UFlareSimulatedSpacecraft*>						  ShipsTravelArray;
 	TArray<UFlareSimulatedSpacecraft*>						  StationsArray;
 	TSharedPtr<SFlareList>									  StationList;
 
@@ -188,11 +222,12 @@ protected:
 	TSharedPtr<SFlareButton>                                  ResourceFiltersButton;
 	TSharedPtr<SFlareButton>                                  CompanyFiltersButton;
 	TSharedPtr<SFlareButton>                                  StorageHubButton;
-	TSharedPtr<SFlareButton>                                  PlayerCompanyToggleButton;
+	TSharedPtr<SFlareButton>                                  ShipyardsFilterButton;
+	TSharedPtr<SFlareButton>                                  AddRemoveSelectedCompany;
 	TSharedPtr<SFlareButton>                                  QuantityButton;
 	TSharedPtr<SFlareButton>                                  DistanceButton;
 	TSharedPtr<SFlareButton>                                  InputOutputButton;
-	bool												      InputOutputMode;
 	TSharedPtr<SFlareButton>                                  StationShipsButton;
+	bool												      InputOutputMode;
 	bool												      StationShipMode;
 };

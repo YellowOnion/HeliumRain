@@ -623,12 +623,26 @@ FText SFlareSectorMenu::GetBuildStationText() const
 	{
 		if (PC && PC->GetCompany()->HasVisitedSector(TargetSector))
 		{
-			int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
-			int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+			if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
+			{
+				//int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
+				int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
+				int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
 
-			return FText::Format(LOCTEXT("BuildStationFormat", "Build station ({0} / {1})"),
-				FText::AsNumber(OwnedStationCount),
-				FText::AsNumber(MaxStationCount));
+				return FText::Format(LOCTEXT("BuildStationFormat", "Build station ({0} / {1})"),
+					FText::AsNumber(OwnedStationCount),
+					FText::AsNumber(MaxStationCount));
+			}
+			else
+			{
+				int64 LicenseCost = PC->GetCompany()->GetStationLicenseCost(TargetSector);
+				return FText::Format(LOCTEXT("BuyStationLicenseFormat", "License ({0})"),
+				FText::AsNumber(UFlareGameTools::DisplayMoney(LicenseCost)));
+			}
+		}
+		else if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
+		{
+			return LOCTEXT("UnlockLicense", "License (?)");
 		}
 		else
 		{
@@ -645,40 +659,47 @@ FText SFlareSectorMenu::GetBuildStationHelpText() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
-	int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
-	int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
+	{
+//		int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
+		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
+		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
 
-
-	if (!PC || !TargetSector)
-	{
-		return FText();
-	}
-	else if (!PC->GetCompany()->HasStationTechnologyUnlocked())
-	{
-		return LOCTEXT("CantBuildStationTechInfo", "You need to unlock station technology first");
-	}
-	else if (TargetSector->IsTravelSector())
-	{
-		return LOCTEXT("CantBuildStationTravelInfo", "Can't build stations during travels");
-	}
-	else if (!PC->GetCompany()->HasVisitedSector(TargetSector))
-	{
-		return LOCTEXT("CantBuildStationUnknownInfo", "Can't build stations in unknown sectors");
-	}
-	else if (OwnedStationCount >= MaxStationCount)
-	{
-		if (PC->GetCompany()->IsTechnologyUnlocked("dense-sectors"))
+		if (!PC || !TargetSector)
 		{
-			return LOCTEXT("CantBuildStationMaxInfo", "This sector is already full");
+			return FText();
+		}
+		else if (!PC->GetCompany()->HasStationTechnologyUnlocked())
+		{
+			return LOCTEXT("CantBuildStationTechInfo", "You need to unlock station technology first");
+		}
+		else if (TargetSector->IsTravelSector())
+		{
+			return LOCTEXT("CantBuildStationTravelInfo", "Can't build stations during travels");
+		}
+		else if (!PC->GetCompany()->HasVisitedSector(TargetSector))
+		{
+			return LOCTEXT("CantBuildStationUnknownInfo", "Can't build stations in unknown sectors");
+		}
+		else if (OwnedStationCount >= MaxStationCount)
+		{
+			if (PC->GetCompany()->IsTechnologyUnlocked("dense-sectors"))
+			{
+				return LOCTEXT("CantBuildStationMaxInfo", "This sector is already full");
+			}
+			else
+			{
+				return LOCTEXT("CantBuildStationNeedDenseInfo", "You need the dense sector technology to build more stations in this sector.");
+			}
 		}
 		else
 		{
-			return LOCTEXT("CantBuildStationNeedDenseInfo", "You need the dense sector technology to build more stations in this sector.");
+			return LOCTEXT("BuildStationInfo", "Build a station in this sector");
 		}
 	}
 	else
 	{
-		return LOCTEXT("BuildStationInfo", "Build a station in this sector");
+		return LOCTEXT("CantBuildStationNoLicenseInfo", "You must purchase the local sector station building license before being able to build new stations or operate owning stations at full efficiency");
 	}
 }
 
@@ -686,21 +707,38 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
-	int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
+//	int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
+	int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
 	int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
-
 
 	if (!PC->GetCompany()->HasStationTechnologyUnlocked())
 	{
 		return true;
 	}
-	else if (TargetSector && PC->GetCompany()->HasVisitedSector(TargetSector) && OwnedStationCount < MaxStationCount)
+
+	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
-		return false;
+		if (TargetSector && PC->GetCompany()->HasVisitedSector(TargetSector) && OwnedStationCount < MaxStationCount)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+
 	}
 	else
 	{
-		return true;
+		int64 LicenseCost = PC->GetCompany()->GetStationLicenseCost(TargetSector);
+		if (PC->GetCompany()->GetMoney() >= LicenseCost)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 }
 
@@ -1486,9 +1524,17 @@ void SFlareSectorMenu::OnStartTravelConfirmed(UFlareFleet* SelectedFleet)
 
 void SFlareSectorMenu::OnBuildStationClicked()
 {
-	FFlareMenuParameterData Data;
-	Data.Sector = TargetSector;
-	MenuManager->OpenSpacecraftOrder(Data, FOrderDelegate::CreateSP(this, &SFlareSectorMenu::OnBuildStationSelected));
+	AFlarePlayerController* PC = MenuManager->GetPC();
+	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
+	{
+		FFlareMenuParameterData Data;
+		Data.Sector = TargetSector;
+		MenuManager->OpenSpacecraftOrder(Data, FOrderDelegate::CreateSP(this, &SFlareSectorMenu::OnBuildStationSelected));
+	}
+	else
+	{
+		PC->GetCompany()->BuyStationLicense(TargetSector);
+	}
 }
 
 void SFlareSectorMenu::OnBuildStationSelected(FFlareSpacecraftDescription* NewStationDescription)

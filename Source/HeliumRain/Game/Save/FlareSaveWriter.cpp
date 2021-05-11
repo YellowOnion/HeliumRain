@@ -70,7 +70,6 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveQuest(FFlareQuestSave* Data)
 	JsonObject->SetBoolField("PlayStory", Data->PlayStory);
 	JsonObject->SetStringField("NextGeneratedQuestIndex", FormatInt64(Data->NextGeneratedQuestIndex));
 
-
 	TArray< TSharedPtr<FJsonValue> > QuestProgresses;
 	QuestProgresses.Reserve(Data->QuestProgresses.Num());
 	for(int i = 0; i < Data->QuestProgresses.Num(); i++)
@@ -204,7 +203,8 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
 
 	JsonObject->SetStringField("Date", FormatInt64(Data->Date));
-
+	JsonObject->SetStringField("EventDate_GlobalWar", FormatInt64(Data->EventDate_GlobalWar));
+	
 	TArray< TSharedPtr<FJsonValue> > Companies;
 	Companies.Reserve(Data->CompanyData.Num());
 	for(int i = 0; i < Data->CompanyData.Num(); i++)
@@ -249,6 +249,8 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetStringField("ResearchAmount", FormatInt32(Data->ResearchAmount));
 	JsonObject->SetStringField("ResearchSpent", FormatInt32(Data->ResearchSpent));
 	JsonObject->SetObjectField("AI", SaveCompanyAI(&Data->AI));
+	JsonObject->SetObjectField("Licenses", SaveCompanyLicenses(&Data->Licenses));
+
 	SaveFloat(JsonObject,"ResearchRatio", Data->ResearchRatio);
 	SaveFloat(JsonObject,"Retaliation", Data->Retaliation);
 
@@ -776,10 +778,28 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompanyAI(FFlareCompanyAISave* Dat
 	JsonObject->SetStringField("BudgetStation", FormatInt64(Data->BudgetStation));
 	JsonObject->SetStringField("BudgetTechnology", FormatInt64(Data->BudgetTechnology));
 	JsonObject->SetStringField("BudgetTrade", FormatInt64(Data->BudgetTrade));
+	JsonObject->SetStringField("DateBoughtLicense", FormatInt64(Data->DateBoughtLicense));
 	SaveFloat(JsonObject,"Caution", Data->Caution);
 	SaveFloat(JsonObject,"Pacifism", Data->Pacifism);
 	JsonObject->SetStringField("ResearchProject", Data->ResearchProject.ToString());
+	JsonObject->SetStringField("DesiredStationLicense", Data->DesiredStationLicense.ToString());
+	JsonObject->SetBoolField("CalculatedDefaultBudget", Data->CalculatedDefaultBudget);
+	return JsonObject;
+}
 
+TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompanyLicenses(FFlareCompanyLicensesSave* Data)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+
+	TArray< TSharedPtr<FJsonValue> > LicenseBuilding;
+	LicenseBuilding.Reserve(Data->LicenseBuilding.Num());
+	for (int i = 0; i < Data->LicenseBuilding.Num(); i++)
+	{
+		LicenseBuilding.Add(MakeShareable(new FJsonValueString(Data->LicenseBuilding[i].ToString())));
+	}
+
+	JsonObject->SetArrayField("LicenseBuilding", LicenseBuilding);
+	JsonObject->SetBoolField("HasRecievedStartingLicenses", Data->HasRecievedStartingLicenses);
 	return JsonObject;
 }
 

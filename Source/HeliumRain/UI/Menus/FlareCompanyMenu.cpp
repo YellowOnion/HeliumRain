@@ -111,6 +111,7 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 							// Refill fleets
 							SNew(SFlareButton)
 							.Width(17)
+							//Todo: Optimize .text and .IsDisabled for this and Repair button, that looping every tick can't be good
 							.Text(this, &SFlareCompanyMenu::GetRefillText)
 							.HelpText(LOCTEXT("RefillInfoAll", "Refill all assets so that they have the necessary fuel, ammo and resources to fight."))
 							.Icon(FFlareStyleSet::GetIcon("Tank"))
@@ -1076,6 +1077,7 @@ void SFlareCompanyMenu::ShowCompanyAccounting(UFlareCompany* Target)
 	CurrentTotal += AddAccountingCategory(EFlareTransactionLogEntry::StationUpgradeFees, Balances, Target, false);
 	CurrentTotal += AddAccountingCategory(EFlareTransactionLogEntry::CancelStationUpgradeFees, Balances, Target, true);
 	CurrentTotal += AddAccountingCategory(EFlareTransactionLogEntry::StationConstructionFees, Balances, Target, false);
+	CurrentTotal += AddAccountingCategory(EFlareTransactionLogEntry::PaidSectorStationLicense, Balances, Target, true);
 	AddAccountingHeader(LOCTEXT("AccountingHeaderStations", "Stations"), CurrentTotal);
 
 	// Ships
@@ -1269,7 +1271,7 @@ void SFlareCompanyMenu::AddTransactionLog(const FFlareTransactionLogEntry& Entry
 					.Width(4)
 					.Text(Sector ? Sector->GetSectorName() : FText())
 					.OnClicked(this, &SFlareCompanyMenu::OnTransactionLogSectorClicked, Sector)
-					.Visibility(Source ? EVisibility::Visible : EVisibility::Hidden)
+					.Visibility(Sector ? EVisibility::Visible : EVisibility::Hidden)
 				]
 			]
 

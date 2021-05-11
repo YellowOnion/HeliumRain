@@ -321,6 +321,8 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>						ShipChildren;
 	TArray<UFlareSimulatedSpacecraft*>						InternallyDocked;
 
+	bool													OwnerHasStationLicense;
+
 public:
 
     /*----------------------------------------------------
@@ -335,6 +337,11 @@ public:
 	inline bool IsActive() const
 	{
 		return ActiveSpacecraft != NULL;
+	}
+
+	inline bool GetOwnerHasStationLicense() const
+	{
+		return OwnerHasStationLicense;
 	}
 
 	inline AFlareSpacecraft* GetActive() const
@@ -467,6 +474,10 @@ public:
 
 	float GetStationEfficiency();
 
+	float GetDamageRatio();
+
+	void SetOwnerHasStationLicense(bool Setting);
+
 	int32 GetEquippedSalvagerCount();
 
 	int32 GetCombatPoints(bool ReduceByDamage);
@@ -490,6 +501,4 @@ public:
 	bool IsLastPlayerShip();
 
 	bool IsResponsible(EFlareDamage::Type DamageType);
-
 };
-

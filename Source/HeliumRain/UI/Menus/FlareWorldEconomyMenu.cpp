@@ -30,7 +30,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 	[
 		SAssignNew(TabView, SFlareTabView)
 
-		// Content block
+		// Resources Tab
 		+ SFlareTabView::Slot()
 		.Header(LOCTEXT("EconomyMainTab", "Resources"))
 		.HeaderHelp(LOCTEXT("EcononyMainTabHelp", "Resource economy information"))
@@ -330,6 +330,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 			]
 		]
 	]
+	// Stations / Ships slot
 	+ SFlareTabView::Slot()
 	.Header(LOCTEXT("StationTab", "Stations / Ships"))
 	.HeaderHelp(LOCTEXT("StationTabHelp", "Station and ship economy information"))
@@ -502,37 +503,37 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
 					]
 
-				+ SHorizontalBox::Slot()
-					.VAlign(VAlign_Top)
-					.HAlign(HAlign_Right)
-					.Padding(Theme.ContentPadding)
-					.AutoWidth()
-					[
-						SNew(SBox)
-						.WidthOverride(Theme.ContentWidth / 2)
-						.Padding(FMargin(0))
-						.HAlign(HAlign_Left)
+					+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Top)
+						.HAlign(HAlign_Right)
+						.Padding(Theme.ContentPadding)
+						.AutoWidth()
 						[
-								SAssignNew(StationCompanySelector, SFlareDropList<UFlareCompany*>)
-								.OptionsSource(&CompanyList)
-								.OnGenerateWidget(this, &SFlareWorldEconomyMenu::OnGenerateCompanyComboLine)
-								.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnCompanyComboLineSelectionChanged)
-								.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
-								.HeaderWidth(6)
-								.ItemWidth(6)
+							SNew(SBox)
+							.WidthOverride(Theme.ContentWidth / 2)
+							.Padding(FMargin(0))
+							.HAlign(HAlign_Left)
 							[
-								SNew(SBox)
-								.Padding(Theme.ListContentPadding)
-								[
-									SNew(STextBlock)
-									.Text(this, &SFlareWorldEconomyMenu::OnGetCurrentResourceComboLine)
-									.TextStyle(&Theme.TextFont)
+									SAssignNew(StationCompanySelector, SFlareDropList<UFlareCompany*>)
+									.OptionsSource(&CompanyList)
+									.OnGenerateWidget(this, &SFlareWorldEconomyMenu::OnGenerateCompanyComboLine)
+									.OnSelectionChanged(this, &SFlareWorldEconomyMenu::OnCompanyComboLineSelectionChanged)
 									.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+									.HeaderWidth(6)
+									.ItemWidth(6)
+								[
+									SNew(SBox)
+									.Padding(Theme.ListContentPadding)
+									[
+										SNew(STextBlock)
+										.Text(this, &SFlareWorldEconomyMenu::OnGetCurrentResourceComboLine)
+										.TextStyle(&Theme.TextFont)
+										.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+									]
 								]
 							]
 						]
 					]
-				]
 
 				// Company description
 				+ SVerticalBox::Slot()
@@ -546,6 +547,60 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 					.Text(this, &SFlareWorldEconomyMenu::GetCompanyDescription)
 					.WrapTextAt(Theme.ContentWidth * 0.60)
 					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+				]
+
+				// List of companies being filtered
+				+SVerticalBox::Slot()
+				.Padding(Theme.ContentPadding)
+				.AutoHeight()
+				[
+					SAssignNew(SelectedCompaniesText, STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.WrapTextAt(Theme.ContentWidth * 0.60)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+				]
+
+				// Add/Remove selected company
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(AddRemoveSelectedCompany, SFlareButton)
+						.Text(LOCTEXT("CompanyAdd", "Add Company"))
+						.HelpText(LOCTEXT("CompanyAddHelp", "Add selected company"))
+						.Width(6)
+						.OnClicked(this, &SFlareWorldEconomyMenu::AddRemoveCompanyFilter)
+						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility)
+					]
+
+				// Include shipyards
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(ShipyardsFilterButton, SFlareButton)
+						.Text(LOCTEXT("IncludeShipyards", "Filter Shipyards"))
+						.HelpText(LOCTEXT("IncludeShipyardsHelp", "Filter Shipyards"))
+						.Toggle(true)
+						.Width(6)
+						.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
+					]
+
+				// Include Travellers
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				.HAlign(HAlign_Left)
+				[
+					SAssignNew(IncludeTravelersButton, SFlareButton)
+					.Text(LOCTEXT("IncludeTravelers", "Include travelers"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersShipModeVisibility)
 				]
 
 				// Include hubs
@@ -562,22 +617,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
 					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
 				]
-
-				// Include player company
-				+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					.HAlign(HAlign_Left)
-					[
-						SAssignNew(PlayerCompanyToggleButton, SFlareButton)
-						.Text(LOCTEXT("IncludePlayerCompany", "Include Player Company"))
-						.HelpText(LOCTEXT("IncludePlayerCompanyHelp", "Include Player Company"))
-						.Toggle(true)
-						.Width(6)
-						.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
-						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersVisibility)
-					]
-
+	
 				+ SVerticalBox::Slot()
 				.Padding(Theme.SmallContentPadding)
 				.AutoHeight()
@@ -630,11 +670,159 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 			]
 		]
 	]
-];
-	IncludeTradingHubsButton->SetActive(false);
-	PlayerCompanyToggleButton->SetActive(true);
-}
 
+		// Population Tab
+		+ SFlareTabView::Slot()
+		.Header(LOCTEXT("PopulationMainTab", "Population"))
+		.HeaderHelp(LOCTEXT("PopulationMainTabHelp", "Population economy information"))
+		[
+		SNew(SVerticalBox)
+
+		// Content
+		+ SVerticalBox::Slot()
+		.HAlign(HAlign_Center)
+		[
+			SNew(SScrollBox)
+			.Style(&Theme.ScrollBoxStyle)
+			.ScrollBarStyle(&Theme.ScrollBarStyle)
+
+			+ SScrollBox::Slot()
+			.Padding(Theme.ContentPadding)
+			[
+				SNew(SBox)
+				.WidthOverride(ECONOMY_TABLE_WIDTH_FULL * Theme.ContentWidth)
+				.Padding(FMargin(0))
+				[
+					SNew(SVerticalBox)
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+
+						// Sector name
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ECONOMY_TABLE_WIDTH_LARGE * Theme.ContentWidth)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("SectorNameColumnTitle", "Sector"))
+								.Width(ECONOMY_TABLE_BUTTON_LARGE)
+								.Transparent(true)
+								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Sector)
+								.OnClicked(this, &SFlareWorldEconomyMenu::ToggleSortTypePop, EFlareEconomySort::ES_Sector)
+							]
+						]
+
+						// Production
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("PopulationColumnTitleInfo", "Population"))
+								.Width(ECONOMY_TABLE_BUTTON_SMALL)
+								.Transparent(true)
+								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Pop_Total)
+								.OnClicked(this, &SFlareWorldEconomyMenu::ToggleSortTypePop, EFlareEconomySort::ES_Pop_Total)
+							]
+						]
+
+						// Money
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("MoneyTitleInfo", "Money"))
+								.HelpText(LOCTEXT("MoneyTitleHelp", "Total money belonging to the sector population"))
+								.Width(ECONOMY_TABLE_BUTTON_SMALL)
+								.Transparent(true)
+								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Pop_Money)
+								.OnClicked(this, &SFlareWorldEconomyMenu::ToggleSortTypePop, EFlareEconomySort::ES_Pop_Money)
+							]
+						]
+
+						// Wealth
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("WealthColumnTitleInfo", "Wealth"))
+								.HelpText(LOCTEXT("WealthColumnTitleHelp", "Total wealth of each individual population. Higher wealth increases migration desirability"))
+								.Width(ECONOMY_TABLE_BUTTON_SMALL)
+								.Transparent(true)
+								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Pop_Wealth)
+								.OnClicked(this, &SFlareWorldEconomyMenu::ToggleSortTypePop, EFlareEconomySort::ES_Pop_Wealth)
+							]
+						]
+
+						// Capacity
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("HappinessColumnTitleInfo", "Happiness"))
+								.HelpText(LOCTEXT("HappinessColumnTitleHelp", "Total happiness of sector. Higher happiness increases population birth and is also increases migration desirability"))
+								.Width(ECONOMY_TABLE_BUTTON_SMALL)
+								.Transparent(true)
+								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Pop_Happiness)
+								.OnClicked(this, &SFlareWorldEconomyMenu::ToggleSortTypePop, EFlareEconomySort::ES_Pop_Happiness)
+							]
+						]
+					]
+
+					// List
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SAssignNew(SectorPopList, SVerticalBox)
+					]
+				]
+			]
+		]
+	]
+
+];
+	IncludeTravelersButton->SetActive(true);
+	IncludeTradingHubsButton->SetActive(false);
+	TargetCompanies.Empty();
+	StationShipMode = false;
+	StationShipsButton->SetText(LOCTEXT("Stations", "STATIONS"));
+	StationShipsButton->SetHelpText(LOCTEXT("StationsHelp", "Filtering by stations"));
+
+	InputOutputMode = true;
+	InputOutputButton->SetHelpText(LOCTEXT("InputHelp", "Filter input"));
+	InputOutputButton->SetText(LOCTEXT("Input", "INPUT"));
+
+	// Default state
+	IsCurrentSortDescending = false;
+	IsCurrentPopSortDescending = false;
+	CurrentSortType = EFlareEconomySort::ES_Sector;
+	CurrentSortTypePop = EFlareEconomySort::ES_Sector;
+}
 
 /*----------------------------------------------------
 	Interaction
@@ -739,6 +927,7 @@ void SFlareWorldEconomyMenu::OnInputOutput()
 
 void SFlareWorldEconomyMenu::GenerateStationList()
 {
+	ShipsTravelArray.Empty();
 	ShipsArray.Empty();
 	StationsArray.Empty();
 	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
@@ -763,14 +952,107 @@ void SFlareWorldEconomyMenu::GenerateStationList()
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* ShipCanditate = SectorShips[SpacecraftIndex];
-
 			if (ShipCanditate && ShipCanditate->GetDamageSystem()->IsAlive())
 			{
 				ShipsArray.Add(ShipCanditate);
 			}
 		}
+		for (int32 TravelIndex = 0; TravelIndex < TargetSector->GetGame()->GetGameWorld()->GetTravels().Num(); TravelIndex++)
+		{
+			UFlareTravel* Travel = TargetSector->GetGame()->GetGameWorld()->GetTravels()[TravelIndex];
+			if (Travel)
+			{
+				if (Travel->GetDestinationSector() == TargetSector)
+				{
+					UFlareFleet* TravelFleet = Travel->GetFleet();
+					if (TravelFleet)
+					{
+						TArray<UFlareSimulatedSpacecraft*> FleetedShips = TravelFleet->GetShips();
+						for (int ShipIndex = 0; ShipIndex < FleetedShips.Num(); ShipIndex++)
+						{
+							UFlareSimulatedSpacecraft* ShipCanditate = FleetedShips[ShipIndex];
+							if (ShipCanditate)
+							{
+								ShipsTravelArray.Add(ShipCanditate);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	RefreshStationList();
+}
+
+bool SFlareWorldEconomyMenu::PassesFilterList(UFlareSimulatedSpacecraft* StationCandidate)
+{
+	if (!StationCandidate)
+	{
+		return false;
+	}
+
+	if (!StationShipMode)
+	{
+		//station filter
+		if (!StorageHubButton->IsActive() && StationCandidate->HasCapability(EFlareSpacecraftCapability::Storage))
+		{
+			return false;
+			//filter out storage hubs if button not enabled
+		}
+
+		if (ShipyardsFilterButton->IsActive() && !StationCandidate->IsShipyard())
+		{
+			return false;
+			// Filter out all non-shipyards if shipyard filter is active
+		}
+	}
+
+	if (CompanyFiltersButton->IsActive())
+	{
+		if (TargetCompanies.Num() > 0)
+		{
+			if (!(TargetCompanies.Find(StationCandidate->GetCompany()) != INDEX_NONE))
+			{
+				return false;
+			}
+		}
+		else if (TargetCompany != StationCandidate->GetCompany())
+		{
+			return false;
+		}
+	}
+
+	if (ResourceFiltersButton->IsActive())
+	{
+		if (!StationShipMode)
+			//station filter
+		{
+			if (InputOutputMode)
+			{
+				if (!StationCandidate->GetActiveCargoBay()->WantBuy(TargetResource, nullptr))
+				{
+					return false;
+				}
+
+			}
+			else
+			{
+				if (!StationCandidate->GetActiveCargoBay()->WantSell(TargetResource, nullptr))
+				{
+					return false;
+				}
+			}
+		}
+		else
+		{
+			//ship filter
+			if (!StationCandidate->GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 void SFlareWorldEconomyMenu::RefreshStationList()
@@ -796,61 +1078,39 @@ void SFlareWorldEconomyMenu::RefreshStationList()
 		{
 			if (FiltersButton->IsActive())
 			{
-				if (!StorageHubButton->IsActive() && StationCandidate->HasCapability(EFlareSpacecraftCapability::Storage))
+				if (PassesFilterList(StationCandidate))
 				{
-					continue;
-					//filter out storage hubs if button not enabled
+					FilteredStationsArray.Add(StationCandidate);
 				}
-
-				if (CompanyFiltersButton->IsActive())
-				{
-					if(TargetCompany!=StationCandidate->GetCompany())
-					{
-						continue;
-					}
-				}
-
-				else if (!PlayerCompanyToggleButton->IsActive() && StationCandidate->GetCompany() == MenuManager->GetPC()->GetCompany())
-				{
-					continue;
-				}
-
-				if (ResourceFiltersButton->IsActive())
-				{
-					if (!StationShipMode)
-						//station filter
-					{
-						if (InputOutputMode)
-						{
-							if (!StationCandidate->GetActiveCargoBay()->WantBuy(TargetResource, nullptr))
-							{
-								continue;
-							}
-
-						}
-						else
-						{
-							if (!StationCandidate->GetActiveCargoBay()->WantSell(TargetResource, nullptr))
-							{
-								continue;
-							}
-						}
-					}
-					else
-					{
-						//ship filter
-						if (!StationCandidate->GetActiveCargoBay()->GetResourceQuantitySimple(TargetResource))
-						{
-							continue;
-						}
-					}
-				}
-
-				FilteredStationsArray.Add(StationCandidate);
 			}
 			else
 			{
 				FilteredStationsArray.Add(StationCandidate);
+			}
+		}
+	}
+
+	if (StationShipMode)
+	{
+		if ((FiltersButton->IsActive() && IncludeTravelersButton->IsActive()) || !FiltersButton->IsActive())
+		{
+			for (int32 SpacecraftIndex = 0; SpacecraftIndex < ShipsTravelArray.Num(); SpacecraftIndex++)
+			{
+				UFlareSimulatedSpacecraft* StationCandidate = ShipsTravelArray[SpacecraftIndex];
+				if (StationCandidate)
+				{
+					if (FiltersButton->IsActive())
+					{
+						if (PassesFilterList(StationCandidate))
+						{
+							FilteredStationsArray.Add(StationCandidate);
+						}
+					}
+					else
+					{
+						FilteredStationsArray.Add(StationCandidate);
+					}
+				}
 			}
 		}
 	}
@@ -985,7 +1245,9 @@ void SFlareWorldEconomyMenu::Enter(FFlareResourceDescription* Resource, UFlareSi
 
 	if (Resource)
 	{
+		//came from sector "details" menu, setting menu back to tab index 0 which is main economy tab
 		TargetResource = Resource;
+		TabView->SetCurrentTabIndex(0);
 	}
 
 	CompanyList.Empty();
@@ -996,10 +1258,6 @@ void SFlareWorldEconomyMenu::Enter(FFlareResourceDescription* Resource, UFlareSi
 	}
 
 	WorldStats = WorldHelper::ComputeWorldResourceStats(MenuManager->GetGame(), IncludeTradingHubsButton->IsActive());
-
-	// Default state
-	IsCurrentSortDescending = false;
-	CurrentSortType = EFlareEconomySort::ES_Sector;
 
 	// Update resource selector
 	ResourceSelector->RefreshOptions();
@@ -1026,17 +1284,158 @@ void SFlareWorldEconomyMenu::Enter(FFlareResourceDescription* Resource, UFlareSi
 		TargetCompany = StationCompanySelector->GetSelectedItem();
 	}
 
-	StationShipMode = false;
-	StationShipsButton->SetText(LOCTEXT("Stations", "STATIONS"));
-	StationShipsButton->SetHelpText(LOCTEXT("StationsHelp", "Filtering by stations"));
-
 	GenerateSectorList();
-
-	InputOutputMode = true;
-	InputOutputButton->SetHelpText(LOCTEXT("InputHelp", "Filter input"));
-	InputOutputButton->SetText(LOCTEXT("Input", "INPUT"));
+	GenerateSectorPopList();
 
 	GenerateStationList();
+}
+
+void SFlareWorldEconomyMenu::GenerateSectorPopList()
+{
+	SectorPopList->ClearChildren();
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
+	// Get the sector list
+	TArray<UFlareSimulatedSector*>& Sectors = MenuManager->GetPC()->GetCompany()->GetVisitedSectors();
+
+	// Apply the current sort
+	Sectors.Sort([this](UFlareSimulatedSector& S1, UFlareSimulatedSector& S2)
+	{
+		bool Result = false;
+		// Get sorting data
+		uint32 Population1 = S1.GetPeople()->GetPopulation();
+		uint32 Population2 = S2.GetPeople()->GetPopulation();
+		int64 Money1 = S1.GetPeople()->GetMoney();
+		int64 Money2 = S2.GetPeople()->GetMoney();
+		float Wealth1 = S1.GetPeople()->GetWealth();
+		float Wealth2 = S2.GetPeople()->GetWealth();
+		float Happiness1 = S1.GetPeople()->GetHappiness();
+		float Happiness2 = S2.GetPeople()->GetHappiness();
+
+		// Apply sort
+		switch (this->CurrentSortTypePop)
+		{
+		case EFlareEconomySort::ES_Sector:
+			Result = S1.GetSectorName().ToString() > S2.GetSectorName().ToString();
+			break;
+		case EFlareEconomySort::ES_Pop_Total:
+			Result = Population1 > Population2;
+			break;
+		case EFlareEconomySort::ES_Pop_Money:
+			Result = Money1 > Money2;
+			break;
+		case EFlareEconomySort::ES_Pop_Wealth:
+			Result = Wealth1 > Wealth2;
+			break;
+		case EFlareEconomySort::ES_Pop_Happiness:
+			Result = Happiness1 > Happiness2;
+			break;
+		}
+
+		return this->IsCurrentPopSortDescending ? Result : !Result;
+	});
+
+	// Sector list
+	for (int32 SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* Sector = Sectors[SectorIndex];
+
+		SectorPopList->AddSlot()
+		.Padding(FMargin(0))
+		[
+			SNew(SBorder)
+			.Padding(FMargin(1))
+			.BorderImage((SectorIndex % 2 == 0 ? &Theme.EvenBrush : &Theme.OddBrush))
+			[
+				SNew(SHorizontalBox)
+
+				// Sector
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(ECONOMY_TABLE_WIDTH_LARGE * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					[
+						SNew(SFlareButton)
+						.Width(ECONOMY_TABLE_BUTTON_LARGE)
+						.Text(this, &SFlareWorldEconomyMenu::GetSectorText, Sector)
+						.Color(this, &SFlareWorldEconomyMenu::GetSectorTextColor, Sector)
+						.Icon(FFlareStyleSet::GetIcon("Travel"))
+						.OnClicked(this, &SFlareWorldEconomyMenu::OnOpenSector, Sector)
+					]
+				]
+
+				// Population
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+						.Text(this, &SFlareWorldEconomyMenu::GetPopTotalInfo, Sector)
+					]
+				]
+
+				// Money
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+						.Text(this, &SFlareWorldEconomyMenu::GetPopMoneyInfo, Sector)
+
+					]
+				]
+
+				// Wealth
+				+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SBox)
+						.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareWorldEconomyMenu::GetPopWealthInfo, Sector)
+					]
+				]
+
+				// Happiness
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(ECONOMY_TABLE_WIDTH_SMALL * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.TextFont)
+						.Text(this, &SFlareWorldEconomyMenu::GetPopHappinessInfo, Sector)
+					]
+				]
+			]
+		];
+	}
+	SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
 }
 
 void SFlareWorldEconomyMenu::GenerateSectorList()
@@ -1244,7 +1643,6 @@ void SFlareWorldEconomyMenu::GenerateSectorList()
 			]
 		];
 	}
-
 	SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
 }
 
@@ -1253,6 +1651,7 @@ void SFlareWorldEconomyMenu::Exit()
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
 	SectorList->ClearChildren();
+	SectorPopList->ClearChildren();
 	StationList->Reset();
 	StationsArray.Empty();
 }
@@ -1281,6 +1680,27 @@ const FSlateBrush* SFlareWorldEconomyMenu::GetSortIcon(EFlareEconomySort::Type T
 	}
 }
 
+const FSlateBrush* SFlareWorldEconomyMenu::GetSortIconPop(EFlareEconomySort::Type Type) const
+{
+	if (Type == CurrentSortTypePop)
+	{
+		if (IsCurrentPopSortDescending)
+		{
+			return FFlareStyleSet::GetIcon("MoveDown");
+		}
+		else
+		{
+			return FFlareStyleSet::GetIcon("MoveUp");
+		}
+	}
+	else
+	{
+		return FFlareStyleSet::GetIcon("MoveUpDown");
+	}
+}
+
+
+
 void SFlareWorldEconomyMenu::ToggleSortType(EFlareEconomySort::Type Type)
 {
 	if (Type == CurrentSortType)
@@ -1294,6 +1714,21 @@ void SFlareWorldEconomyMenu::ToggleSortType(EFlareEconomySort::Type Type)
 	}
 
 	GenerateSectorList();
+}
+
+void SFlareWorldEconomyMenu::ToggleSortTypePop(EFlareEconomySort::Type Type)
+{
+	if (Type == CurrentSortTypePop)
+	{
+		IsCurrentPopSortDescending = !IsCurrentPopSortDescending;
+	}
+	else
+	{
+		IsCurrentPopSortDescending = true;
+		CurrentSortTypePop = Type;
+	}
+
+	GenerateSectorPopList();
 }
 
 FSlateColor SFlareWorldEconomyMenu::GetPriceColor(UFlareSimulatedSector* Sector) const
@@ -1430,6 +1865,69 @@ FSlateColor SFlareWorldEconomyMenu::GetSectorTextColor(UFlareSimulatedSector* Se
 {
 	return Sector->GetSectorFriendlynessColor(MenuManager->GetPC()->GetCompany());
 }
+
+FText SFlareWorldEconomyMenu::GetPopTotalInfo(UFlareSimulatedSector* Sector) const
+{
+	if (Sector)
+	{
+		if (Sector->GetPeople()->GetPopulation())
+		{
+			return FText::Format(LOCTEXT("SectorPopulationAmount", "{0}"),
+			FText::AsNumber(Sector->GetPeople()->GetPopulation()));
+		}
+	}
+	return FText(LOCTEXT("SectorPopulationAmountEmpty", "0"));
+}
+
+FText SFlareWorldEconomyMenu::GetPopMoneyInfo(UFlareSimulatedSector* Sector) const
+{
+	if (Sector)
+	{
+		if (Sector->GetPeople()->GetMoney())
+		{
+			FNumberFormattingOptions MoneyFormat;
+			MoneyFormat.MaximumFractionalDigits = 0;
+
+			return FText::Format(LOCTEXT("SectorPopMoneyAmount", "{0}"),
+			FText::AsNumber(Sector->GetPeople()->GetMoney() / 100.0f, &MoneyFormat));
+		}
+	}
+	return FText(LOCTEXT("SectorPopulationAmountEmpty", "0"));
+}
+
+FText SFlareWorldEconomyMenu::GetPopWealthInfo(UFlareSimulatedSector* Sector) const
+{
+	if (Sector)
+	{
+		if (Sector->GetPeople()->GetWealth())
+		{
+			FNumberFormattingOptions MoneyFormat;
+			MoneyFormat.MaximumFractionalDigits = 0;
+
+			return FText::Format(LOCTEXT("SectorPopWealthAmount", "{0}"),
+				FText::AsNumber(Sector->GetPeople()->GetWealth() / 100.0f, &MoneyFormat));
+		}
+	}
+	return FText(LOCTEXT("SectorPopulationAmountEmpty", "0"));
+}
+
+FText SFlareWorldEconomyMenu::GetPopHappinessInfo(UFlareSimulatedSector* Sector) const
+{
+	if (Sector)
+	{
+		if (Sector->GetPeople()->GetHappiness())
+		{
+			FNumberFormattingOptions MoneyFormat;
+			MoneyFormat.MaximumFractionalDigits = 2;
+
+			return FText::Format(LOCTEXT("SectorHappinessAmount", "{0}%"),
+			FText::AsNumber(FMath::Abs((Sector->GetPeople()->GetHappiness()) * 100.0f) / 2, &MoneyFormat));
+			//devided by two because happiness goes to 200%. not really sure to display upto that amount or upto 100%
+		}
+	}
+	return FText(LOCTEXT("SectorPopulationAmountEmpty", "0"));
+}
+
 
 FText SFlareWorldEconomyMenu::GetResourceProductionInfo(UFlareSimulatedSector* Sector) const
 {
@@ -1604,6 +2102,55 @@ void SFlareWorldEconomyMenu::OnCompanyComboLineSelectionChanged(UFlareCompany* I
 		TargetCompany = NULL;
 	}
 
+	RefreshAddRemoveSelectedCompanyButton();
+	RefreshStationList();
+}
+
+void SFlareWorldEconomyMenu::RefreshAddRemoveSelectedCompanyButton()
+{
+	if (TargetCompanies.Find(TargetCompany) != INDEX_NONE)
+	{
+		AddRemoveSelectedCompany->SetText(LOCTEXT("CompanyRemove", "Remove Company"));
+		AddRemoveSelectedCompany->SetHelpText(LOCTEXT("CompanyRemoveHelp", "Remove selected company"));
+	}
+	else
+	{
+		AddRemoveSelectedCompany->SetText(LOCTEXT("CompanyAdd", "Add Company"));
+		AddRemoveSelectedCompany->SetHelpText(LOCTEXT("CompanyAddHelp", "Add selected company"));
+	}
+
+	FText Result;
+	if (TargetCompanies.Num() > 0)
+	{
+		for (int Index = 0; Index < TargetCompanies.Num(); Index++)
+		{
+			UFlareCompany* CurrentCompany = TargetCompanies[Index];
+			if (CurrentCompany)
+			{
+				const FFlareCompanyDescription* Desc = CurrentCompany->GetDescription();
+				if (Desc)
+				{
+					Result = FText::Format(LOCTEXT("FilteredCompanies", "{0} \n\u2022 {1}"),
+					Result, Desc->Name);
+				}
+			}
+		}
+	}
+	SelectedCompaniesText->SetText(Result);
+}
+
+void SFlareWorldEconomyMenu::AddRemoveCompanyFilter()
+{
+	if (TargetCompanies.Find(TargetCompany) != INDEX_NONE)
+	{
+		TargetCompanies.Remove(TargetCompany);
+	}
+	else
+	{
+		TargetCompanies.Add(TargetCompany);
+	}
+
+	RefreshAddRemoveSelectedCompanyButton();
 	RefreshStationList();
 }
 

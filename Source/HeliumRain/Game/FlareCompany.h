@@ -41,6 +41,8 @@ public:
 	/** Spawn a simulated spacecraft from save data */
 	virtual UFlareSimulatedSpacecraft* LoadSpacecraft(const FFlareSpacecraftSave& SpacecraftData);
 
+	void CreatedSpaceCraft(UFlareSimulatedSpacecraft* Spacecraft);
+	
 	/** Load a fleet from save */
 	virtual UFlareFleet* LoadFleet(const FFlareFleetSave& FleetData);
 
@@ -75,6 +77,22 @@ public:
 	void SetLastWarDate();
 	void ClearLastWarDate();
 	void ResetLastTributeDate();
+	void GiveAllStationSectorLicenses();
+
+	bool CanBuyStationLicense(FName Identifier);
+	bool CanBuyStationLicense(UFlareSimulatedSector* BuyingSector);
+
+	void BuyStationLicense(FName Identifier);
+	void BuyStationLicense(UFlareSimulatedSector* BuyingSector, bool FromSave = false);
+	void CheckStationLicenseStateStation(UFlareSimulatedSpacecraft* Station, bool NewState = false);
+	void ChangeStationLicenseState(UFlareSimulatedSector* BuyingSector, bool NewState);
+	void ChangeStationLicenseStateAction(UFlareSimulatedSpacecraft* Station, bool NewState);
+
+	int64 GetStationLicenseCost(FName Identifier);
+	int64 GetStationLicenseCost(UFlareSimulatedSector* BuyingSector);
+	int64 GetTotalStationLicenseValue();
+
+	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation);
 
 	/** Set whether this company is hostile to an other company */
 	virtual void SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile);
@@ -116,7 +134,6 @@ public:
 	/** Set a sector visited */
 	virtual void VisitSector(UFlareSimulatedSector* Sector);
 
-
 	/** Take a money amount from the company */
 	virtual bool TakeMoney(int64 Amount, bool AllowDepts, FFlareTransactionLogEntry TransactionContext);
 
@@ -143,6 +160,9 @@ public:
 	void AddRetaliation(float Retaliation);
 	void RemoveRetaliation(float Retaliation);
 
+	void Simulate();
+	void ClearTemporaryCaches();
+
 	/*----------------------------------------------------
 		Customization
 	----------------------------------------------------*/
@@ -166,6 +186,9 @@ public:
 
 	/** Check if a technology has been unlocked and is used */
 	bool IsTechnologyUnlocked(FName Identifier) const;
+
+	/** Check if company has sector station building license */
+	bool IsSectorStationLicenseUnlocked(FName Identifier) const;
 
 	/** Check current technology multiplier bonus */
 	float GetTechnologyBonus(FName Identifier) const;
@@ -216,10 +239,11 @@ protected:
 	FFlareCompanySave                       CompanyData;
 
 	UPROPERTY()
-	UFlareCompanyAI*                         CompanyAI;
+	UFlareCompanyAI*                        CompanyAI;
 
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyStations;
+	TMap<UFlareSimulatedSector*, TArray<UFlareSimulatedSpacecraft*>> CompanyStationsBySectors;
 
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyChildStations;
@@ -249,15 +273,19 @@ protected:
 	FSlateBrush                             CompanyEmblemBrush;
 
 	AFlareGame*                             Game;
+	TMap<FName, UFlareSimulatedSector*>		LicenseStationSectors;
+
 	TArray<UFlareSimulatedSector*>          KnownSectors;
 	TArray<UFlareSimulatedSector*>          VisitedSectors;
 
 	int32                                     ResearchAmount;
 	TMap<FName, FFlareTechnologyDescription*> UnlockedTechnologies;
 
+	int64									TotalDayMoneyGain;
 	TArray<UFlareCompany*>					OtherCompaniesCache;
 	TArray<UFlareSimulatedSpacecraft*>      CompanyCarriers;
 	TMap<FName, UFlareSimulatedSpacecraft*>	CompanySpacecraftsCache;
+	TMap<UFlareSimulatedSector*, int64>		LicenseStationCache;
 
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
@@ -340,6 +368,16 @@ public:
 		return CompanyData.Money;
 	}
 
+	inline int64 GetDailyMoneyGain() const
+	{
+		return TotalDayMoneyGain;
+	}
+
+	inline TArray<FName> GetCompanyStationLicenses() const
+	{
+		return CompanyData.Licenses.LicenseBuilding;
+	}
+
 	const struct CompanyValue GetCompanyValue(UFlareSimulatedSector* SectorFilter = NULL, bool IncludeIncoming = true) const;
 
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyStations()
@@ -375,6 +413,11 @@ public:
 	inline TArray<UFlareTradeRoute*>& GetCompanyTradeRoutes()
 	{
 		return CompanyTradeRoutes;
+	}
+
+	inline TMap<FName, UFlareSimulatedSector*>& GetLicenseStationSectors()
+	{
+		return LicenseStationSectors;
 	}
 
 	inline TArray<UFlareSimulatedSector*>& GetKnownSectors()
@@ -462,8 +505,11 @@ public:
 	TArray<UFlareCompany*> GetOtherCompanies(bool Shuffle = false);
 
 	float GetConfidenceLevel(UFlareCompany* ReferenceCompany, TArray<UFlareCompany*>& Allies);
+	
+	TArray<UFlareSimulatedSpacecraft*> GetCompanySectorStations(UFlareSimulatedSector* Sector);
+	int32 GetCompanySectorStationsCount(UFlareSimulatedSector* Sector, bool IncludeCapture = true);
 
-
+	void AddOrRemoveCompanySectorStation(UFlareSimulatedSpacecraft* Station, bool Remove = false);
 
 	float ComputeCompanyDiplomaticWeight();
 

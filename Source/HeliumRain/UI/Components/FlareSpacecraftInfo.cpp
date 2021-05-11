@@ -766,10 +766,29 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 			int DurationMalus = FMath::RoundToInt(UFlareFactory::GetProductionMalus(Efficiency));
 			if (DurationMalus > 1)
 			{
-				AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "This station was damaged and operates {0}x slower"), FText::AsNumber(DurationMalus)),
-					FFlareStyleSet::GetIcon("Damage"),
-					NULL,
-					0);
+				float DamageRatio = TargetSpacecraft->GetDamageRatio();
+				FText EfficiencyMessage;
+
+				if (DamageRatio < 1.f)
+				{
+					if (!TargetSpacecraft->GetOwnerHasStationLicense())
+					{
+						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This unlicensed station is damaged");
+					}
+					else
+					{
+						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This station is damaged");
+					}
+				}
+				else if (!TargetSpacecraft->GetOwnerHasStationLicense())
+				{
+					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This is an unlicensed station");
+				}
+
+				AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "{0} and operates {1}x slower"), EfficiencyMessage,FText::AsNumber(DurationMalus)),
+				FFlareStyleSet::GetIcon("Damage"),
+				NULL,
+				0);
 			}
 		}
 
@@ -799,10 +818,11 @@ bool SFlareSpacecraftInfo::UpdateCaptureList()
 		// Player can capture
 		if (PC->GetCompany()->CanStartCapture(TargetSpacecraft) && !PC->GetCompany()->WantCapture(TargetSpacecraft))
 		{
-			int32 OwnedStationCount = TargetSpacecraft->GetCurrentSector()->GetSectorCompanyStationCount(PC->GetCompany(), true);
+//			int32 OwnedStationCount = TargetSpacecraft->GetCurrentSector()->GetSectorCompanyStationCount(PC->GetCompany(), true);
+			int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSpacecraft->GetCurrentSector(), true);
 			int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ?
-				TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() :
-				TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() / 2;
+			TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() :
+			TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() / 2;
 
 			FText CaptureText = FText::Format(LOCTEXT("CaptureFormat", "Start capturing this station ({0} / {1})"),
 				FText::AsNumber(OwnedStationCount),

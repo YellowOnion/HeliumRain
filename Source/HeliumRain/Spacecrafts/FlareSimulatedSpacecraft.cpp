@@ -1431,23 +1431,19 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 	}
 
 	// Update the world ship, take money from player, etc
+	UFlareSimulatedSector* Sector = GetCurrentSector();
 	if (TransactionCost > 0)
 	{
 		GetCompany()->TakeMoney(TransactionCost, false, FFlareTransactionLogEntry::LogUpgradeShipPart(this));
+		if (Sector)
+		{
+			Sector->GetPeople()->Pay(TransactionCost);
+		}
 	}
 	else
 	{
 		GetCompany()->GiveMoney(FMath::Abs(TransactionCost), FFlareTransactionLogEntry::LogUpgradeShipPart(this));
-	}
-
-	UFlareSimulatedSector* Sector = GetCurrentSector();
-	if (Sector)
-	{
-		if (TransactionCost > 0)
-		{
-			Sector->GetPeople()->Pay(TransactionCost);
-		}
-		else
+		if (Sector)
 		{
 			Sector->GetPeople()->TakeMoney(FMath::Abs(TransactionCost));
 		}
@@ -1797,7 +1793,6 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 
 		GetCompany()->GivePlayerReputation(ShipPrice / RepDivisor);
 	}
-
 	return true;
 }
 void UFlareSimulatedSpacecraft::CancelShipyardOrder(int32 OrderIndex)
@@ -2576,6 +2571,15 @@ int32 UFlareSimulatedSpacecraft::GetCapturePointThreshold() const
 	return FMath::CeilToInt(BaseCapturePoint * CaptureRatio);
 }
 
+float UFlareSimulatedSpacecraft::GetDamageRatio()
+{
+	if (IsComplexElement())
+	{
+		return GetComplexMaster()->GetDamageRatio();
+	}
+	return GetDamageSystem()->GetGlobalHealth();
+}
+
 float UFlareSimulatedSpacecraft::GetStationEfficiency()
 {
 	if(IsComplexElement())
@@ -2594,7 +2598,18 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 		Efficiency = (1.f - Coef) * DamageRatio + Coef;
 	}
 
+	if (!OwnerHasStationLicense)
+	{
+		//note: -1.f efficiency = 10X slower production
+		Efficiency = Efficiency -0.25f;
+	}
+
 	return Efficiency;
+}
+
+void UFlareSimulatedSpacecraft::SetOwnerHasStationLicense(bool Setting)
+{
+	OwnerHasStationLicense = Setting;
 }
 
 

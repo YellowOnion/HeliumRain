@@ -66,14 +66,15 @@ UFlareCompanyAI::UFlareCompanyAI(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	AllBudgets.Reserve(4);
+	AllBudgets.Add(EFlareBudget::Trade);
 	AllBudgets.Add(EFlareBudget::Military);
 	AllBudgets.Add(EFlareBudget::Station);
 	AllBudgets.Add(EFlareBudget::Technology);
-	AllBudgets.Add(EFlareBudget::Trade);
 }
 
 void UFlareCompanyAI::Load(UFlareCompany* ParentCompany, const FFlareCompanyAISave& Data)
 {
+// note: Load called from Company PostLoad() which is called either after the company has been created or after everything in the world has been fully initialized
 	Company = ParentCompany;
 	Game = Company->GetGame();
 	AIData = Data;
@@ -86,6 +87,11 @@ void UFlareCompanyAI::Load(UFlareCompany* ParentCompany, const FFlareCompanyAISa
 	for (UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
 	{
 		TrackStationConstructionStatus(Station);
+	}
+
+	if (Company->AtWar())
+	{
+		WasAtWar = true;
 	}
 }
 
@@ -130,7 +136,6 @@ void UFlareCompanyAI::TrackStationConstructionStatus(UFlareSimulatedSpacecraft* 
 	}
 }
 
-
 void UFlareCompanyAI::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
 {
 	if (CapturedStation)
@@ -162,8 +167,11 @@ void UFlareCompanyAI::Tick()
 
 void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 {
+//Called from Company->SimulateAI()
 	if (Game && Company != Game->GetPC()->GetCompany())
 	{
+		CheckedBuildingShips = false;
+
 		GlobalReservedResources = TotalReservedResources;
 		AutoScrap();
 
@@ -173,7 +181,6 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		UpdateDiplomacy(GlobalWar);
 
 		WorldStats = WorldHelper::ComputeWorldResourceStats(Game, true);
-//		Shipyards = GetGame()->GetGameWorld()->GetShipyards();
 		Shipyards = GetGame()->GetGameWorld()->GetShipyardsFor(Company);
 
 		// Compute input and output ressource equation (ex: 100 + 10/ day)
@@ -188,7 +195,11 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 			//DumpSectorResourceVariation(Sector, &Variation);
 		}
 
-		Behavior->Simulate();
+		if (!AIData.CalculatedDefaultBudget)
+		{
+			AIData.CalculatedDefaultBudget = true;
+			RecalculateFullBudgets();
+		}
 
 		if (!Behavior->FinishedResearch)
 		{
@@ -221,53 +232,72 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		if(Company->AtWar())
 		{
 			AIData.Pacifism += Behavior->PacifismIncrementRate;
-		}
-
-		else if(CompanyCombatCurrent > 0 && TotalValue.ArmyCurrentCombatPoints >= (TotalValue.ArmyTotalCombatPoints * 0.75))
-		{
-			float Multiplier = 1.f;
-			bool IsStrongest = false;
-
-			if((CompanyIndex + 1) >= Game->GetGameWorld()->GetCompanies().Num())
+			if (!WasAtWar)
 			{
-				Multiplier += 0.50;
-				IsStrongest = true;
+				int64 TotalBudgets = GetTotalBudgets();
+				int64 WarBudget = GetBudget(EFlareBudget::Military);
+				if (TotalBudgets * 0.50 > WarBudget)
+				{
+					//each time a new set of wars are entered, relocate 5% of all other funds towards military funding
+					//requires warbudget being lower than 50% of the absolute total of their budgets before transferring in
+					RedistributeBudgetTowards(EFlareBudget::Military, 0.05);
+				}
+				WasAtWar = true;
+			}
+		}
+		else
+		{
+			if (WasAtWar)
+			{
+				WasAtWar = false;
 			}
 
-			if (CompanyIndex > 0)
+			float Multiplier = 1.f;
+			if (CompanyCombatCurrent > 0 && TotalValue.ArmyCurrentCombatPoints >= (TotalValue.ArmyTotalCombatPoints * 0.75))
 			{
-				UFlareCompany* Lowercompany = SortedCompanyCombatValues[CompanyIndex-1];
-				if (Lowercompany)
-				{
-					int32 LowerCombat = Lowercompany->GetCompanyValue().ArmyTotalCombatPoints;
-					if (LowerCombat > 0)// && CompanyCombat > 0)
-					{
-						float RatioRequirement = 0.30;
-						float CombatRatio = LowerCombat / CompanyCombat;
-						if (IsStrongest)
-						{
-							RatioRequirement = 0.50;
-						}
-						if (CombatRatio < RatioRequirement)
-						//if next lowest has [RatioRequirement]% or lower of our military value, we're a bit more keen on war
-						{
-							Multiplier += 0.25;
-						}
-					}
+				bool IsStrongest = false;
 
-/*
-					GetGame()->GetPC()->Notify(
-						LOCTEXT("TestInfo", "Test Notification"),
-						FText::Format(
-							LOCTEXT("TestInfoFormat", "{0} has an war index of {1}\nLower is {2}. Ratio {3}"),
-							Company->GetCompanyName(),
-							CompanyIndex,
-							Lowercompany->GetCompanyName(),
-							CombatRatio),
-						"discover-sector",
-						EFlareNotification::NT_Info,
-						false);
-*/
+				if ((CompanyIndex + 1) >= Game->GetGameWorld()->GetCompanies().Num())
+				{
+					Multiplier += 0.50;
+					IsStrongest = true;
+				}
+
+				if (CompanyIndex > 0)
+				{
+					UFlareCompany* Lowercompany = SortedCompanyCombatValues[CompanyIndex - 1];
+					if (Lowercompany)
+					{
+						int32 LowerCombat = Lowercompany->GetCompanyValue().ArmyTotalCombatPoints;
+						if (LowerCombat > 0)// && CompanyCombat > 0)
+						{
+							float RatioRequirement = 0.30;
+							float CombatRatio = LowerCombat / CompanyCombat;
+							if (IsStrongest)
+							{
+								RatioRequirement = 0.50;
+							}
+							if (CombatRatio < RatioRequirement)
+								//if next lowest has [RatioRequirement]% or lower of our military value, we're a bit more keen on war
+							{
+								Multiplier += 0.25;
+							}
+						}
+
+	/*
+						GetGame()->GetPC()->Notify(
+							LOCTEXT("TestInfo", "Test Notification"),
+							FText::Format(
+								LOCTEXT("TestInfoFormat", "{0} has an war index of {1}\nLower is {2}. Ratio {3}"),
+								Company->GetCompanyName(),
+								CompanyIndex,
+								Lowercompany->GetCompanyName(),
+								CombatRatio),
+							"discover-sector",
+							EFlareNotification::NT_Info,
+							false);
+	*/
+					}
 				}
 			}
 			AIData.Pacifism -= (Behavior->PacifismDecrementRate * Multiplier);
@@ -297,7 +327,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 #if 0
 		FLOGV("Pacifism for %s : %f (IdleCargoCapacity=%d)", *Company->GetCompanyName().ToString(), AIData.Pacifism, IdleCargoCapacity);
 #endif
-
+		Behavior->Simulate();
 	}
 }
 
@@ -464,6 +494,70 @@ void UFlareCompanyAI::AutoScrap()
 	}
 }
 
+bool UFlareCompanyAI::PurchaseSectorStationLicense(EFlareBudget::Type BudgetType)
+{
+	if (AIData.DesiredStationLicense == NAME_None)
+	{
+		TArray<UFlareSimulatedSector*> SectorCandidates;
+		int32 SectorsRemaining = 0;
+		for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+		{
+			UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
+			if (!(Company->IsSectorStationLicenseUnlocked(Sector->GetDescription()->Identifier)))
+			{
+				SectorCandidates.Add(Sector);
+				++SectorsRemaining;
+			}
+		}
+
+		if (SectorsRemaining <= 0)
+		{
+			Behavior->FinishedBuyingSectorStationLicenses = true;
+		}
+		else
+		{
+			int32 PickIndex = FMath::RandRange(0, SectorCandidates.Num() - 1);
+			AIData.DesiredStationLicense = SectorCandidates[PickIndex]->GetDescription()->Identifier;
+		}
+	}
+
+	if (Company->CanBuyStationLicense(AIData.DesiredStationLicense))
+	{
+		int64 Cost = Company->GetStationLicenseCost(AIData.DesiredStationLicense);
+/*
+		UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(AIData.DesiredStationLicense);
+		GetGame()->GetPC()->Notify(
+			LOCTEXT("TestInfo1", "Test Notification"),
+			FText::Format(
+				LOCTEXT("TestInfoFormat1", "{0} Company just looked at the cost for station license {1}, Budget: {2} vs Cost: {3}"),
+				Company->GetCompanyName(), BuyingSector->GetSectorName(), BudgetAmount,Cost),
+			"discover-sector1",
+			EFlareNotification::NT_Info,
+			false);
+*/
+
+		if (CanSpendBudget(BudgetType,Cost) && Company->GetMoney() >= Cost)
+		{
+			SpendBudget(BudgetType, Cost);
+			Company->BuyStationLicense(AIData.DesiredStationLicense);
+			AIData.DateBoughtLicense = Game->GetGameWorld()->GetDate();
+/*
+			UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(AIData.DesiredStationLicense);
+			GetGame()->GetPC()->Notify(
+				LOCTEXT("TestInfo", "Test Notification"),
+				FText::Format(
+					LOCTEXT("TestInfoFormat", "{0} Company has just unlocked {1} station licence"),
+					Company->GetCompanyName(), BuyingSector->GetSectorName()),
+				"discover-sector",
+				EFlareNotification::NT_Info,
+				false);
+*/
+			AIData.DesiredStationLicense = NAME_None;
+			return true;
+		}
+	}
+	return false;
+}
 
 void UFlareCompanyAI::PurchaseResearch()
 {
@@ -504,38 +598,37 @@ void UFlareCompanyAI::PurchaseResearch()
 		if (Researchtogo <= 0)
 		{
 			Behavior->FinishedResearch = true;
-			Behavior->BudgetTechnologyWeight = 0;
-			AIData.BudgetTechnology = 0;
+			RedistributeBudget(EFlareBudget::Technology, GetBudget(EFlareBudget::Technology));
 
-			//			int32 ScrappedStations = 0;
-			//			int32 TotalStations = 0;
+//			int32 ScrappedStations = 0;
+//			int32 TotalStations = 0;
 
 			for (int StationIndex = 0; StationIndex < Company->GetCompanyStations().Num(); StationIndex++)
 			{
 				UFlareSimulatedSpacecraft* Station = Company->GetCompanyStations()[StationIndex];
 				if (Station)
 				{
-					//					++TotalStations;
+//					++TotalStations;
 					FFlareSpacecraftDescription* StationDescription = Station->GetDescription();
 					if (StationDescription && StationDescription->IsResearch())
 					{
 						GetGame()->ScrapStation(Station);
-						//						++ScrappedStations;
+//						++ScrappedStations;
 						--StationIndex;
 						continue;
 					}
 				}
 			}
-			/*
-						GetGame()->GetPC()->Notify(
-							LOCTEXT("TestInfo", "Test Notification"),
-							FText::Format(
-								LOCTEXT("TestInfoFormat", "{0} Company has finished all research\n{1} scrapped\n{2} looped"),
-								Company->GetCompanyName(), ScrappedStations, TotalStations),
-							"discover-sector",
-							EFlareNotification::NT_Info,
-							false);
-			*/
+	/*
+			GetGame()->GetPC()->Notify(
+				LOCTEXT("TestInfo", "Test Notification"),
+				FText::Format(
+					LOCTEXT("TestInfoFormat", "{0} Company has finished all research\n{1} scrapped\n{2} looped"),
+					Company->GetCompanyName(), ScrappedStations, TotalStations),
+				"discover-sector",
+				EFlareNotification::NT_Info,
+				false);
+	*/
 			// No research to research
 			return;
 		}
@@ -677,26 +770,100 @@ void UFlareCompanyAI::UpdateBestScore(float Score,
 	Budget
 ----------------------------------------------------*/
 
+bool UFlareCompanyAI::CanSpendBudget(EFlareBudget::Type Type, int64 Amount)
+{
+	int64 ExistingBudget = GetBudget(Type);
+	if (ExistingBudget >= Amount)
+	{
+		return true;
+	}
+	return false;
+}
+
+int64 UFlareCompanyAI::GetTotalBudgets()
+{
+	int64 ReturnValue = 0;
+	for (EFlareBudget::Type Budget : AllBudgets)
+	{
+		ReturnValue += GetBudget(Budget);
+	}
+	return ReturnValue;
+}
+
+void UFlareCompanyAI::AddIncomeToBudgets()
+{
+	int64 CompanyIncome = Company->GetDailyMoneyGain();
+/*
+	int64 index = FMath::RandRange(0, 100);
+	FString UniqueId = "war-declared-" + index;
+	GetGame()->GetPC()->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoFormat", "{0} Company had {1} as its daily income"),
+			Company->GetCompanyName(), CompanyIncome),
+		FName(*UniqueId),
+		EFlareNotification::NT_Info,
+		false);
+*/
+	if (CompanyIncome > 0)
+	{
+		for (EFlareBudget::Type Budget : AllBudgets)
+		{
+			int64 BudgetGain = CompanyIncome * Behavior->GetBudgetWeight(Budget);
+			ModifyBudget(Budget, BudgetGain);
+		}
+	}
+}
+
+void UFlareCompanyAI::RedistributeBudgetTowards(EFlareBudget::Type Type, float Ratio)
+{
+	for (EFlareBudget::Type Budget : AllBudgets)
+	{
+		if (Budget == Type)
+		{
+			continue;
+		}
+		int64 BudgetRedistAmount = GetBudget(Budget) * Ratio;
+		SpendBudget(Budget, BudgetRedistAmount);
+		ModifyBudget(Type, BudgetRedistAmount);
+	}
+}
+
+void UFlareCompanyAI::RedistributeBudget(EFlareBudget::Type Type, int64 Amount)
+{
+	if (Amount > 0)
+	{
+		SpendBudget(Type, Amount);
+		for (EFlareBudget::Type Budget : AllBudgets)
+		{
+			if (Budget == Type)
+			{
+				continue;
+			}
+			int64 BudgetRedistAmount = Amount * Behavior->GetBudgetWeight(Budget);
+			ModifyBudget(Budget, BudgetRedistAmount);
+		}
+	}
+}
+
 void UFlareCompanyAI::SpendBudget(EFlareBudget::Type Type, int64 Amount)
 {
 	// A project spend money, dispatch available money for others projects
-
 
 #ifdef DEBUG_AI_BUDGET
 	FLOGV("%s spend %lld on %d", *Company->GetCompanyName().ToString(), Amount, (Type+0));
 #endif
 	ModifyBudget(Type, -Amount);
+}
 
-	float TotalWeight = 0;
-
+void UFlareCompanyAI::RecalculateFullBudgets()
+{
+	int64 CompanyMoney = Company->GetMoney();
 	for (EFlareBudget::Type Budget : AllBudgets)
 	{
-		TotalWeight += Behavior->GetBudgetWeight(Budget);
-	}
-
-	for (EFlareBudget::Type Budget : AllBudgets)
-	{
-		ModifyBudget(Budget, Amount * Behavior->GetBudgetWeight(Budget) / TotalWeight);
+		int64 StarterBudget = 0;
+		StarterBudget = CompanyMoney * Behavior->GetBudgetWeight(Budget);
+		SetBudget(Budget, StarterBudget);
 	}
 }
 
@@ -721,6 +888,25 @@ int64 UFlareCompanyAI::GetBudget(EFlareBudget::Type Type)
 	FLOGV("GetBudget: unknown budget type %d", Type);
 #endif
 	return 0;
+}
+
+void UFlareCompanyAI::SetBudget(EFlareBudget::Type Type, int64 Amount)
+{
+	switch (Type)
+	{
+		case EFlareBudget::Military:
+			AIData.BudgetMilitary = Amount;
+		break;
+		case EFlareBudget::Station:
+			AIData.BudgetStation = Amount;
+		break;
+		case EFlareBudget::Technology:
+			AIData.BudgetTechnology = Amount;
+		break;
+		case EFlareBudget::Trade:
+			AIData.BudgetTrade = Amount;
+		break;
+	}
 }
 
 void UFlareCompanyAI::ModifyBudget(EFlareBudget::Type Type, int64 Amount)
@@ -792,21 +978,21 @@ void UFlareCompanyAI::ProcessBudget(TArray<EFlareBudget::Type> BudgetToProcess)
 	bool Lock = false;
 	bool Idle = true;
 
-	if (Behavior->GetBudgetWeight(MaxBudgetType) > 0)
+	if (Behavior->GetBudgetWeight(MaxBudgetType) > 0.f)
 	{
 		switch (MaxBudgetType)
 		{
 			case EFlareBudget::Military:
 				ProcessBudgetMilitary(MaxBudgetAmount, Lock, Idle);
 			break;
-			case EFlareBudget::Trade:
-				ProcessBudgetTrade(MaxBudgetAmount, Lock, Idle);
-			break;
 			case EFlareBudget::Station:
 				ProcessBudgetStation(MaxBudgetAmount, false, Lock, Idle);
 			break;
 			case EFlareBudget::Technology:
 				ProcessBudgetStation(MaxBudgetAmount, true, Lock, Idle);
+			break;
+			case EFlareBudget::Trade:
+				ProcessBudgetTrade(MaxBudgetAmount, Lock, Idle);
 			break;
 		}
 	}
@@ -826,7 +1012,8 @@ void UFlareCompanyAI::ProcessBudget(TArray<EFlareBudget::Type> BudgetToProcess)
 		FLOG("Idle");
 #endif
 		// Nothing to buy consume a part of its budget
-		SpendBudget(MaxBudgetType, MaxBudgetAmount / 100);
+//		SpendBudget(MaxBudgetType, MaxBudgetAmount / 100);
+		RedistributeBudget(MaxBudgetType, MaxBudgetAmount / 100);
 	}
 
 	BudgetToProcess.Remove(MaxBudgetType);
@@ -838,14 +1025,8 @@ void UFlareCompanyAI::ProcessBudgetMilitary(int64 BudgetAmount, bool& Lock, bool
 	// Min confidence level
 	float MinConfidenceLevel = 1;
 
-	for (UFlareCompany* OtherCompany : Company->GetOtherCompanies())//Game->GetGameWorld()->GetCompanies())
+	for (UFlareCompany* OtherCompany : Company->GetOtherCompanies())
 	{
-/*
-		if (OtherCompany == Company)
-		{
-			continue;
-		}
-*/
 		TArray<UFlareCompany*> Allies;
 		float ConfidenceLevel = Company->GetConfidenceLevel(OtherCompany, Allies);
 		if (MinConfidenceLevel > ConfidenceLevel)
@@ -854,7 +1035,7 @@ void UFlareCompanyAI::ProcessBudgetMilitary(int64 BudgetAmount, bool& Lock, bool
 		}
 	}
 
-	if (!Company->AtWar() && (MinConfidenceLevel > Behavior->ConfidenceTarget || AIData.Pacifism > 90))
+	if (!WasAtWar && (MinConfidenceLevel > Behavior->ConfidenceTarget || AIData.Pacifism > 90))
 	{
 		// Army size is ok
 		Idle = true;
@@ -864,7 +1045,7 @@ void UFlareCompanyAI::ProcessBudgetMilitary(int64 BudgetAmount, bool& Lock, bool
 
 	Idle = false;
 
-	int64 ProjectCost = UpdateWarShipAcquisition(false);
+	int64 ProjectCost = UpdateWarShipAcquisition();
 
 	if (ProjectCost > 0 && ProjectCost < BudgetAmount / 2)
 	{
@@ -929,28 +1110,73 @@ void UFlareCompanyAI::ProcessBudgetTrade(int64 BudgetAmount, bool& Lock, bool& I
 void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, bool& Lock, bool& Idle)
 {
 	Idle = false;
-	// Prepare resources for station-building analysis
-	float BestScore = 0;
-	UFlareSimulatedSector* BestSector = NULL;
-	FFlareSpacecraftDescription* BestStationDescription = NULL;
-	UFlareSimulatedSpacecraft* BestStation = NULL;
-	TArray<UFlareSpacecraftCatalogEntry*>& StationCatalog = Game->GetSpacecraftCatalog()->StationCatalog;
 
-	//Check if a construction is in progress
-
-	bool UnderConstruction = false;
-	bool UnderConstructionUpgrade = false;
-
-	if(UnderConstructionStations.Num()>0 && UnderConstructionUpgradeStations.Num() > 0)
-
+	if (UnderConstructionStations.Num() > 0 && UnderConstructionUpgradeStations.Num() > 1)
 	{
 		ReservedResources = 75;
 		return;
 	}
-	
+
+	TArray<UFlareSimulatedSector*> KnownSectors;
+	TMap<FName, UFlareSimulatedSector*> LicensedSectors = Company->GetLicenseStationSectors();
+	TArray<FName> Keys;
+	LicensedSectors.GetKeys(Keys);
+	bool FoundPossibleSector = false;
+
+	for (int i = 0; i < Keys.Num(); i++)
+	{
+		FName Identifier = Keys[i];
+		UFlareSimulatedSector* Sector = LicensedSectors[Identifier];
+		if (Sector)
+		{
+//only build new stations or upgrade existing stations in sectors where the company owns a license
+			KnownSectors.Add(Sector);
+
+			if (!FoundPossibleSector)
+			{
+				int32 OwnedStationCount = Company->GetCompanySectorStationsCount(Sector);
+				int32 MaxStationCount = Company->IsTechnologyUnlocked("dense-sectors") ? Sector->GetMaxStationsPerCompany() : Sector->GetMaxStationsPerCompany() / 2;
+				if (OwnedStationCount < MaxStationCount)
+				{
+					FoundPossibleSector = true;
+				}
+			}
+		}
+	}
+
+	//Check if a construction is in progress
+	bool UnderConstruction = false;
+	bool UnderConstructionUpgrade = false;
+
+	if (!FoundPossibleSector)
+	{
+		UnderConstruction = true;
+		if (!Behavior->FinishedBuyingSectorStationLicenses)
+		{
+			PurchaseSectorStationLicense(Technology ? EFlareBudget::Technology : EFlareBudget::Station);
+		}
+	}
+	else
+	{
+		if (Game->GetGameWorld()->GetDate() >= (AIData.DateBoughtLicense + Behavior->DaysUntilTryGetStationLicense))
+		{
+			if (!Behavior->FinishedBuyingSectorStationLicenses)
+			{
+				PurchaseSectorStationLicense(Technology ? EFlareBudget::Technology : EFlareBudget::Station);
+			}
+		}
+	}
+
+	if (Technology && Behavior->FinishedResearch)
+	{
+		RedistributeBudget(EFlareBudget::Technology, GetBudget(EFlareBudget::Technology));
+		Idle = true;
+		return;
+	}
+
 	ReservedResources = 0;
 	bool Resources_New = false;
-	bool Resources_Upgrade = false;
+	bool Resources_Upgrade = true;
 
 	if (UnderConstructionStations.Num() > 0)
 	{
@@ -958,29 +1184,37 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 		UnderConstruction = true;
 	}
 
-	if (UnderConstructionUpgradeStations.Num() > 0)
+	if (UnderConstructionUpgradeStations.Num() > 1)
+// AI Company will upgrade one station without caring about minimum available resource levels, and then start upgrading a second one simultaniously if resource levels are "ok"
 	{
 		ReservedResources += 25;
 		UnderConstructionUpgrade = true;
 	}
+	else if (UnderConstructionUpgradeStations.Num() == 1)
+	{
+		if (!ComputeAvailableConstructionResourceAvailability(25 + (GlobalReservedResources - 25)))
+		{
+			Resources_Upgrade = false;
+		}
+	}
 
-	if (ComputeAvailableConstructionResourceAvailability(50 + (GlobalReservedResources-50)))
+	if (ComputeAvailableConstructionResourceAvailability(50 + (GlobalReservedResources - 50)))
 	{
 		Resources_New = true;
 	}
 
-	if(ComputeAvailableConstructionResourceAvailability(25 + (GlobalReservedResources-25)))
-	{
-		Resources_Upgrade = true;
-	}
+	// Prepare resources for station-building analysis
+	float BestScore = 0;
+	UFlareSimulatedSector* BestSector = NULL;
+	FFlareSpacecraftDescription* BestStationDescription = NULL;
+	UFlareSimulatedSpacecraft* BestStation = NULL;
+	TArray<UFlareSpacecraftCatalogEntry*>& StationCatalog = Game->GetSpacecraftCatalog()->StationCatalog;
 
 	// Loop on sector list
-	TArray<UFlareSimulatedSector*> KnownSectors = Company->GetKnownSectors();
-
 	while (KnownSectors.Num())
 	{
 		int32 SectorIndex = FMath::RandRange(0, KnownSectors.Num() - 1);
-		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
+		UFlareSimulatedSector* Sector = KnownSectors[SectorIndex];
 
 		if (!UnderConstruction&&Resources_New)
 		{
@@ -1011,6 +1245,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 				int32 StationCountForThisKind = 0;
 
 				for (UFlareSimulatedSpacecraft* StationCandidate : Company->GetCompanyStations())
+//GetCompanySectorStations
 				{
 					if (StationDescription == StationCandidate->GetDescription())
 					{
@@ -1033,7 +1268,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 				{
 					Maximum = 1;
 				}
-				
+
 				if (!UnderConstructionUpgrade)
 				{
 					MaximumUpdatable = 2;
@@ -1138,7 +1373,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 				//FLOGV("> Analyse upgrade %s in %s", *Station->GetImmatriculation().ToString(), *Sector->GetSectorName().ToString());
 
-
 				if (Station->HasCapability(EFlareSpacecraftCapability::Storage))
 				{
 					int32 StationLevelSum = 0;
@@ -1181,7 +1415,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 					// Add weight if the company already have another station in this type
 					float Score = ComputeConstructionScoreForStation(Sector, Station->GetDescription(), FactoryDescription, Station, Technology);
-
 					UpdateBestScore(Score, Sector, Station->GetDescription(), Station, &BestScore, &BestStationDescription, &BestStation, &BestSector);
 				}
 
@@ -1210,7 +1443,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 		CompanyValue TotalValue = Company->GetCompanyValue();
 		float CostSafetyMargin = Behavior->CostSafetyMarginStation;
 
-		if ((StationPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityEconomic) < CompanyMoney)
+		if (((StationPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityEconomic) < CompanyMoney) && CanSpendBudget(Technology ? EFlareBudget::Technology : EFlareBudget::Station, StationPrice))
 		{
 			UFlareSimulatedSpacecraft* BuiltStation = NULL;
 			TArray<FText> Reasons;
@@ -1239,7 +1472,6 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 #endif
 
 				SpendBudget(Technology ? EFlareBudget::Technology : EFlareBudget::Station, StationPrice);
-
 				GameLog::AIConstructionStart(Company, BestSector, BestStationDescription, BestStation);
 			}
 
@@ -1265,10 +1497,32 @@ int64 UFlareCompanyAI::UpdateCargoShipAcquisition()
 	// only if the is no more then the AI_CARGO_DIVERSITY_THERESOLD
 
 	// Check if a ship is building
-	if (IsBuildingShip(false))
+	GetBuildingShipNumber();
+/*
+	int64 index = FMath::RandRange(0, 100);
+	FString UniqueId = "peace-declared-" + index;
+	GetGame()->GetPC()->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoeaFormat", "{0} Company has tracked {1} Trade Ships. at war is {2}, building peace is {3}, building war is {4}"),
+			Company->GetCompanyName(), BuildingMilitaryShips, WasAtWar, Behavior->MaxTradeShipsBuildingPeace, Behavior->MaxTradeShipsBuildingWar),
+		FName(*UniqueId),
+		EFlareNotification::NT_Info,
+		false);
+*/
+	if (WasAtWar)
 	{
-		//FLOG("IsBuildingShip");
-		return 0;
+		if(BuildingTradeShips >= Behavior->MaxTradeShipsBuildingWar)
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		if (BuildingTradeShips >= Behavior->MaxTradeShipsBuildingPeace)
+		{
+			return 0;
+		}
 	}
 
 	const FFlareSpacecraftDescription* ShipDescription = FindBestShipToBuild(false);
@@ -1281,7 +1535,7 @@ int64 UFlareCompanyAI::UpdateCargoShipAcquisition()
 	return OrderOneShip(ShipDescription);
 }
 
-int64 UFlareCompanyAI::UpdateWarShipAcquisition(bool limitToOne)
+int64 UFlareCompanyAI::UpdateWarShipAcquisition()
 {
 	// For the war pass there is 2 states : slow preventive ship buy. And war state.
 	//
@@ -1291,13 +1545,35 @@ int64 UFlareCompanyAI::UpdateWarShipAcquisition(bool limitToOne)
 	//   army value of all enemies and buy as many ship it can.
 
 	// Check if a ship is building
-	if (limitToOne && IsBuildingShip(true))
+	GetBuildingShipNumber();
+/*
+	int64 index = FMath::RandRange(0, 100);
+	FString UniqueId = "war-declared-" + index;
+	GetGame()->GetPC()->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoFormat", "{0} Company has tracked {1} Military Ships. at war is {2}, building peace is {3}, building war is {4}"),
+			Company->GetCompanyName(), BuildingMilitaryShips, WasAtWar, Behavior->MaxMilitaryShipsBuildingPeace, Behavior->MaxMilitaryShipsBuildingWar),
+		FName(*UniqueId),
+		EFlareNotification::NT_Info,
+		false);
+*/
+	if (WasAtWar)
 	{
-		return 0;
+		if (BuildingMilitaryShips >= Behavior->MaxMilitaryShipsBuildingWar)
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		if (BuildingMilitaryShips >= Behavior->MaxMilitaryShipsBuildingPeace)
+		{
+			return 0;
+		}
 	}
 
 	const FFlareSpacecraftDescription* ShipDescription = FindBestShipToBuild(true);
-
 	return OrderOneShip(ShipDescription);
 }
 
@@ -1311,7 +1587,7 @@ void UFlareCompanyAI::UpdateMilitaryMovement()
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareCompanyAI_UpdateMilitaryMovement);
 
-	if (Company->AtWar())
+	if (WasAtWar)
 	{
 		UpdateWarMilitaryMovement();
 	}
@@ -1532,19 +1808,21 @@ TArray<WarTarget> UFlareCompanyAI::GenerateWarTargetList(AIWarContext& WarContex
 		{
 			IsTarget = true;
 		}
-
-		for (UFlareSimulatedSpacecraft* Spacecraft : Sector->GetSectorSpacecrafts())
+		else
 		{
-			if (!Spacecraft->IsStation() && !Spacecraft->IsMilitary() && Spacecraft->GetDamageSystem()->IsUncontrollable())
+			for (UFlareSimulatedSpacecraft* Spacecraft : Sector->GetSectorSpacecrafts())
 			{
-				// Don't target uncontrollable ships
-				continue;
-			}
+				if (!Spacecraft->IsStation() && !Spacecraft->IsMilitary() && Spacecraft->GetDamageSystem()->IsUncontrollable())
+				{
+					// Don't target uncontrollable ships
+					continue;
+				}
 
-			if (WarContext.Enemies.Contains(Spacecraft->GetCompany()))
-			{
-				IsTarget = true;
-				break;
+				if (WarContext.Enemies.Contains(Spacecraft->GetCompany()))
+				{
+					IsTarget = true;
+					break;
+				}
 			}
 		}
 
@@ -1567,7 +1845,6 @@ TArray<WarTarget> UFlareCompanyAI::GenerateWarTargetList(AIWarContext& WarContex
 		Target.OwnedStationCount = 0;
 		Target.OwnedMilitaryCount = 0;
 		Target.WarTargetIncomingFleets = GenerateWarTargetIncomingFleets(WarContext, Sector);
-
 
 		for (UFlareSimulatedSpacecraft* Spacecraft : Sector->GetSectorSpacecrafts())
 		{
@@ -1772,10 +2049,21 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 			for (UFlareSimulatedSpacecraft* Station : Stations)
 			{
 				// Capturing station
-				if (WarContext.Enemies.Contains(Station->GetCompany()) && Company->CanStartCapture(Station))
+
+				if (WarContext.Enemies.Contains(Station->GetCompany()))
 				{
-					Target.CapturingStation = true;
-					break;
+					if (Behavior->FinishedResearch)
+					{
+						if (Station->GetDescription()->IsResearch())
+						{
+							continue;
+						}
+					}
+					if(Company->CanStartCapture(Station))
+					{
+						Target.CapturingStation = true;
+						break;
+					}
 				}
 			}
 		}
@@ -2102,6 +2390,10 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 					Sector.CombatPoints -= ShipCombatPoints;
 					Sector.ArmyAntiSCombatPoints -= ShipCombatPoints;
 				}
+				else if (SelectedShip->GetWeaponsSystem()->HasSalvagingWeaponEquipped())
+				{
+				}
+
 				else
 				{
 					// Not useful don't travel
@@ -2145,6 +2437,13 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 			// Start capture
 			for(UFlareSimulatedSpacecraft* Station: Sector.Sector->GetSectorStations())
 			{
+				if (Behavior->FinishedResearch)
+				{
+					if (Station->GetDescription()->IsResearch())
+					{
+						continue;
+					}
+				}
 				Company->StartCapture(Station);
 			}
 
@@ -2450,6 +2749,7 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 
 		if (BestWeapon)
 		{
+			int64 TransactionCostPer = 0;
 			int64 TransactionCost = 0;
 			int32 WeaponGroupCount = Ship->GetDescription()->WeaponGroups.Num();
 			if (AllowSalvager)
@@ -2460,15 +2760,14 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 			for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
 			{
 				FFlareSpacecraftComponentDescription* OldWeapon = Ship->GetCurrentPart(EFlarePartType::Weapon, WeaponGroupIndex);
-				TransactionCost += Ship->GetUpgradeCost(BestWeapon, OldWeapon);
+				TransactionCostPer = Ship->GetUpgradeCost(BestWeapon, OldWeapon);
+				TransactionCost += TransactionCostPer;
 			}
 
 			float CostSafetyMargin = Behavior->CostSafetyMarginMilitaryShip;
 			CompanyValue TotalValue = Company->GetCompanyValue();
 
-			if (((TransactionCost * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary)) > Ship->GetCompany()->GetMoney())
-
-//			if (TransactionCost > Ship->GetCompany()->GetMoney())
+			if (((TransactionCost * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary)) > Ship->GetCompany()->GetMoney() && CanSpendBudget(EFlareBudget::Military, TransactionCost))
 			{
 				// Cannot afford
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -2480,11 +2779,15 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("%s upgrade its weapons to %s", *Ship->GetImmatriculation().ToString(), *BestWeapon->Identifier.ToString());
 #endif
+			bool FailedUpgrade = false;
+			int32 SuccesfulUpgrades = 0;
+
 			for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
 			{
 				if (Ship->UpgradePart(BestWeapon, WeaponGroupIndex))
 				{
-					Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCost);
+					++ SuccesfulUpgrades;
+//					Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCost);
 				}
 				else
 				{
@@ -2494,8 +2797,17 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 #endif
 
 					// Something fail
-					return false;
+					FailedUpgrade = true;
+					break;
+//					return false;
 				}
+			}
+
+			Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCostPer * SuccesfulUpgrades);
+
+			if (FailedUpgrade)
+			{
+				return false;
 			}
 		}
 	}
@@ -2507,6 +2819,7 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 		FFlareSpacecraftComponentDescription* OldPart = Ship->GetCurrentPart(EFlarePartType::RCS, 0);
 		FFlareSpacecraftComponentDescription* BestPart = OldPart;
 		TArray< FFlareSpacecraftComponentDescription* > PartListData;
+		int64 TransactionCost = 0;
 		Catalog->GetRCSList(PartListData, Ship->GetSize(),Ship->GetCompany(),Ship);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartListData)
@@ -2523,10 +2836,13 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("%s upgrade its rcs to %s", *Ship->GetImmatriculation().ToString(), *BestPart->Identifier.ToString());
 #endif
-			if (Ship->UpgradePart(BestPart, 0))
+			TransactionCost = Ship->GetUpgradeCost(BestPart, OldPart);
+			if (CanSpendBudget(EFlareBudget::Military, TransactionCost))
 			{
-				int64 TransactionCost = Ship->GetUpgradeCost(BestPart, OldPart);
-				SpendBudget(EFlareBudget::Military, TransactionCost);
+				if (Ship->UpgradePart(BestPart, 0))
+				{
+					SpendBudget(EFlareBudget::Military, TransactionCost);
+				}
 			}
 		}
 	}
@@ -2538,6 +2854,8 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 		FFlareSpacecraftComponentDescription* OldPart = Ship->GetCurrentPart(EFlarePartType::OrbitalEngine, 0);
 		FFlareSpacecraftComponentDescription* BestPart = OldPart;
 		TArray< FFlareSpacecraftComponentDescription* > PartListData;
+		int64 TransactionCost = 0;
+
 		Catalog->GetEngineList(PartListData, Ship->GetSize(),Ship->GetCompany(),Ship);
 
 		for (FFlareSpacecraftComponentDescription* Part : PartListData)
@@ -2554,14 +2872,16 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("%s upgrade its orbital engines to %s", *Ship->GetImmatriculation().ToString(), *BestPart->Identifier.ToString());
 #endif
-			if (Ship->UpgradePart(BestPart, 0))
+			TransactionCost = Ship->GetUpgradeCost(BestPart, OldPart);
+			if (CanSpendBudget(EFlareBudget::Military, TransactionCost))
 			{
-				int64 TransactionCost = Ship->GetUpgradeCost(BestPart, OldPart);
-				SpendBudget(EFlareBudget::Military, TransactionCost);
+				if (Ship->UpgradePart(BestPart, 0))
+				{
+					SpendBudget(EFlareBudget::Military, TransactionCost);
+				}
 			}
 		}
 	}
-
 	return true;
 }
 
@@ -2843,7 +3163,8 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 void UFlareCompanyAI::UpdatePeaceMilitaryMovement()
 {
 	CompanyValue TotalValue = Company->GetCompanyValue();
-	int64 TotalDefendableValue = TotalValue.StationsValue + TotalValue.StockValue + TotalValue.ShipsValue - TotalValue.ArmyValue;
+	int64 TotalLicenseValue = Company->GetTotalStationLicenseValue() / 2;
+	int64 TotalDefendableValue = TotalValue.StationsValue + TotalValue.StockValue + TotalValue.ShipsValue + TotalLicenseValue - TotalValue.ArmyValue;
 	float TotalDefenseRatio = (float) TotalValue.ArmyValue / (float) TotalDefendableValue;
 
 #ifdef DEBUG_AI_PEACE_MILITARY_MOVEMENT
@@ -2860,6 +3181,7 @@ void UFlareCompanyAI::UpdatePeaceMilitaryMovement()
 	{
 		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
 		CompanyValue SectorValue = Company->GetCompanyValue(Sector, true);
+		int64 SectorLicenseValue = SectorValue.StationsValue + SectorValue.StockValue + SectorValue.ShipsValue + (Company->GetStationLicenseCost(Sector) / 2) - SectorValue.ArmyValue;
 
 		int64 SectorDefendableValue = SectorValue.StationsValue + SectorValue.StockValue + SectorValue.ShipsValue - SectorValue.ArmyValue;
 		int64 SectorArmyValue = SectorValue.ArmyValue;
@@ -2971,45 +3293,56 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 	int64 CompanyMoney = Company->GetMoney();
 	CompanyValue TotalValue = Company->GetCompanyValue();
 
-	float CostSafetyMargin;// = 1.1f;
+	float CostSafetyMargin;
 	float ProductionSensitivity;
+	bool IsMilitary = false;
 
 	if (ShipDescription->IsMilitary())
 	{
 		CostSafetyMargin = Behavior->CostSafetyMarginMilitaryShip;
 		ProductionSensitivity = Behavior->DailyProductionCostSensitivityMilitary;
+		IsMilitary = true;
 	}
 	else
 	{
 		CostSafetyMargin = Behavior->CostSafetyMarginTradeShip;
 		ProductionSensitivity = Behavior->DailyProductionCostSensitivityEconomic;
 }
-	
+
 	//FLOGV("OrderOneShip %s", *ShipDescription->Name.ToString());
 
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
-/*
-		if (Shipyard->IsHostile(Company))
-		{
-			continue;
-		}
-*/
 		if (Shipyard->CanOrder(ShipDescription, Company, true))
 		{
-			int64 ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipDescription->Identifier, Shipyard->GetCurrentSector(), true);
+			int64 ShipPrice;
+			if (Shipyard->GetCompany() != Company)
+			{
+				ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipDescription->Identifier, Shipyard->GetCurrentSector(), true);
+			}
+			else
+			{
+				ShipPrice = ShipDescription->CycleCost.ProductionCost;
+			}
 
-//			if (ShipPrice * CostSafetyMargin < CompanyMoney)
-			if ((ShipPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * ProductionSensitivity) < CompanyMoney)
+			if (((ShipPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * ProductionSensitivity) < CompanyMoney) && CanSpendBudget(IsMilitary ? EFlareBudget::Military : EFlareBudget::Trade, ShipPrice))
 
 			{
 				FName ShipClassToOrder = ShipDescription->Identifier;
 				FLOGV("UFlareCompanyAI::UpdateShipAcquisition : Ordering spacecraft : '%s'", *ShipClassToOrder.ToString());
 				Shipyard->ShipyardOrderShip(Company, ShipClassToOrder);
 
-				SpendBudget((ShipDescription->IsMilitary() ? EFlareBudget::Military : EFlareBudget::Trade), ShipPrice);
+				SpendBudget((IsMilitary ? EFlareBudget::Military : EFlareBudget::Trade), ShipPrice);
 
+				if (IsMilitary)
+				{
+					++ BuildingMilitaryShips;
+				}
+				else
+				{
+					++ BuildingTradeShips;
+				}
 				return 0;
 			}
 			else
@@ -3079,12 +3412,6 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard =Shipyards[ShipyardIndex];
-/*
-		if (Shipyard->IsHostile(Company))
-		{
-			continue;
-		}
-*/
 		TArray<UFlareFactory*>& Factories = Shipyard->GetFactories();
 
 		for (int32 Index = 0; Index < Factories.Num(); Index++)
@@ -3374,17 +3701,18 @@ void UFlareCompanyAI::GetCompany()
 {
 }
 
-bool UFlareCompanyAI::IsBuildingShip(bool Military)
+void UFlareCompanyAI::GetBuildingShipNumber()
 {
+	if (CheckedBuildingShips)
+	{
+		return;
+	}
+
+	BuildingMilitaryShips = 0;
+	BuildingTradeShips = 0;
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
-/*
-		if (Shipyard->IsHostile(Company))
-		{
-			continue;
-		}
-*/
 		TArray<UFlareFactory*>& Factories = Shipyard->GetFactories();
 
 		for (int32 Index = 0; Index < Factories.Num(); Index++)
@@ -3393,14 +3721,30 @@ bool UFlareCompanyAI::IsBuildingShip(bool Military)
 			if (Factory->GetTargetShipCompany() == Company->GetIdentifier())
 			{
 				FFlareSpacecraftDescription* BuildingShip = Game->GetSpacecraftCatalog()->Get(Factory->GetTargetShipClass());
-				if (Military == BuildingShip->IsMilitary())
+				if (BuildingShip->IsMilitary())
 				{
-					return true;
+					++BuildingMilitaryShips;
+				}
+				else
+				{
+					++BuildingTradeShips;
 				}
 			}
 		}
 	}
-	return false;
+	CheckedBuildingShips = true;
+/*
+	int64 index = FMath::RandRange(0, 100);
+	FString UniqueId = "peace-declared-" + index;
+	GetGame()->GetPC()->Notify(
+		LOCTEXT("TestInfo", "Test Notification"),
+		FText::Format(
+			LOCTEXT("TestInfoeaFormat", "{0} Company has run ship calc, found {1} trade, {2} military"),
+			Company->GetCompanyName(), BuildingTradeShips, BuildingMilitaryShips),
+		FName(*UniqueId),
+		EFlareNotification::NT_Info,
+		false);
+*/
 }
 
 TArray<UFlareSimulatedSpacecraft*> UFlareCompanyAI::FindIncapacitatedCargos() const
@@ -3642,11 +3986,6 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 	}*/
 
 	if(Technology != StationDescription->IsResearch())
-	{
-		return 0;
-	}
-
-	if (Technology && Behavior->FinishedResearch)
 	{
 		return 0;
 	}
@@ -3982,7 +4321,6 @@ float UFlareCompanyAI::ComputeStationPrice(UFlareSimulatedSector* Sector, FFlare
 		StationPrice = STATION_CONSTRUCTION_PRICE_BONUS * UFlareGameTools::ComputeSpacecraftPrice(StationDescription->Identifier, Sector, true, true, false, Company);
 	}
 	return StationPrice;
-
 }
 
 

@@ -588,6 +588,14 @@ FFlareTransactionLogEntry FFlareTransactionLogEntry::LogPaidForMaintenance(UFlar
 	return Entry;
 }
 
+FFlareTransactionLogEntry FFlareTransactionLogEntry::LogPaidSectorStationBuildingLicense(UFlareSimulatedSector* Sector)
+{
+	FFlareTransactionLogEntry Entry;
+	Entry.Type = EFlareTransactionLogEntry::PaidSectorStationLicense;
+	Entry.Sector = Sector->GetIdentifier();
+	return Entry;
+}
+
 FFlareTransactionLogEntry FFlareTransactionLogEntry::LogSendTribute(UFlareCompany* Company)
 {
 	FFlareTransactionLogEntry Entry;
@@ -714,6 +722,7 @@ FText FFlareTransactionLogEntry::GetCategoryDescription(EFlareTransactionLogEntr
 	case EFlareTransactionLogEntry::PaidForRepair:              return LOCTEXT("CategoryPaidForRepair",              "Ship repair services");       break;
 	case EFlareTransactionLogEntry::PaidForRefill:              return LOCTEXT("CategoryPaidForRefill",              "Ship refilling services");    break;
 	case EFlareTransactionLogEntry::SendTribute:                return LOCTEXT("CategorySendTribute",                "Tributes paid");              break;
+	case EFlareTransactionLogEntry::PaidSectorStationLicense:   return LOCTEXT("CategoryPaidSectorStationLicense",	 "Station license");     break;
 	case EFlareTransactionLogEntry::ReceiveTribute:             return LOCTEXT("CategoryReceiveTribute",             "Tributes received");          break;
 	case EFlareTransactionLogEntry::RecoveryFees:               return LOCTEXT("CategoryRecoveryFees",               "Ship recovery");              break;
 	case EFlareTransactionLogEntry::ScrapGain:                  return LOCTEXT("CategoryScrapGain",                  "Ship scrapping");             break;
@@ -1018,6 +1027,11 @@ FText FFlareTransactionLogEntry::GetComment(AFlareGame* Game) const
 	case EFlareTransactionLogEntry::ReceiveTribute:
 	{
 		Comment = LOCTEXT("ReceiveTribute", "Received tribute");
+		break;
+	}
+	case EFlareTransactionLogEntry::PaidSectorStationLicense:
+	{
+		Comment = LOCTEXT("StationLicense", "Paid for station license");
 		break;
 	}
 	case EFlareTransactionLogEntry::RecoveryFees:

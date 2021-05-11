@@ -230,6 +230,7 @@ void UFlareSaveReaderV1::LoadCompanyDescription(const TSharedPtr<FJsonObject> Ob
 void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareWorldSave* Data)
 {
 	LoadInt64(Object, "Date", &Data->Date);
+	LoadInt64(Object, "EventDate_GlobalWar", &Data->EventDate_GlobalWar);
 
 	const TArray<TSharedPtr<FJsonValue>>* Companies;
 	if(Object->TryGetArrayField("Companies", Companies))
@@ -310,6 +311,12 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	if(Object->TryGetObjectField(TEXT("AI"), AI))
 	{
 		LoadCompanyAI(*AI, &Data->AI);
+	}
+
+	const TSharedPtr< FJsonObject >* Licenses;
+	if (Object->TryGetObjectField(TEXT("Licenses"), Licenses))
+	{
+		LoadCompanyLicenses(*Licenses, &Data->Licenses);
 	}
 
 	LoadFNameArray(Object, "HostileCompanies", &Data->HostileCompanies);
@@ -418,6 +425,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FFlareSpacecraftSave* Data)
 {
 	Object->TryGetBoolField(TEXT("IsDestroyed"), Data->IsDestroyed);
+
 	Object->TryGetBoolField(TEXT("IsUnderConstruction"), Data->IsUnderConstruction);
 	LoadFName(Object, "Immatriculation", &Data->Immatriculation);
 	LoadFText(Object, "NickName", &Data->NickName);
@@ -981,11 +989,19 @@ void UFlareSaveReaderV1::LoadCompanyAI(const TSharedPtr<FJsonObject> Object, FFl
 	LoadInt64(Object, "BudgetStation", &Data->BudgetStation);
 	LoadInt64(Object, "BudgetTechnology", &Data->BudgetTechnology);
 	LoadInt64(Object, "BudgetTrade", &Data->BudgetTrade);
+	LoadInt64(Object, "DateBoughtLicense", &Data->DateBoughtLicense);	
 	LoadFloat(Object, "Caution", &Data->Caution);
 	LoadFloat(Object, "Pacifism", &Data->Pacifism);
 
-
 	LoadFName(Object, "ResearchProject", &Data->ResearchProject);
+	LoadFName(Object, "DesiredStationLicense", &Data->DesiredStationLicense);
+	Object->TryGetBoolField(TEXT("CalculatedDefaultBudget"), Data->CalculatedDefaultBudget);
+}
+
+void UFlareSaveReaderV1::LoadCompanyLicenses(const TSharedPtr<FJsonObject> Object, FFlareCompanyLicensesSave* Data)
+{
+	LoadFNameArray(Object, "LicenseBuilding", &Data->LicenseBuilding);
+	Object->TryGetBoolField(TEXT("HasRecievedStartingLicenses"), Data->HasRecievedStartingLicenses);
 }
 
 

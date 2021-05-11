@@ -906,10 +906,9 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 {
 	if (TargetSpacecraft)
 	{
-		TArray<UFlareFactory*>& Factories = TargetSpacecraft->GetFactories();
-
 		if (TargetSpacecraft->IsComplex())
 		{
+			TArray<UFlareFactory*>& Factories = TargetSpacecraft->GetFactories();
 			TMap<FName, uint32> ResourceCosts;
 			int32 DailyProductionCostEstimate = 0;
 			FString ResourcesString;

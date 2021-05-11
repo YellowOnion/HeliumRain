@@ -203,7 +203,7 @@ void UFlareSector::DestroySector()
 
 	for (int BombIndex = 0 ; BombIndex < SectorBombs.Num(); BombIndex++)
 	{
-		if (SectorShells[BombIndex])
+		if (SectorBombs[BombIndex])
 		{
 			SectorBombs[BombIndex]->SafeDestroy();
 			SectorBombs[BombIndex]->Destroy();
@@ -577,11 +577,15 @@ void UFlareSector::UnregisterBomb(AFlareBomb* Bomb)
 	if (!IsDestroyingSector)
 	{ 
 		SectorBombs.RemoveSwap(Bomb);
-		for (AFlareSpacecraft* Spacecraft : SectorSpacecrafts)
+		for (int i = 0; i < SectorSpacecrafts.Num(); i++)
 		{
-			if (IsValid(Spacecraft))
+			if (IsDestroyingSector)
 			{
-				Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
+				AFlareSpacecraft* Spacecraft = SectorSpacecrafts[i];
+				if (IsValid(Spacecraft))
+				{
+					Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
+				}
 			}
 		}
 	}
@@ -610,13 +614,10 @@ void UFlareSector::RegisterCachedShell(AFlareShell* Shell)
 
 AFlareShell* UFlareSector::RetrieveCachedShell()
 {
-//	return NULL;
 	if (!IsDestroyingSector)
 	{
 		if (SectorCachedShells.Num())
 		{
-//			AFlareShell* Shell = SectorCachedShells[0];
-//			SectorCachedShells.RemoveAt(0);
 			AFlareShell* Shell = SectorCachedShells.Pop();
 			return Shell;
 		}

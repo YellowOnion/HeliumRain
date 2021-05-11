@@ -706,7 +706,7 @@ void UFlarePeople::Migrate(UFlareSimulatedSector* DestinationSector, int32 ShipC
 		// Migrate
 		int32 MigratingPopulation = FMath::Min(ShipCount * 10, (int32) PeopleData.Population / 2);
 
-		int32 MigratingHappiness = MigratingPopulation * GetHappiness();
+//		int32 MigratingHappiness = MigratingPopulation * GetHappiness();
 
 #if DEBUG_PEOPLE
 		float InitialHappiness = GetHappiness();

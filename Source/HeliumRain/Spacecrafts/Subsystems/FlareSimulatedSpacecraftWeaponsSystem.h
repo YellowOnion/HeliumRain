@@ -68,6 +68,8 @@ public:
 
 	bool HasAntiSmallShipWeapon();
 
+	bool HasSalvagingWeaponEquipped();
+
 protected:
 
 

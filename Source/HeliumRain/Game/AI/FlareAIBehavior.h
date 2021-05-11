@@ -65,7 +65,7 @@ protected:
 
 	// Gameplay data
 	UFlareCompany*			               Company;
-	const FFlareCompanyDescription*			   CompanyDescription;
+	const FFlareCompanyDescription*		   CompanyDescription;
 	AFlareGame*                            Game;
 	UFlareScenarioTools*                   ST;
 
@@ -89,7 +89,11 @@ public:
 	float BudgetMilitaryWeight;
 	float BudgetStationWeight;
 	float BudgetTradeWeight;
-	float ArmySize;
+
+	float BudgetWarTechnologyWeight;
+	float BudgetWarMilitaryWeight;
+	float BudgetWarStationWeight;
+	float BudgetWarTradeWeight;
 
 	float AttackThreshold;
 	float RetreatThreshold;
@@ -127,6 +131,12 @@ public:
 	int32 BuildMilitaryDiversitySizeBase;
 	int32 BuildTradeDiversitySizeBase;
 
+	int32 DaysUntilTryGetStationLicense;
+	int32 MaxTradeShipsBuildingPeace;
+	int32 MaxTradeShipsBuildingWar;
+	int32 MaxMilitaryShipsBuildingPeace;
+	int32 MaxMilitaryShipsBuildingWar;
+
 	float BuildEfficientMilitaryChance;
 	float BuildEfficientTradeChance;
 	float BuildEfficientMilitaryChanceSmall;
@@ -137,6 +147,7 @@ public:
 
 	bool ProposeTributeToPlayer = false;
 	bool FinishedResearch = false;
+	bool FinishedBuyingSectorStationLicenses = false;
 	TArray<FName> ResearchOrder;
 
 	/*----------------------------------------------------

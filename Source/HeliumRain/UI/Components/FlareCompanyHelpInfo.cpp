@@ -16,6 +16,9 @@
 #include "../Components/FlareListItem.h"
 
 #define LOCTEXT_NAMESPACE "FlareCompanyHelpInfo"
+#define BUDGET_LOW 0.10f
+#define BUDGET_MED 0.30f
+#define BUDGET_HIGH 0.60f
 
 
 /*----------------------------------------------------
@@ -310,19 +313,19 @@ void SFlareCompanyHelpInfo::SetCompanyBudgetPersonality()
 	{
 		TechBudget = LOCTEXT("TechBudgetNone", "Technology - None");
 	}
-	else if (Behavior->BudgetTechnologyWeight > 0 && Behavior->BudgetTechnologyWeight <= 0.25)
+	else if (Behavior->BudgetTechnologyWeight > 0 && Behavior->BudgetTechnologyWeight <= BUDGET_LOW)
 	{
 		TechBudget = LOCTEXT("TechBudgetLow", "Technology - Low");
 	}
-	else if (Behavior->BudgetTechnologyWeight > 0.25 && Behavior->BudgetTechnologyWeight <= 0.50)
+	else if (Behavior->BudgetTechnologyWeight > BUDGET_LOW && Behavior->BudgetTechnologyWeight <= BUDGET_MED)
 	{
 		TechBudget = LOCTEXT("TechBudgetModerate", "Technology - Moderate");
 	}
-	else if (Behavior->BudgetTechnologyWeight > 0.50 && Behavior->BudgetTechnologyWeight <= 0.75)
+	else if (Behavior->BudgetTechnologyWeight > BUDGET_MED && Behavior->BudgetTechnologyWeight <= BUDGET_HIGH)
 	{
 		TechBudget = LOCTEXT("TechBudgetHigh", "Technology - High");
 	}
-	else if (Behavior->BudgetTechnologyWeight > 0.75)
+	else if (Behavior->BudgetTechnologyWeight > BUDGET_HIGH)
 	{
 		TechBudget = LOCTEXT("TechBudgetVeryHigh", "Technology - Very High");
 	}
@@ -331,19 +334,19 @@ void SFlareCompanyHelpInfo::SetCompanyBudgetPersonality()
 	{
 		MilitaryBudget = LOCTEXT("MilitaryBudgetNone", "Military - None");
 	}
-	else if (Behavior->BudgetMilitaryWeight > 0 && Behavior->BudgetMilitaryWeight <= 0.25)
+	else if (Behavior->BudgetMilitaryWeight > 0 && Behavior->BudgetMilitaryWeight <= BUDGET_LOW)
 	{
 		MilitaryBudget = LOCTEXT("MilitaryBudgetLow", "Military - Low");
 	}
-	else if (Behavior->BudgetMilitaryWeight > 0.25 && Behavior->BudgetMilitaryWeight <= 0.50)
+	else if (Behavior->BudgetMilitaryWeight > BUDGET_LOW && Behavior->BudgetMilitaryWeight <= BUDGET_MED)
 	{
 		MilitaryBudget = LOCTEXT("MilitaryBudgetModerate", "Military - Moderate");
 	}
-	else if (Behavior->BudgetMilitaryWeight > 0.50 && Behavior->BudgetMilitaryWeight <= 0.75)
+	else if (Behavior->BudgetMilitaryWeight > BUDGET_MED && Behavior->BudgetMilitaryWeight <= BUDGET_HIGH)
 	{
 		MilitaryBudget = LOCTEXT("MilitaryBudgetHigh", "Military - High");
 	}
-	else if (Behavior->BudgetMilitaryWeight > 0.75)
+	else if (Behavior->BudgetMilitaryWeight > BUDGET_HIGH)
 	{
 		MilitaryBudget = LOCTEXT("MilitaryBudgetVeryHigh", "Military - Very High");
 	}
@@ -352,19 +355,19 @@ void SFlareCompanyHelpInfo::SetCompanyBudgetPersonality()
 	{
 		StationsBudget = LOCTEXT("StationsBudgetNone", "Stations - None");
 	}
-	else if (Behavior->BudgetStationWeight > 0 && Behavior->BudgetStationWeight <= 0.25)
+	else if (Behavior->BudgetStationWeight > 0 && Behavior->BudgetStationWeight <= BUDGET_LOW)
 	{
 		StationsBudget = LOCTEXT("StationsBudgetLow", "Stations - Low");
 	}
-	else if (Behavior->BudgetStationWeight > 0.25 && Behavior->BudgetStationWeight <= 0.50)
+	else if (Behavior->BudgetStationWeight > BUDGET_LOW && Behavior->BudgetStationWeight <= BUDGET_MED)
 	{
 		StationsBudget = LOCTEXT("StationsBudgetModerate", "Stations - Moderate");
 	}
-	else if (Behavior->BudgetStationWeight > 0.50 && Behavior->BudgetStationWeight <= 0.75)
+	else if (Behavior->BudgetStationWeight > BUDGET_MED && Behavior->BudgetStationWeight <= BUDGET_HIGH)
 	{
 		StationsBudget = LOCTEXT("StationsBudgetHigh", "Stations - High");
 	}
-	else if (Behavior->BudgetStationWeight > 0.75)
+	else if (Behavior->BudgetStationWeight > BUDGET_HIGH)
 	{
 		StationsBudget = LOCTEXT("StationsBudgetVeryHigh", "Stations - Very High");
 	}
@@ -373,19 +376,19 @@ void SFlareCompanyHelpInfo::SetCompanyBudgetPersonality()
 	{
 		TradingBudget = LOCTEXT("TradingBudgetNone", "Trading - None");
 	}
-	else if (Behavior->BudgetStationWeight > 0 && Behavior->BudgetStationWeight <= 0.25)
+	else if (Behavior->BudgetStationWeight > 0 && Behavior->BudgetStationWeight <= BUDGET_LOW)
 	{
 		TradingBudget = LOCTEXT("TradingBudgetLow", "Trading - Low");
 	}
-	else if (Behavior->BudgetStationWeight > 0.25 && Behavior->BudgetStationWeight <= 0.50)
+	else if (Behavior->BudgetStationWeight > BUDGET_LOW && Behavior->BudgetStationWeight <= BUDGET_MED)
 	{
 		TradingBudget = LOCTEXT("TradingBudgetModerate", "Trading - Moderate");
 	}
-	else if (Behavior->BudgetStationWeight > 0.50 && Behavior->BudgetStationWeight <= 0.75)
+	else if (Behavior->BudgetStationWeight > BUDGET_MED && Behavior->BudgetStationWeight <= BUDGET_HIGH)
 	{
 		TradingBudget = LOCTEXT("TradingBudgetHigh", "Trading - High");
 	}
-	else if (Behavior->BudgetStationWeight > 0.75)
+	else if (Behavior->BudgetStationWeight > BUDGET_HIGH)
 	{
 		TradingBudget = LOCTEXT("TradingBudgetVeryHigh", "Trading - Very High");
 	}

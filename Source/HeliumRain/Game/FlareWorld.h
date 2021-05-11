@@ -47,6 +47,9 @@ struct FFlareWorldSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	int64                    Date;
 
+	UPROPERTY(EditAnywhere, Category = Save)
+	int64                    EventDate_GlobalWar;
+
 	UPROPERTY(VisibleAnywhere, Category = Save)
 	TArray<FFlareCompanySave> CompanyData;
 

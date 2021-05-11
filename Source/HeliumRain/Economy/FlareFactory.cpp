@@ -48,7 +48,6 @@ void UFlareFactory::Load(UFlareSimulatedSpacecraft* ParentSpacecraft, const FFla
 	}
 }
 
-
 FFlareFactorySave* UFlareFactory::Save()
 {
 	return &FactoryData;
@@ -837,11 +836,17 @@ uint32 UFlareFactory::GetProductionCost(const FFlareProductionData* Data)
 	FCHECK(CycleData);
 
 	ScaledProductionCost = CycleData->ProductionCost;
+	float Multiplier = 1.f;
 	if (Parent->IsComplexElement())
 	{
-		ScaledProductionCost *= 1.25;
+		Multiplier += 0.25f;
 	}
-	return ScaledProductionCost;
+
+	if (!Parent->GetOwnerHasStationLicense())
+	{
+		Multiplier += 0.50f;
+	}
+	return (ScaledProductionCost * Multiplier);
 }
 
 int64 UFlareFactory::GetRemainingProductionDuration()
@@ -1263,14 +1268,15 @@ int64 UFlareFactory::GetProductionBalance()
 
 float UFlareFactory::GetProductionMalus(float Efficiency)
 {
-	return (1.f + (1.f - Efficiency) * (MAX_DAMAGE_MALUS - 1.f));
+	float ReturnValue = (1.f + (1.f - Efficiency) * (MAX_DAMAGE_MALUS - 1.f));
+	return ReturnValue;
 }
 
 int64 UFlareFactory::GetProductionTime(const struct FFlareProductionData& Cycle)
 {
-	float Malus = GetProductionMalus(Parent->GetStationEfficiency());
+	float Efficiency = Parent->GetStationEfficiency();
+	float Malus = GetProductionMalus(Efficiency);
 	int64 ProductionTime = FMath::FloorToInt(Cycle.ProductionTime * Malus);
-
 	if(FactoryDescription->IsTelescope())
 	{
 		return FMath::Max(int64(1), ProductionTime / Parent->GetLevel());
@@ -1280,6 +1286,5 @@ int64 UFlareFactory::GetProductionTime(const struct FFlareProductionData& Cycle)
 		return ProductionTime;
 	}
 }
-
 
 #undef LOCTEXT_NAMESPACE

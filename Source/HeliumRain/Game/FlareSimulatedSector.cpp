@@ -176,7 +176,6 @@ FFlareSectorSave* UFlareSimulatedSector::Save()
 	return &SectorData;
 }
 
-
 UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction, FFlareStationSpawnParameters SpawnParameters)
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
@@ -451,8 +450,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 		{
 			SectorStations.Add(Spacecraft);
 		}
-	}
-
+	} 
 	else
 	{
 		SectorShips.Add(Spacecraft);
@@ -468,6 +466,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	}
 
 	Spacecraft->SetCurrentSector(this);
+	Company->CreatedSpaceCraft(Spacecraft);
 
 	FLOGV("UFlareSimulatedSector::CreateShip : Created ship '%s' at %s", *Spacecraft->GetImmatriculation().ToString(), *TargetPosition.ToString());
 
@@ -496,6 +495,10 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 		{
 			UFlareFleet* NewFleet = Company->CreateAutomaticFleet(Spacecraft);
 		}
+	}
+	else
+	{
+		Spacecraft->GetCompany()->CheckStationLicenseStateStation(Spacecraft);
 	}
 
 	return Spacecraft;
@@ -623,7 +626,8 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// Too many stations
-	int32 StationCount = GetSectorCompanyStationCount(Company, true);
+//	int32 StationCount = GetSectorCompanyStationCount(Company, true);
+	int32 StationCount = Company->GetCompanySectorStationsCount(this, true);
 
 	if (!InComplex && StationCount >= GetMaxStationsPerCompany()/2 && !Company->IsTechnologyUnlocked("dense-sectors"))
 	{
@@ -1149,6 +1153,7 @@ FText UFlareSimulatedSector::GetSectorBalanceText(bool ActiveOnly)
 
 int32 UFlareSimulatedSector::GetSectorCompanyStationCount(UFlareCompany* Company, bool IncludeCapture) const
 {
+//depreciated by Company GetCompanySectorStationsCount
 	int32 CompanyStationCountInSector = 0;
 
 	for(UFlareSimulatedSpacecraft* Station : SectorStations)
@@ -1953,13 +1958,17 @@ TMap<FFlareResourceDescription*, int32> UFlareSimulatedSector::DistributeResourc
 		}
 	};
 
+	
+	for (UFlareSimulatedSpacecraft* Station : TargetCompany->GetCompanySectorStations(this))
+	{
+/*
 	for(UFlareSimulatedSpacecraft* Station : GetSectorStations())
 	{
 		if(Station->GetCompany() != TargetCompany)
 		{
 			continue;
 		}
-
+*/
 		if(Station == Source)
 		{
 			continue;

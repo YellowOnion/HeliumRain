@@ -225,12 +225,21 @@ void UFlareWorld::CompanyMutualAssistance()
 		if (Company != PlayerCompany)
 		{
 			// 0.02 % given to others
-			int64 MoneyToTake = Company->GetMoney() / 500;
+			int64 MoneyToTake;
+			if (Company == GetGame()->GetScenarioTools()->AxisSupplies)
+			{
+				MoneyToTake = Company->GetMoney() / 350;
+			}
+			else
+			{
+				MoneyToTake = Company->GetMoney() / 500;
+			}
+
 			if (MoneyToTake > 0)
 			{
 				if (Company->TakeMoney(MoneyToTake, false, FFlareTransactionLogEntry::LogMutualAssistance()))
 				{
-					SharedPool +=MoneyToTake;
+					SharedPool += MoneyToTake;
 				}
 			}
 			SharingCompanyCount++;
@@ -241,22 +250,30 @@ void UFlareWorld::CompanyMutualAssistance()
 	int64 PoolPart = SharedPool / SharingCompanyCount;
 	int64 PoolBonus = SharedPool % SharingCompanyCount; // The bonus is given to a random company
 
-	int32 BonusIndex = FMath::RandRange(0, SharingCompanyCount - 1);
+	int32 BonusIndex;
+	while (true)
+	{
+		BonusIndex = FMath::RandRange(0, SharingCompanyCount - 1);
+		UFlareCompany* Company = Companies[BonusIndex];
+		if (!Company)
+		{
+			break;
+		}
+		if (Company != GetGame()->GetScenarioTools()->AxisSupplies)
+		{
+			Company->GiveMoney(PoolBonus, FFlareTransactionLogEntry::LogMutualAssistance());
+			break;
+		}
+	}
 
 	FLOGV("Share part amount is : %d", PoolPart/100);
 	int32 SharingCompanyIndex = 0;
 	for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 	{
-		UFlareCompany* Company =Companies[CompanyIndex];
+		UFlareCompany* Company = Companies[CompanyIndex];
 		if (Company != PlayerCompany)
 		{
 			Company->GiveMoney(PoolPart, FFlareTransactionLogEntry::LogMutualAssistance());
-
-			if(CompanyIndex == BonusIndex)
-			{
-				Company->GiveMoney(PoolBonus, FFlareTransactionLogEntry::LogMutualAssistance());
-			}
-
 			SharingCompanyIndex++;
 		}
 	}
@@ -579,7 +596,6 @@ void UFlareWorld::Simulate()
 	// AI. Play them in random order
 
 	bool GlobalWar = false;
-
 	float MaxCombatPointRatio = float(MaxCombatPoint) / GetGame()->GetGameWorld()->GetTotalWorldCombatPoint();
 
 	//FLOGV("MaxCombatPointRatio %f", MaxCombatPointRatio);
@@ -606,6 +622,7 @@ void UFlareWorld::Simulate()
 	if (MaxCombatPointRatio > 0.3 && MaxCombatPoint > 500)
 	{
 		float Chance = 1.00f;
+		int32 MinimumDays = 0;
 
 		if (MaxCombatPointCompany == PlayerCompany)
 		{
@@ -613,21 +630,27 @@ void UFlareWorld::Simulate()
 			{
 			case -1: // Easy
 				Chance = 0.00f;
+				MinimumDays = 150;
 				break;
 			case 0: // Normal
 				Chance = 0.00f;
+				MinimumDays = 120;
 				break;
 			case 1: // Hard
 				Chance = 0.01f;
+				MinimumDays = 90;
 				break;
 			case 2: // Very Hard
 				Chance = 0.02f;
+				MinimumDays = 60;
 				break;
 			case 3: // Expert
 				Chance = 0.05f;
+				MinimumDays = 45;
 				break;
 			case 4: // Unfair
 				Chance = 0.10f;
+				MinimumDays = 30;
 				break;
 			}
 		}
@@ -637,71 +660,81 @@ void UFlareWorld::Simulate()
 			{
 			case -1: // Easy
 				Chance = 1.00f;
+				MinimumDays = 120;
 				break;
 			case 0: // Normal
 				Chance = 1.00f;
+				MinimumDays = 90;
 				break;
 			case 1: // Hard
 				Chance = 0.80f;
+				MinimumDays = 60;
 				break;
 			case 2: // Very Hard
 				Chance = 0.60f;
+				MinimumDays = 60;
 				break;
 			case 3: // Expert
 				Chance = 0.40f;
+				MinimumDays = 45;
 				break;
 			case 4: // Unfair
 				Chance = 0.10f;
+				MinimumDays = 30;
 				break;
 			}
 		}
 
-		bool HasChance = FMath::FRand() < Chance;
-/*
-		GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check"),
-		FText::Format(LOCTEXT("AIStartGlobalWarInfo", "chance {0}, haschance {1}."),
-		Chance,
-		HasChance),
-		FName("global-war"),
-		EFlareNotification::NT_Military,
-		false,
-		EFlareMenu::MENU_Leaderboard);
-*/
-		if (HasChance)
+		if(WorldData.Date > WorldData.EventDate_GlobalWar+MinimumDays)
 		{
-			for (UFlareCompany* OtherCompany : GetCompanies())
+			bool HasChance = FMath::FRand() < Chance;
+/*
+			GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check"),
+			FText::Format(LOCTEXT("AIStartGlobalWarInfo", "chance {0}, haschance {1}."),
+			Chance,
+			HasChance),
+			FName("global-war"),
+			EFlareNotification::NT_Military,
+			false,
+			EFlareMenu::MENU_Leaderboard);
+*/
+			if (HasChance)
 			{
-				if (OtherCompany == GetGame()->GetPC()->GetCompany())
+				for (UFlareCompany* OtherCompany : GetCompanies())
 				{
-					continue;
-				}
-
-				if (MaxCombatPointCompany != OtherCompany && OtherCompany->GetCompanyValue().ArmyCurrentCombatPoints > 0)
-				{
-					if (OtherCompany->GetWarState(MaxCombatPointCompany) != EFlareHostility::Hostile)
+					if (OtherCompany == GetGame()->GetPC()->GetCompany())
 					{
-						GlobalWar = true;
+						continue;
 					}
 
-					OtherCompany->GetAI()->GetData()->Pacifism = 0;
-					OtherCompany->SetHostilityTo(MaxCombatPointCompany, true);
-				}
-				else
-				{
-					OtherCompany->SetHostilityTo(MaxCombatPointCompany, false);
-				}
-			}
+					if (MaxCombatPointCompany != OtherCompany && OtherCompany->GetCompanyValue().ArmyCurrentCombatPoints > 0)
+					{
+						if (OtherCompany->GetWarState(MaxCombatPointCompany) != EFlareHostility::Hostile)
+						{
+							GlobalWar = true;
+						}
 
-			// Notify the player that this is happening
-			if (GlobalWar)
-			{
-				GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War"),
-					FText::Format(LOCTEXT("AIStartGlobalWarInfo", "All companies are now allied to stop the militarization of {0}."),
+						OtherCompany->GetAI()->GetData()->Pacifism = 0;
+						OtherCompany->SetHostilityTo(MaxCombatPointCompany, true);
+					}
+					else
+					{
+						OtherCompany->SetHostilityTo(MaxCombatPointCompany, false);
+					}
+				}
+
+				// Notify the player that this is happening
+				if (GlobalWar)
+				{
+					WorldData.EventDate_GlobalWar = WorldData.Date;
+					GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War"),
+						FText::Format(LOCTEXT("AIStartGlobalWarInfo", "All companies are now allied to stop the militarization of {0}."),
 						MaxCombatPointCompany->GetCompanyName()),
-					FName("global-war"),
-					EFlareNotification::NT_Military,
-					false,
-					EFlareMenu::MENU_Leaderboard);
+						FName("global-war"),
+						EFlareNotification::NT_Military,
+						false,
+						EFlareMenu::MENU_Leaderboard);
+				}
 			}
 		}
 	}
@@ -718,6 +751,11 @@ void UFlareWorld::Simulate()
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
 		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources);
 		CompaniesToSimulateAI.RemoveAt(Index);
+	}
+
+	for (UFlareCompany* Company : GetCompanies())
+	{
+		Company->Simulate();
 	}
 
 	// Clear bombs
@@ -1350,8 +1388,7 @@ void UFlareWorld::ProcessStationCapture()
 		Owner->GetAI()->FinishedConstruction(Spacecraft);
 		Owner->DestroySpacecraft(Spacecraft);
 		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
-		
-		Capturer->GetAI()->CapturedStation(NewShip);
+		Capturer->CapturedStation(NewShip);
 
 		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
 		{
@@ -2022,6 +2059,16 @@ TArray<UFlareSimulatedSpacecraft*> UFlareWorld::GetShipyardsFor(UFlareCompany* C
 			continue;
 		}
 	}
+
+	ShipyardList.Sort([&](UFlareSimulatedSpacecraft& A, UFlareSimulatedSpacecraft& B)
+	{
+		if (A.GetCompany() == Company)
+		{
+			return true;
+		}
+
+		return false;
+	});
 
 	return ShipyardList;
 }

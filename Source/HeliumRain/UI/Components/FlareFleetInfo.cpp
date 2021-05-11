@@ -1050,11 +1050,22 @@ void SFlareFleetInfo::UpdateFleetStatus()
 			{
 				UFlareSimulatedSpacecraftDamageSystem* DamageSystem = Ship->GetDamageSystem();
 
-				IsStranded = DamageSystem->IsStranded();
-				IsUncontrollable = DamageSystem->IsUncontrollable();
+				if (!IsStranded)
+				{
+					IsStranded = DamageSystem->IsStranded();
+				}
+
+				if (!IsUncontrollable)
+				{
+					IsUncontrollable = DamageSystem->IsUncontrollable();
+				}
+
 				if (Ship->IsMilitary())
 				{
-					IsDisarmed = DamageSystem->IsDisarmed();
+					if (!IsDisarmed)
+					{
+						IsDisarmed = DamageSystem->IsDisarmed();
+					}
 				}
 
 				if (Ship->GetRefillStock() > 0 && Ship->NeedRefill())

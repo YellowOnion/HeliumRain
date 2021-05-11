@@ -203,6 +203,7 @@ void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 		FLOG("AFlareGame::ActivateSector : There is already an active sector");
 		if (ActiveSector->GetSimulatedSector()->GetIdentifier() == Sector->GetIdentifier())
 		{
+			GetPC()->SetBusy(false);
 			return;
 		}
 
@@ -322,13 +323,16 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 		return;
 	}
 
-	if(ShipToScrap->GetCompany()->IsPlayerCompany())
-	{
-		DeactivateSector();
-	}
-
-
 	UFlareSimulatedSector* CurrentSector = ShipToScrap->GetCurrentSector();
+	bool IsActiveSector = GetActiveSector() != nullptr;
+	if (IsActiveSector)
+	{
+		UFlareSimulatedSector* CurrentActiveSector = GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector == CurrentSector)
+		{
+			DeactivateSector();
+		}
+	}
 
 	int64 ScrapRevenue = 0;
 
@@ -374,7 +378,7 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 	}
 
 	ShipToScrap->GetCompany()->DestroySpacecraft(ShipToScrap);
-	if(ShipToScrap->GetCompany()->IsPlayerCompany())
+	if (IsActiveSector)
 	{
 		ActivateCurrentSector();
 	}
@@ -394,13 +398,17 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 		return;
 	}
 
+	UFlareSimulatedSector* CurrentSector = StationToScrap->GetCurrentSector();
 	bool IsActiveSector = GetActiveSector() != nullptr;
 	if (IsActiveSector)
 	{
-		DeactivateSector();
+		UFlareSimulatedSector* CurrentActiveSector = GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector == CurrentSector)
+		{
+			DeactivateSector();
+		}
 	}
 
-	UFlareSimulatedSector* CurrentSector = StationToScrap->GetCurrentSector();
 	TMap<FFlareResourceDescription*, int32> ScrapResources = StationToScrap->ComputeScrapResources();
 	CurrentSector->DistributeResources(ScrapResources, StationToScrap, StationToScrap->GetCompany(), false);
 	

@@ -146,7 +146,11 @@ namespace EFlareEconomySort
 		ES_Needs,
 		ES_Price,
 		ES_Variation,
-		ES_Transport
+		ES_Transport,
+		ES_Pop_Total,
+		ES_Pop_Money,
+		ES_Pop_Wealth,
+		ES_Pop_Happiness
 	};
 }
 

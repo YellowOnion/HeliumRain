@@ -152,6 +152,23 @@ bool UFlareSimulatedSpacecraftWeaponsSystem::HasAntiSmallShipWeapon()
 	return false;
 }
 
+bool UFlareSimulatedSpacecraftWeaponsSystem::HasSalvagingWeaponEquipped()
+{
+	for (int32 GroupIndex = 0; GroupIndex < WeaponGroupList.Num(); GroupIndex++)
+	{
+		if (Spacecraft->GetDamageSystem()->GetWeaponGroupHealth(GroupIndex, true) <= 0)
+		{
+			continue;
+		}
+
+		EFlareShellDamageType::Type DamageType = WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.DamageType;
+		if (DamageType == EFlareShellDamageType::LightSalvage || DamageType == EFlareShellDamageType::HeavySalvage)
+		{
+			return true;
+		}
+	}
+	return false;
+}
 
 void UFlareSimulatedSpacecraftWeaponsSystem::GetTargetPreference(float* IsSmall, float* IsLarge, float* IsUncontrollableCivil, float* IsUncontrollableSmallMilitary, float* IsUncontrollableLargeMilitary, float* IsNotUncontrollable, float* IsStation, float* IsHarpooned)
 {

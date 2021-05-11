@@ -199,7 +199,7 @@ void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, 
 	{
 		for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 		{
-			PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex]);
+			PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
 		}
 	}
 
@@ -483,7 +483,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateStations(StationResearch, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// Miner's Home (mines)
-//	CreateStations(StationHabitation, MiningSyndicate, MinersHome, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, MiningSyndicate, MinersHome, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, MiningSyndicate, TheDepths, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
@@ -516,7 +515,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationSteelworks, HelixFoundries, TheForge, 2, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationToolFactory, HelixFoundries, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-//	CreateStations(StationHabitation, Sunwatch, TheForge, 3, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, Sunwatch, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, Sunwatch, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHabitation, Sunwatch, TheDig, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
@@ -682,6 +680,14 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		CreateShips(ShipAnubis, GhostWorksShipyards, NightsHome, 1);
 		CreateShips(ShipInvader, Quantalium, NightsHome, 1);
 	}
+
+	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+		Company->GiveAllStationSectorLicenses();
+		Company->GetAI()->GetData()->CalculatedDefaultBudget = true;
+	}
+
 }
 
 void UFlareScenarioTools::SetupAsteroids()
@@ -986,7 +992,6 @@ void UFlareScenarioTools::CreateBlueHeart(double StationLevelBonus)
 		// BH Habitation 2
 		StationParams.Location = BaseLocation + FVector(StationRadius + 600, 0, -7168);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 0));
-//		CreateStations("station-bh-habitation", NemaHeavyWorks, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 		CreateStations("station-bh-habitation", UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		FFlareStationSpawnParameters DummyStationParams;

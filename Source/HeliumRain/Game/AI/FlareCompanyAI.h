@@ -79,6 +79,9 @@ public:
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
 
+	/** Try to purchase sector station building license */
+	virtual bool PurchaseSectorStationLicense(EFlareBudget::Type BudgetType);
+
 	/** Destroy a spacecraft */
 	virtual void DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft);
 
@@ -106,8 +109,14 @@ public:
 						  UFlareSimulatedSpacecraft** BestStation,
 						  UFlareSimulatedSector** BestSector);
 
+	void RecalculateFullBudgets();
+	int64 GetTotalBudgets();
+	void AddIncomeToBudgets();
+	bool CanSpendBudget(EFlareBudget::Type Type, int64 Amount);
+	void RedistributeBudgetTowards(EFlareBudget::Type Type, float Ratio = 0.f);
+	void RedistributeBudget(EFlareBudget::Type Type, int64 Amount);
 	void SpendBudget(EFlareBudget::Type Type, int64 Amount);
-
+	void SetBudget(EFlareBudget::Type Type, int64 Amount);
 	void ModifyBudget(EFlareBudget::Type Type, int64 Amount);
 
 	int64 GetBudget(EFlareBudget::Type Type);
@@ -121,7 +130,7 @@ public:
 	void ProcessBudgetStation(int64 BudgetAmount, bool Technology, bool& Lock, bool& Idle);
 
 	/** Buy war ships */
-	int64 UpdateWarShipAcquisition(bool limitToOne);
+	int64 UpdateWarShipAcquisition();
 
 	/** Repair then refill all ships and stations */
 	void RepairAndRefill();
@@ -197,8 +206,7 @@ protected:
 
 	const FFlareSpacecraftDescription* FindBestShipToBuild(bool Military);
 	
-	/** Return if a ship is currently build for the company */
-	bool IsBuildingShip(bool Military);
+	void GetBuildingShipNumber();
 
 //	** Get a list of shipyard */
 //	TArray<UFlareSimulatedSpacecraft*> FindShipyards();
@@ -250,6 +258,11 @@ protected:
 	int32									ReservedResources;
 	int32									GlobalReservedResources;
 
+	bool									WasAtWar;
+
+	int32									BuildingMilitaryShips;
+	int32									BuildingTradeShips;
+	bool									CheckedBuildingShips;
 
 public:
 

@@ -90,9 +90,9 @@ protected:
 	/** Check if this tab is the current tab */
 	bool IsCurrentTab(int32 Index) const;
 
+public:
 	/** Set the current tab index */
 	void SetCurrentTabIndex(int32 Index);
-
 
 protected:
 
@@ -106,7 +106,4 @@ protected:
 	// Widgets
 	TSharedPtr<SHorizontalBox>                    Header;
 	TSharedPtr<SWidgetSwitcher>                   Content;
-	
-	
-
 };

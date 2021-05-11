@@ -638,7 +638,7 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 	float AbsorbedEnergy = (PenetrateArmor ? ImpactPower : FMath::Square(Incidence) * ImpactPower);
 	AFlareSpacecraft* Spacecraft = Cast<AFlareSpacecraft>(ActorToDamage);
 
-	if (Spacecraft)
+	if (Spacecraft && ParentWeapon)
 	{
 		DamageCause Cause(Cast<AFlareSpacecraft>(ParentWeapon->GetOwner())->GetParent(), DamageType);
 		Cause.ManualTurret = ManualTurret;

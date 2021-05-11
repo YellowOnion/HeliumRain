@@ -108,6 +108,7 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	// Load emblem
 	SetupEmblem();
 	InvalidateCompanyValueCache();
+	ClearTemporaryCaches();
 }
 
 void UFlareCompany::PostLoad()
@@ -115,6 +116,34 @@ void UFlareCompany::PostLoad()
 	VisitedSectors.Empty();
 	KnownSectors.Empty();
 	CompanyTradeRoutes.Empty();
+	LicenseStationSectors.Empty();
+
+	for (int i = 0; i < CompanyStations.Num(); i++)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = CompanyStations[i];
+		if (Spacecraft->IsStation())
+		{
+			if (!(Spacecraft->IsComplexElement()))
+			{
+				AddOrRemoveCompanySectorStation(Spacecraft,false);
+			}
+		}
+	}
+
+	for (int32 i = 0; i < CompanyData.Licenses.LicenseBuilding.Num(); i++)
+	{
+		UFlareSimulatedSector* Sector = GetGame()->GetGameWorld()->FindSector(CompanyData.Licenses.LicenseBuilding[i]);
+		if (Sector)
+		{
+			BuyStationLicense(Sector, true);
+		}
+	}
+
+	if (!CompanyData.Licenses.HasRecievedStartingLicenses)
+	{
+		CompanyData.Licenses.HasRecievedStartingLicenses = true;
+		GiveAllStationSectorLicenses();
+	}
 
 	// Load all trade routes
 	for (int32 i = 0; i < CompanyData.TradeRoutes.Num(); i++)
@@ -146,7 +175,6 @@ void UFlareCompany::PostLoad()
 	}
 
 	CompanyAI->Load(this, CompanyData.AI);
-
 }
 
 FFlareCompanySave* UFlareCompany::Save()
@@ -159,6 +187,20 @@ FFlareCompanySave* UFlareCompany::Save()
 	CompanyData.DestroyedSpacecraftData.Empty();
 	CompanyData.SectorsKnowledge.Empty();
 	CompanyData.UnlockedTechnologies.Empty();
+	CompanyData.Licenses.LicenseBuilding.Empty();
+
+	TArray<FName> Keys;
+	LicenseStationSectors.GetKeys(Keys);
+
+	for (int i = 0; i < Keys.Num(); i++)
+	{
+		FName Identifier = Keys[i];
+		UFlareSimulatedSector* Sector = LicenseStationSectors[Identifier];
+		if (Sector)
+		{
+			CompanyData.Licenses.LicenseBuilding.Add(Sector->GetDescription()->Identifier);
+		}
+	}
 
 	for (int i = 0 ; i < CompanyFleets.Num(); i++)
 	{
@@ -195,7 +237,6 @@ FFlareCompanySave* UFlareCompany::Save()
 		FFlareCompanySectorKnowledge SectorKnowledge;
 		SectorKnowledge.Knowledge = EFlareSectorKnowledge::Visited;
 		SectorKnowledge.SectorIdentifier = VisitedSectors[i]->GetIdentifier();
-
 		CompanyData.SectorsKnowledge.Add(SectorKnowledge);
 	}
 
@@ -207,7 +248,6 @@ FFlareCompanySave* UFlareCompany::Save()
 			FFlareCompanySectorKnowledge SectorKnowledge;
 			SectorKnowledge.Knowledge = EFlareSectorKnowledge::Known;
 			SectorKnowledge.SectorIdentifier = KnownSectors[i]->GetIdentifier();
-
 			CompanyData.SectorsKnowledge.Add(SectorKnowledge);
 		}
 	}
@@ -228,14 +268,17 @@ FFlareCompanySave* UFlareCompany::Save()
 	Gameplay
 ----------------------------------------------------*/
 
+void UFlareCompany::Simulate()
+{
+	TotalDayMoneyGain = 0;
+	ClearTemporaryCaches();
+}
+
 void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 {
 	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
 
-	AFlarePlayerController* PC = Cast<AFlarePlayerController>(Game->GetWorld()->GetFirstPlayerController());
-
 	TArray<UFlareSimulatedSpacecraft*> CompanyCarriersLocal = CompanyCarriers;
-
 	while (CompanyCarriersLocal.Num())
 	{
 		int32 Index = FMath::RandRange(0, CompanyCarriersLocal.Num() - 1);
@@ -451,9 +494,24 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 	}
 }
 
+void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
+{
+	if (CapturedStation)
+	{
+		GetAI()->CapturedStation(CapturedStation);
+//		AddOrRemoveCompanySectorStation(CapturedStation, false);
+		CheckStationLicenseStateStation(CapturedStation);
+	}
+}
+
 void UFlareCompany::TickAI()
 {
 	CompanyAI->Tick();
+}
+
+void UFlareCompany::ClearTemporaryCaches()
+{
+	LicenseStationCache.Empty();
 }
 
 EFlareHostility::Type UFlareCompany::GetPlayerHostility() const
@@ -595,7 +653,15 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 
 				if (TargetCompany == Game->GetScenarioTools()->AxisSupplies)
 				{
-					ReputationDecreaseOther *= 2;
+					if (!ReputationDecreaseOther)
+					{
+						//on normal/easy difficulty
+						ReputationDecreaseOther = -4;
+					}
+					else
+					{
+						ReputationDecreaseOther *= 2;
+					}
 				}
 
 				TargetCompany->GivePlayerReputation(ReputationDecrease);
@@ -856,6 +922,24 @@ void UFlareCompany::RemoveTradeRoute(UFlareTradeRoute* TradeRoute)
 	CompanyTradeRoutes.Remove(TradeRoute);
 }
 
+void UFlareCompany::CreatedSpaceCraft(UFlareSimulatedSpacecraft* Spacecraft)
+{
+	if (!Spacecraft)
+	{
+		return;
+	}
+	if (Spacecraft->IsStation())
+	{
+		if (Spacecraft->IsComplexElement())
+		{
+		}
+		else
+		{
+			AddOrRemoveCompanySectorStation(Spacecraft, false);
+		}
+	}
+}
+
 UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftSave& SpacecraftData)
 {
 	UFlareSimulatedSpacecraft* Spacecraft = NULL;
@@ -888,21 +972,22 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 			{
 				if(Spacecraft->IsComplexElement())
 				{
-					CompanyChildStations.AddUnique((Spacecraft));
+					CompanyChildStations.AddUnique(Spacecraft);
 				}
 				else
 				{
-					CompanyStations.AddUnique((Spacecraft));
+					CompanyStations.AddUnique(Spacecraft);
+//					AddOrRemoveCompanySectorStation(Spacecraft,false);
 				}
 			}
 			else
 			{
 				if (Spacecraft->GetDescription()->IsDroneCarrier)
 				{
-					CompanyCarriers.AddUnique((Spacecraft));
+					CompanyCarriers.AddUnique(Spacecraft);
 				}
 
-				CompanyShips.AddUnique((Spacecraft));
+				CompanyShips.AddUnique(Spacecraft);
 			}
 
 			if (!Spacecraft->IsComplexElement())
@@ -942,6 +1027,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 
 	if (Spacecraft->IsStation())
 	{
+		AddOrRemoveCompanySectorStation(Spacecraft,true);
 		Spacecraft->GetCompany()->GetAI()->FinishedConstruction(Spacecraft);
 	}
 
@@ -1022,6 +1108,8 @@ bool UFlareCompany::TakeMoney(int64 Amount, bool AllowDepts, FFlareTransactionLo
 	else
 	{
 		CompanyData.Money -= Amount;
+		TotalDayMoneyGain -= Amount;
+
 		/*if (Amount > 0)
 		{
 
@@ -1051,6 +1139,7 @@ void UFlareCompany::GiveMoney(int64 Amount, FFlareTransactionLogEntry Transactio
 	}
 
 	CompanyData.Money += Amount;
+	TotalDayMoneyGain += Amount;
 
 	if (this == Game->GetPC()->GetCompany() && GetGame()->GetQuestManager())
 	{
@@ -1682,7 +1771,8 @@ bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 		return false;
 	}
 
-	int32 StationCount = Station->GetCurrentSector()->GetSectorCompanyStationCount(this, true);
+//	int32 StationCount = Station->GetCurrentSector()->GetSectorCompanyStationCount(this, true);
+	int32 StationCount = this->GetCompanySectorStationsCount(Station->GetCurrentSector(), true);
 	int32 MaxStationCount = IsTechnologyUnlocked("dense-sectors") ? Station->GetCurrentSector()->GetMaxStationsPerCompany() : Station->GetCurrentSector()->GetMaxStationsPerCompany() / 2;
 
 	if(StationCount >= MaxStationCount)
@@ -1774,6 +1864,18 @@ const FSlateBrush* UFlareCompany::GetEmblem() const
 bool UFlareCompany::IsTechnologyUnlocked(FName Identifier) const
 {
 	if (UnlockedTechnologies.Contains(Identifier))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool UFlareCompany::IsSectorStationLicenseUnlocked(FName Identifier) const
+{
+	if (LicenseStationSectors.Contains(Identifier))
 	{
 		return true;
 	}
@@ -2086,6 +2188,267 @@ int32 UFlareCompany::GetResearchValue() const
 	return GetResearchSpent() + GetResearchAmount();
 }
 
+TArray<UFlareSimulatedSpacecraft*> UFlareCompany::GetCompanySectorStations(UFlareSimulatedSector* Sector)
+{
+	if (Sector)
+	{
+		if (CompanyStationsBySectors.Contains(Sector))
+		{
+			return CompanyStationsBySectors[Sector];
+		}
+
+		TArray<UFlareSimulatedSpacecraft*> NewCompanyStations;
+		CompanyStationsBySectors.Add(Sector, NewCompanyStations);
+		return NewCompanyStations;
+	}
+	TArray<UFlareSimulatedSpacecraft*> SectorStations;
+	return SectorStations;
+}
+
+int32 UFlareCompany::GetCompanySectorStationsCount(UFlareSimulatedSector* Sector, bool IncludeCapture)
+{
+	int32 OwnedStationCount = GetCompanySectorStations(Sector).Num();
+	if (IncludeCapture)
+	{
+		OwnedStationCount += this->GetCaptureOrderCountInSector(Sector);
+	}
+
+	return OwnedStationCount;
+}
+
+void UFlareCompany::AddOrRemoveCompanySectorStation(UFlareSimulatedSpacecraft* Station, bool Remove)
+{
+	if (Station)
+	{
+		UFlareSimulatedSector* Sector = Station->GetCurrentSector();
+		if (Sector)
+		{
+			if (Remove)
+			{
+				if (CompanyStationsBySectors.Contains(Sector))
+				{
+					CompanyStationsBySectors[Sector].Remove(Station);
+				}
+			}
+			else
+			{
+				if (CompanyStationsBySectors.Contains(Sector))
+				{
+					CompanyStationsBySectors[Sector].AddUnique(Station);
+/*
+					GetGame()->GetPC()->Notify(
+						LOCTEXT("TestInfo0", "Test Notification"),
+						FText::Format(
+							LOCTEXT("TestInfoFormat0", "{0} adding entry to existing value, found {1} in {2}"),
+							GetCompanyName(), CompanyStationsBySectors[Sector].Num(),Sector->GetSectorName()),
+						"discover-sector0",
+						EFlareNotification::NT_Info,
+						false);
+*/
+				}
+				else
+				{
+					TArray<UFlareSimulatedSpacecraft*> NewCompanyStations;
+					NewCompanyStations.AddUnique(Station);
+					CompanyStationsBySectors.Add(Sector, NewCompanyStations);
+/*
+					GetGame()->GetPC()->Notify(
+						LOCTEXT("TestInfo1", "Test Notification"),
+						FText::Format(
+							LOCTEXT("TestInfoFormat1", "{0} adding brand new entry in their stations by sector array"),
+							GetCompanyName()),
+						"discover-sector1",
+						EFlareNotification::NT_Info,
+						false);
+*/
+				}
+			}
+		}
+	}
+}
+
+bool UFlareCompany::CanBuyStationLicense(FName Identifier)
+{
+	UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(Identifier);
+	return CanBuyStationLicense(BuyingSector);
+}
+
+void UFlareCompany::BuyStationLicense(FName Identifier)
+{
+	UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(Identifier);
+	BuyStationLicense(BuyingSector, false);
+}
+
+bool UFlareCompany::CanBuyStationLicense(UFlareSimulatedSector* BuyingSector)
+{
+	if (BuyingSector)
+	{
+		if (!IsSectorStationLicenseUnlocked(BuyingSector->GetDescription()->Identifier))
+		{
+			int64 LicenseCost = GetStationLicenseCost(BuyingSector);
+			if (LicenseCost <= GetMoney())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void UFlareCompany::BuyStationLicense(UFlareSimulatedSector* BuyingSector, bool FromSave)
+{
+	if (BuyingSector)
+	{
+		if (!IsSectorStationLicenseUnlocked(BuyingSector->GetDescription()->Identifier) || FromSave)
+		{
+			if (!FromSave)
+			{
+				int64 LicenseCost = GetStationLicenseCost(BuyingSector);
+				TakeMoney(LicenseCost, true, FFlareTransactionLogEntry::LogPaidSectorStationBuildingLicense(BuyingSector));
+				BuyingSector->GetPeople()->Pay(LicenseCost);
+			}
+
+			LicenseStationSectors.Add(BuyingSector->GetDescription()->Identifier, BuyingSector);
+			ClearTemporaryCaches();
+			ChangeStationLicenseState(BuyingSector, true);
+		}
+	}
+}
+
+void UFlareCompany::GiveAllStationSectorLicenses()
+{
+	//for brand new and also old savegames
+	for (UFlareSimulatedSpacecraft* Station : GetCompanyStations())
+	{
+		BuyStationLicense(Station->GetCurrentSector(), true);
+	}
+}
+
+void UFlareCompany::CheckStationLicenseStateStation(UFlareSimulatedSpacecraft* Station, bool NewState)
+{
+	if (Station)
+	{
+		bool ChangeFactoryValueTo = false;
+		if (NewState)
+		{
+			ChangeFactoryValueTo = NewState;
+		}
+		else
+		{
+			UFlareSimulatedSector* CurrentSector = Station->GetCurrentSector();
+			if (CurrentSector)
+			{
+				if(IsSectorStationLicenseUnlocked(Station->GetCurrentSector()->GetDescription()->Identifier))
+				{
+					ChangeFactoryValueTo = true;
+				}
+			}
+		}
+		ChangeStationLicenseStateAction(Station, ChangeFactoryValueTo);
+	}
+}
+
+void UFlareCompany::ChangeStationLicenseState(UFlareSimulatedSector* BuyingSector, bool NewState)
+{
+// TODO
+	for (UFlareSimulatedSpacecraft* Station : GetCompanySectorStations(BuyingSector))
+//	for (UFlareSimulatedSpacecraft* Station : BuyingSector->GetSectorStations())
+	{
+		if(Station->GetCompany() == this)
+		{
+		ChangeStationLicenseStateAction(Station, NewState);
+		}
+	}
+}
+
+void UFlareCompany::ChangeStationLicenseStateAction(UFlareSimulatedSpacecraft* Station, bool NewState)
+{
+	if (Station)
+	{
+		Station->SetOwnerHasStationLicense(NewState);
+	}
+}
+
+int64 UFlareCompany::GetTotalStationLicenseValue()
+{
+	int64 TotalLicenseValue = 0;
+
+	TMap<FName, UFlareSimulatedSector*> LicensedSectors = GetLicenseStationSectors();
+	TArray<FName> Keys;
+	LicensedSectors.GetKeys(Keys);
+
+	for (int i = 0; i < Keys.Num(); i++)
+	{
+		FName Identifier = Keys[i];
+		UFlareSimulatedSector* Sector = LicensedSectors[Identifier];
+		if (Sector)
+		{
+			TotalLicenseValue += GetStationLicenseCost(Sector);
+		}
+	}
+
+	return TotalLicenseValue;
+}
+
+int64 UFlareCompany::GetStationLicenseCost(FName Identifier)
+{
+	UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(Identifier);
+	return GetStationLicenseCost(BuyingSector);
+}
+
+int64 UFlareCompany::GetStationLicenseCost(UFlareSimulatedSector* BuyingSector)
+{
+	if (LicenseStationCache.Contains(BuyingSector))
+	{
+		return LicenseStationCache[BuyingSector];
+	}
+
+	int64 LicenseCost = 1000000;
+	float Multiplier = 1.0;
+
+	if (BuyingSector->GetDescription()->IsIcy)
+	{
+		LicenseCost += 500000;
+	}
+/*\
+	if (BuyingSector->GetDescription()->IsSolarPoor)
+	{
+		//dusty
+		LicenseCost += 500000;
+	}
+*/
+	if (BuyingSector->GetDescription()->IsGeostationary)
+	{
+		LicenseCost += 500000;
+	}
+/*
+	if (!BuyingSector->GetDescription()->IsSolarPoor)
+	{
+		LicenseCost += 500000;
+	}
+*/
+	int32 CompaniesKnownSectors = 0;
+	int32 CompaniesStationPermits = 0;
+	for (UFlareCompany* LocalCompany : Game->GetGameWorld()->GetCompanies())
+	{
+		if (LocalCompany->GetCompanyStationLicenses().Find(BuyingSector->GetDescription()->Identifier) != INDEX_NONE)
+		{
+			//having a permit overrides the multiplier effect of just knowing the sector
+			++CompaniesStationPermits;
+		}
+		else if (LocalCompany->GetKnownSectors().Find(BuyingSector) != INDEX_NONE)
+		{
+			++CompaniesKnownSectors;
+		}
+	}
+
+	Multiplier += (CompaniesKnownSectors / 4) + CompaniesStationPermits;
+	LicenseCost = LicenseCost * Multiplier;
+	LicenseCost = LicenseCost + (500000 * this->GetCompanyStationLicenses().Num()) + (BuyingSector->GetPeople()->GetPopulation() * 50);
+
+	LicenseStationCache.Add(BuyingSector, LicenseCost);
+	return LicenseCost;
+}
 
 void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force)
 {
@@ -2219,9 +2582,8 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 		else
 		{
 			CompanyValue.ShipsValue += SpacecraftPrice;
+			CompanyValue.TotalShipCount++;
 		}
-
-		CompanyValue.TotalShipCount++;
 
 		if(Spacecraft->IsMilitary())
 		{
@@ -2346,7 +2708,8 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			"Prodcost1",
 			EFlareNotification::NT_Info);
 		*/
-		CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
+
+	CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
 	CompanyValue.TotalValue = CompanyValue.MoneyValue + CompanyValue.StockValue + CompanyValue.SpacecraftsValue;
 
 	if(globalRequest)

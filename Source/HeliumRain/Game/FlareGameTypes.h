@@ -213,6 +213,20 @@ struct FFlareCompanyReputationSave
 
 };
 
+/** Company Licenses save data */
+USTRUCT()
+struct FFlareCompanyLicensesSave
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FName> LicenseBuilding;
+
+	/** Used for giving starting licenses upon game load if neccessary */
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool HasRecievedStartingLicenses;
+};
+
 /** Company AI save data */
 USTRUCT()
 struct FFlareCompanyAISave
@@ -229,6 +243,10 @@ struct FFlareCompanyAISave
 	float Pacifism;
 
 	FName ResearchProject;
+	FName DesiredStationLicense;
+	int64 DateBoughtLicense;
+
+	bool CalculatedDefaultBudget;
 };
 
 /** Transaction type*/
@@ -257,6 +275,7 @@ namespace EFlareTransactionLogEntry
 		PaidForRepair, // AI only
 		PaidForRefill, // AI only
 		SendTribute,
+		PaidSectorStationLicense,
 		ReceiveTribute, // AI only
 		RecoveryFees,
 		ScrapGain,
@@ -288,6 +307,7 @@ struct FFlareTransactionLogEntry
 	static FFlareTransactionLogEntry LogSellResource(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 GivenResources, UFlareTradeRoute* TradeRoute);
 	static FFlareTransactionLogEntry LogPayMaintenance(UFlareSimulatedSpacecraft* SellerSpacecraft, int32 TakenQuantity, bool ForRepair);
 	static FFlareTransactionLogEntry LogPaidForMaintenance(UFlareSimulatedSpacecraft* SellerSpacecraft, UFlareCompany* Company, int32 TakenQuantity, bool ForRepair);
+	static FFlareTransactionLogEntry LogPaidSectorStationBuildingLicense(UFlareSimulatedSector* Sector);	
 	static FFlareTransactionLogEntry LogSendTribute(UFlareCompany* Company);
 	static FFlareTransactionLogEntry LogReceiveTribute(UFlareCompany* Company);
 	static FFlareTransactionLogEntry LogRecoveryFees();
@@ -371,6 +391,10 @@ struct FFlareCompanySave
 	/** List of known or visited sectors */
 	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FFlareCompanySectorKnowledge> SectorsKnowledge;
+
+	/** Company Licenses data */
+	UPROPERTY(EditAnywhere, Category = Save)
+	FFlareCompanyLicensesSave Licenses;
 
 	/** Company AI data */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -472,18 +496,44 @@ struct FFlareCompanyAIDescription
 	UPROPERTY(EditAnywhere, Category = Company)
 	float MaintenanceAffility;
 
-	/** Default: 0.25*/
+	/** Default: 0.05*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BudgetTechnologyWeight;
-	/** Default: 0.5*/
+	/** Default: 0.30*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BudgetMilitaryWeight;
-	/** Default: 1.0*/
+	/** Default: 0.34*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BudgetStationWeight;
-	/** Default: 1.0*/
+	/** Default: 0.31*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BudgetTradeWeight;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.00*/
+	float BudgetWarTechnologyWeight;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.75*/
+	float BudgetWarMilitaryWeight;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.125*/
+	float BudgetWarStationWeight;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.125*/
+	float BudgetWarTradeWeight;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 1*/
+	int32 MaxTradeShipsBuildingPeace;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0*/
+	int32 MaxTradeShipsBuildingWar;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 1*/
+	int32 MaxMilitaryShipsBuildingPeace;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 100*/
+	int32 MaxMilitaryShipsBuildingWar;
 
 	/** Default: 0.99*/
 	UPROPERTY(EditAnywhere, Category = Company)
@@ -559,6 +609,10 @@ struct FFlareCompanyAIDescription
 	/** Default: 10*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	int32 BuildTradeDiversitySizeBase;
+
+	/** Default: 365*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 DaysUntilTryGetStationLicense;
 
 	/** Chance faction will ignore its diversity ratio and try to build a better military ship. Default: 0.05*/
 	UPROPERTY(EditAnywhere, Category = Company)

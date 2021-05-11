@@ -401,9 +401,6 @@ public:
 		FFlareSpacecraftSave* CapturedSpacecraft = NULL, int32 SpawnLocation = 0, bool UnderConstruction = false, FName AttachComplexStationName = NAME_None,
 		UFlareSimulatedSpacecraft* BuiltBy = NULL);
 
-//	/* Checks if station has a shipyard factory, if so add to shipyard array*/
-//	UFlareSimulatedSpacecraft* CheckIsShipyard(UFlareSimulatedSpacecraft* Spacecraft)
-
 	/** Create an asteroid */
 	void CreateAsteroid(int32 ID, FName Name, FVector Location);
 
@@ -489,12 +486,12 @@ protected:
 	AFlareGame*                             Game;
 
 	UPROPERTY()
-	FFlareSectorOrbitParameters             SectorOrbitParameters;
-	const FFlareSectorDescription*          SectorDescription;
-	TMap<FFlareResourceDescription*, float> ResourcePrices;
-	TMap<FFlareResourceDescription*, FFlareFloatBuffer> LastResourcePrices;
-	TMap<UFlareCompany*, TArray<UFlareSimulatedSpacecraft*>> ReservesByCompany;
-	TArray<UFlareSimulatedSpacecraft*>						 SectorReserves;
+	FFlareSectorOrbitParameters									SectorOrbitParameters;
+	const FFlareSectorDescription*								SectorDescription;
+	TMap<FFlareResourceDescription*, float>						ResourcePrices;
+	TMap<FFlareResourceDescription*, FFlareFloatBuffer>			LastResourcePrices;
+	TMap<UFlareCompany*, TArray<UFlareSimulatedSpacecraft*>>	ReservesByCompany;
+	TArray<UFlareSimulatedSpacecraft*>							SectorReserves;
 
 public:
 
