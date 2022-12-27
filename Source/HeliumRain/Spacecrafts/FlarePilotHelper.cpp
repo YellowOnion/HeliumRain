@@ -459,6 +459,10 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 		// Divise by 25 the stateScore per current incoming missile
 		for (AFlareBomb* Bomb : Ship->GetGame()->GetActiveSector()->GetBombs())
 		{
+			if (Bomb->IsSafeDestroying())
+			{
+				continue;
+			}
 			if (Bomb->GetTargetSpacecraft() == ShipCandidate && Bomb->IsActive())
 			{
 				StateScore /= 25;
@@ -539,11 +543,15 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 	for (AFlareBomb* BombCandidate :Ship->GetGame()->GetActiveSector()->GetBombs())
 	{
-		if (Preferences.IgnoreList.Contains(PilotTarget(BombCandidate)))
+		if (BombCandidate->IsSafeDestroying())
 		{
 			continue;
 		}
 
+		if (Preferences.IgnoreList.Contains(PilotTarget(BombCandidate)))
+		{
+			continue;
+		}
 
 		UPrimitiveComponent* RootComponent = Cast<UPrimitiveComponent>(BombCandidate->GetRootComponent());
 		FVector DeltaVelocity = RootComponent->GetPhysicsLinearVelocity() - Ship->GetLinearVelocity() * 100;
@@ -1042,7 +1050,7 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 
 	if(BombTarget)
 	{
-		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{
 			return BombTarget->GetActorLocation();
 		}
@@ -1071,7 +1079,8 @@ FVector PilotHelper::PilotTarget::GetLinearVelocity() const
 
 	if(BombTarget != nullptr)
 	{
-		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+
+		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{
 			return Cast<UPrimitiveComponent>(BombTarget->GetRootComponent())->GetPhysicsLinearVelocity();
 		}

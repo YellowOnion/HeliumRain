@@ -1409,6 +1409,10 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	{
 		for (const AFlareBomb* Bomb : Game->GetActiveSector()->GetBombs())
 		{
+			if (Bomb->IsSafeDestroying())
+			{
+				continue;
+			}
 			if (Bomb->IsActive() && Bomb->GetFiringSpacecraft())
 			{
 				UFlareSimulatedSpacecraft* FiringSpacecraft = Bomb->GetFiringSpacecraft()->GetParent();

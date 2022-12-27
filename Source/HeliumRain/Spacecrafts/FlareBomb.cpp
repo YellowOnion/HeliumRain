@@ -611,6 +611,7 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 			ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector()->UnregisterBomb(this);
 		}
 */
+		UnregisterBombMethod();
 		CombatLog::BombDestroyed(GetIdentifier());
 		SafeDestroy();
 //		Destroy();
@@ -667,6 +668,22 @@ void AFlareBomb::SafeDestroy()
 	}
 }
 
+void AFlareBomb::UnregisterBombMethod()
+{
+	if (LocalSector)
+	{
+		LocalSector->UnregisterBomb(this);
+	}
+	else if(ParentWeapon)
+	{
+		UFlareSector* CurrentSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+		if (CurrentSector)
+		{
+			CurrentSector->UnregisterBomb(this);
+		}
+	}
+}
+
 void AFlareBomb::FinishSafeDestroy()
 {
 	if (!SafeDestroyed)
@@ -674,46 +691,33 @@ void AFlareBomb::FinishSafeDestroy()
 
 		//TODO: find all references to this bomb and null them so GC can kill us "safely"
 
+		UnregisterBombMethod();
 		SafeDestroyed = true;
 
 		this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-
 		DamageSound = nullptr;
 
 		if (ParentWeapon)
 		{
-			if (LocalSector)
-			{ 
-				LocalSector->UnregisterBomb(this);
-			}
-			else
-			{
-				UFlareSector* CurrentSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
-				if (CurrentSector)
-				{
-					CurrentSector->UnregisterBomb(this);
-				}
-			}
-
 			ParentWeapon->MoveIgnoreActors.Remove(this);
 			ParentWeapon = nullptr;
 		}
 
 		ExplosionEffectTemplate = nullptr;
 		ExplosionEffectMaterial = nullptr;
-		WeaponDescription = nullptr;
+//		WeaponDescription = nullptr;
 		TargetSpacecraft = nullptr;
 		LocalSector = nullptr;
-
+/*
 		if (BombComp)
 		{
 			BombComp->SetSimulatePhysics(false);
 			BombComp->FinishSafeDestroy();
+			BombComp = NULL;
 		}
-
+*/
 		RootComponent = NULL;
-		BombComp = NULL;	
-		this->Destroy();
+		Destroy();
 	}
 }
 
@@ -756,6 +760,13 @@ float AFlareBomb::GetParentDistance() const
 bool AFlareBomb::IsActive() const
 {
 	return BombData.BurnDuration < WeaponDescription->WeaponCharacteristics.BombCharacteristics.MaxBurnDuration;
+}
+
+bool AFlareBomb::IsSafeDestroying() const
+{
+	if (!this) return true;
+	if (!IsValidLowLevel()) return true;
+	return IsSafeDestroyingRunning;
 }
 
 bool AFlareBomb::IsHostile(UFlareCompany* Company) const

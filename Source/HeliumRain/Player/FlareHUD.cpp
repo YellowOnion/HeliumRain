@@ -1363,6 +1363,11 @@ void AFlareHUD::DrawHUDInternal()
 
 		for (AFlareBomb* Bomb : ActiveSector->GetBombs())
 		{
+			if (Bomb->IsSafeDestroying())
+			{
+				continue;
+			}
+
 			FVector2D ScreenPosition;
 
 			FVector AimLocation =  Bomb->GetActorLocation();

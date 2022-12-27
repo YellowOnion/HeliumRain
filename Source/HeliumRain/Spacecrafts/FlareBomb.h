@@ -124,6 +124,7 @@ public:
 	virtual void SafeDestroy();
 
 	virtual void FinishSafeDestroy();
+	virtual void UnregisterBombMethod();
 
 protected:
 
@@ -221,4 +222,8 @@ public:
 	bool IsHostile(UFlareCompany* Company) const;
 
 	bool IsActive() const;
+
+	bool IsSafeDestroying() const;
+
+
 };

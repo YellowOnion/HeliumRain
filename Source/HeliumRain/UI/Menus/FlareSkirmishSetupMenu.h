@@ -105,6 +105,9 @@ protected:
 	/** Sort the player fleet */
 	void OnSortPlayerFleet();
 
+	/** Copy enemy fleet setup**/
+	void OnMirrorFleet(bool ForPlayer);
+
 	/** Do an automatic fleet for the enemy */
 	void OnAutoCreateEnemyFleet();
 
@@ -121,7 +124,7 @@ protected:
 	void OnRemoveSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order);
 
 	/** Duplicate spacecraft */
-	void OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order);
+	void OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, bool SpecifyPlayer = false, bool ForPlayer = false, bool UpdateList = true);
 
 	// Upgrade callbacks
 	void OnUpgradeEngine(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, FName Upgrade);

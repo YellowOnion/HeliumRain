@@ -239,6 +239,7 @@ UFlareSimulatedSector* AFlareGame::DeactivateSector()
 
 	UFlareSimulatedSector* Sector = ActiveSector->GetSimulatedSector();
 	FLOGV("AFlareGame::DeactivateSector : %s", *Sector->GetSectorName().ToString());
+
 	World->Save();
 
 	// Set last flown ship

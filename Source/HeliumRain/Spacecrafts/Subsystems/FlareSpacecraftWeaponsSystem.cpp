@@ -581,6 +581,10 @@ int32 UFlareSpacecraftWeaponsSystem::FindBestWeaponGroup(PilotHelper::PilotTarge
 				int BombCount = 0;
 				for (AFlareBomb* Bomb : SpacecraftTarget->GetGame()->GetActiveSector()->GetBombs())
 				{
+					if (Bomb->IsSafeDestroying())
+					{
+						continue;
+					}
 					if (Bomb->GetTargetSpacecraft() == SpacecraftTarget && Bomb->IsActive())
 					{
 						BombCount++;

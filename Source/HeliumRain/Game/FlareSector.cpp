@@ -112,9 +112,12 @@ void UFlareSector::Save()
 	SectorData->AsteroidData.Empty();
 	// Meteorites have references but save must be call
 
-
 	for (int i = 0 ; i < SectorBombs.Num(); i++)
 	{
+		if (SectorBombs[i]->IsSafeDestroying())
+		{
+			continue;
+		}
 		SectorData->BombData.Add(*SectorBombs[i]->Save());
 	}
 
@@ -575,17 +578,12 @@ void UFlareSector::RegisterBomb(AFlareBomb* Bomb)
 void UFlareSector::UnregisterBomb(AFlareBomb* Bomb)
 {
 	if (!IsDestroyingSector)
-	{ 
-		SectorBombs.RemoveSwap(Bomb);
-		for (int i = 0; i < SectorSpacecrafts.Num(); i++)
+	{
+		if (SectorBombs.Remove(Bomb))
 		{
-			if (IsDestroyingSector)
+			for (AFlareSpacecraft* Spacecraft : SectorSpacecrafts)
 			{
-				AFlareSpacecraft* Spacecraft = SectorSpacecrafts[i];
-				if (IsValid(Spacecraft))
-				{
-					Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
-				}
+				Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
 			}
 		}
 	}

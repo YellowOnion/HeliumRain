@@ -1228,6 +1228,10 @@ void AFlarePlayerController::GetPlayerShipThreatStatus(bool& IsTargeted, bool& I
 		{
 			for (AFlareBomb* Bomb : GetGame()->GetActiveSector()->GetBombs())
 			{
+				if (Bomb->IsSafeDestroying())
+				{
+					continue;
+				}
 				if (Bomb->GetTargetSpacecraft() == GetShipPawn() && Bomb->IsActive() && Bomb->GetDistanceTo(GetShipPawn()) < 200000)
 				{
 					IsFiredUpon = true;
