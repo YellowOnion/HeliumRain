@@ -91,6 +91,8 @@ public:
 	void FinishedConstruction(UFlareSimulatedSpacecraft* FinishedStation);
 	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation);
 
+	bool IsAboveMinimumMoney();
+	
 	/*----------------------------------------------------
 		Behavior API
 	----------------------------------------------------*/
@@ -262,6 +264,8 @@ protected:
 
 	int32									BuildingMilitaryShips;
 	int32									BuildingTradeShips;
+	int32									MinimumMoney;
+
 	bool									CheckedBuildingShips;
 
 public:
@@ -280,6 +284,13 @@ public:
 	AFlareGame* GetGame() const
 	{
 		return Game;
+	}
+
+
+
+	int32 GetMinimumMoney() const
+	{
+		return MinimumMoney;
 	}
 
 	static void GetCompany();

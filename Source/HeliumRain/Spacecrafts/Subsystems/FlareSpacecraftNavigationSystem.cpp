@@ -1512,19 +1512,20 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Physics);
 
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
-
-	if(Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
+	if (Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
 		return;
 	}
 
+	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
 	TArray<float> EnginesAlpha;
+
 	EnginesAlpha.Reserve(Engines.Num());
 	for(int i = 0 ; i < Engines.Num() ; i++)
 	{
 		EnginesAlpha.Add(0.f);
 	}
+
 /*
 	bool Log = false;
 	if (false && Spacecraft == Spacecraft->GetGame()->GetPC()->GetShipPawn())
@@ -1677,7 +1678,6 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 		}
 	};
 
-
 	if(LinearEngineTarget.XVelocityControl)
 	{
 		ProcessVelocityEngineAxis(LinearEngineTarget.Target.X, FVector(1, 0, 0), XEngines);
@@ -1764,6 +1764,7 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 		Engine->SetAlpha(FMath::Clamp(LinearAlpha + AngularAlpha, 0.0f, 1.0f));
 	}
+
 }
 
 void UFlareSpacecraftNavigationSystem::UpdateCOM()

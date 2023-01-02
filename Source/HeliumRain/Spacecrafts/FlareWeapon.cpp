@@ -240,6 +240,10 @@ FVector UFlareWeapon::ComputeParallaxCorrection(int GunIndex)
 
 			for(AFlareBomb* Bomb: Spacecraft->GetGame()->GetActiveSector()->GetBombs())
 			{
+				if (Bomb->IsSafeDestroying())
+				{
+					continue;
+				}
 				TargetCanditates.Add(Bomb);
 			}
 
@@ -253,6 +257,10 @@ FVector UFlareWeapon::ComputeParallaxCorrection(int GunIndex)
 
 			for(AActor* TargetCandidate: TargetCanditates)
 			{
+				if (TargetCandidate == nullptr)
+				{
+					continue;
+				}
 				FVector ResultPosition;
 
 				UPrimitiveComponent* CandidateRootComponent = Cast<UPrimitiveComponent>(TargetCandidate->GetRootComponent());
@@ -314,16 +322,19 @@ bool UFlareWeapon::FireGun(int GunIndex)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Weapon_FireGun);
 
+	int32 remembertodelete = 0;
+
+	UFlareSector* ActiveSector = Spacecraft->GetGame()->GetActiveSector();
+	if (ActiveSector == nullptr)
+	{
+		return false;
+	}
+
 	// Avoid firing itself
 	AActor* Unused;
 	if (!IsSafeToFire(GunIndex, Unused))
 	{
 		//FLOGV("%s Not secure", *GetReadableName());
-		return false;
-	}
-	UFlareSector* ActiveSector = Spacecraft->GetGame()->GetActiveSector();
-	if (ActiveSector == nullptr)
-	{
 		return false;
 	}
 
@@ -339,23 +350,21 @@ bool UFlareWeapon::FireGun(int GunIndex)
 	if (IsValid(Shell))
 	{
 		//retrieve a shell
+		Shell->Instigator = SpacecraftPawn;
 		Shell->UnsetSafeDestroyed();
-		FTransform Transform;
-		Transform.SetLocation(FiringLocation);
-		Transform.SetRotation(FQuat(FRotator::ZeroRotator));
-		Shell->SetActorTransform(Transform);
+		Shell->SetActorLocationAndRotation(FiringLocation, FQuat(FRotator::ZeroRotator));
 	}
 	else
 	{
 		// Create a shell
 		Shell = GetWorld()->SpawnActor<AFlareShell>(
-			AFlareShell::StaticClass(),
-			FiringLocation,
-			FRotator::ZeroRotator,
-			ProjectileSpawnParams);
+		AFlareShell::StaticClass(),
+		FiringLocation,
+		FRotator::ZeroRotator,
+		ProjectileSpawnParams);
 	}
 
-	// Fire it. Tracer ammo every bullets
+// Fire it. Tracer ammo every bullets
 	Shell->Initialize(this, ComponentDescription, FiringDirection, FiringVelocity, true);
 	ConfigureShellFuze(Shell);
 	ShowFiringEffects(GunIndex);
@@ -642,10 +651,6 @@ bool UFlareWeapon::IsSafeToFire(int GunIndex, AActor*& HitTarget)
 			if (!HitResult.Actor->IsActorBeingDestroyed() && !HitResult.Actor->IsPendingKillPending())
 			{
 				HitTarget = HitResult.Actor.Get();
-			}
-			else
-			{
-				HitTarget = NULL;
 			}
 			return false;
 		}

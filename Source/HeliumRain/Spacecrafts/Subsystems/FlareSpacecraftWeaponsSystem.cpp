@@ -54,24 +54,29 @@ void UFlareSpacecraftWeaponsSystem::TickSystem(float DeltaSeconds)
 			Weapon->IsSafeToFire(0, HitTarget);
 			if (!HitTarget || HitTarget == Weapon->GetSpacecraft())
 			{
-				HitTarget = Weapon->GetSpacecraft()->GetCurrentTarget().GetActor();
+				if (Weapon->GetSpacecraft()->GetCurrentTarget().IsValid())
+				{
+					HitTarget = Weapon->GetSpacecraft()->GetCurrentTarget().GetActor();
+				}
 			}
 
 			// Aim the turret toward the target or a distant point.
 			FVector Location = Weapon->GetMuzzleLocation(0) + CameraAimDirection * 100000;
 			FVector Velocity = FVector::ZeroVector;
-			//during forced ship deletion, Rootcomp could be null or partially null
-			if (IsValid(HitTarget))
+			
+			// todo: need proper clean deletion/garbage collection to avoid these slow low level safety checks
+			if (HitTarget && HitTarget != nullptr)
 			{
-				if (!HitTarget->IsPendingKillOrUnreachable() && HitTarget->IsValidLowLevel())
+				if (HitTarget->IsValidLowLevel() && IsValid(HitTarget))
 				{
-					USceneComponent* RootComp = HitTarget->GetRootComponent();
-					if (RootComp)
+					if (HitTarget->GetRootComponent() && HitTarget->GetRootComponent() != nullptr && IsValid(HitTarget->GetRootComponent()))
 					{
-						if(!RootComp->IsPendingKillOrUnreachable() && RootComp->IsValidLowLevel())
+						UPrimitiveComponent* RootCompCast = Cast<UPrimitiveComponent>(HitTarget->GetRootComponent());
+						//during forced ship deletion, Rootcomp could be null or partially null
+						if (RootCompCast)
 						{
+							Velocity = RootCompCast->GetPhysicsLinearVelocity() / 100;
 							Location = HitTarget->GetActorLocation();
-							Velocity = Cast<UPrimitiveComponent>(RootComp)->GetPhysicsLinearVelocity() / 100;
 						}
 					}
 				}
@@ -578,20 +583,8 @@ int32 UFlareSpacecraftWeaponsSystem::FindBestWeaponGroup(PilotHelper::PilotTarge
 
 			if(WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.BombCharacteristics.IsBomb)
 			{
-				int BombCount = 0;
-				for (AFlareBomb* Bomb : SpacecraftTarget->GetGame()->GetActiveSector()->GetBombs())
-				{
-					if (Bomb->IsSafeDestroying())
-					{
-						continue;
-					}
-					if (Bomb->GetTargetSpacecraft() == SpacecraftTarget && Bomb->IsActive())
-					{
-						BombCount++;
-					}
-				}
-
-
+				
+				int BombCount = SpacecraftTarget->GetIncomingActiveBombQuantity();
 				if (PilotHelper::IsTargetDangerous(PilotHelper::PilotTarget(SpacecraftTarget)))
 				{
 					if(BombCount > 1)

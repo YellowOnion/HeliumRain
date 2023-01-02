@@ -125,6 +125,9 @@ class HELIUMRAIN_API UFlareSkirmishManager : public UObject
 
 public:
 
+	/** Initial setup, useful variables set */
+	void InitialSetup(AFlareGame* GameMode);
+
 	/*----------------------------------------------------
 		Gameplay phases
 	----------------------------------------------------*/
@@ -181,11 +184,9 @@ protected:
 		Data
 	----------------------------------------------------*/
 
+	/** Game reference */
 	UPROPERTY()
-	UFlareAsteroidCatalog*                           RockCatalog;
-
-	UPROPERTY()
-	UFlareAsteroidCatalog*                           DebrisCatalog;
+	AFlareGame*										Game;
 
 	// Skirmish data
 	TEnumAsByte<EFlareSkirmishPhase::Type>           CurrentPhase;
@@ -200,6 +201,11 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	inline AFlareGame* GetGame()
+	{
+		return Game;
+	}
 
 	AFlareGame* GetGame() const;
 

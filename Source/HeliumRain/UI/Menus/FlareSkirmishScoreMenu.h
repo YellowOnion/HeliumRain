@@ -59,6 +59,8 @@ protected:
 	/** Quit the menu */
 	void OnMainMenu();
 
+	/** Go straight to the skirmish menu*/
+	void OnSkirmishMenu();
 
 protected:
 

@@ -176,6 +176,16 @@ public:
 		return ComponentDescription->WeaponCharacteristics.AmmoCapacity;
 	}
 
+	inline FFlareSpacecraftComponentDescription* GetComponentDescription() const
+	{
+		return ComponentDescription;
+	}
+
+	inline UParticleSystem* GetFiringEffectTemplate() const
+	{
+		return FiringEffectTemplate;
+	}
+
 	inline float GetAmmoVelocity() const
 	{
 		return AmmoVelocity;

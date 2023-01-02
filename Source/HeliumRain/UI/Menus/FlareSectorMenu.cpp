@@ -699,7 +699,7 @@ FText SFlareSectorMenu::GetBuildStationHelpText() const
 	}
 	else
 	{
-		return LOCTEXT("CantBuildStationNoLicenseInfo", "You must purchase the local sector station building license before being able to build new stations or operate owning stations at full efficiency");
+		return LOCTEXT("CantBuildStationNoLicenseInfo", "You must purchase the local sector station building license before constructing new stations");
 	}
 }
 

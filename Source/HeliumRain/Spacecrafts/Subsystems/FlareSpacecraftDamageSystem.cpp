@@ -625,6 +625,11 @@ void UFlareSpacecraftDamageSystem::CheckRecovery()
 		{
 			PC->GetGame()->GetSkirmishManager()->EndPlay();
 		}
+		// battles which have reserve ships specifically needs this extra check encase the reserves don't join the battle
+		else if ((State.FriendlyControllableShipCount == 0 && State.DangerousFriendlyActiveMissileCount == 0) || (State.DangerousHostileActiveSpacecraftCount == 0 && State.DangerousHostileActiveMissileCount == 0))
+		{
+			PC->GetGame()->GetSkirmishManager()->EndPlay();
+		}
 	}
 }
 
@@ -851,7 +856,7 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 
 	// Signal the player he's hit something
 	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-	if (DamageSource == PC->GetShipPawn()->GetParent())
+	if (PC->GetShipPawn() && DamageSource == PC->GetShipPawn()->GetParent())
 	{
 		PC->SignalHit(Spacecraft, DamageType);
 	}

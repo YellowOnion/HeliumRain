@@ -40,7 +40,7 @@ public:
 	void PlayerStopFire();
 
 	void ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget);
-
+	void ClearTarget();
 
 	/*----------------------------------------------------
 		Pilot output
@@ -64,7 +64,7 @@ protected:
 
 	void ProcessTurretTargetSelection();
 
-	PilotHelper::PilotTarget GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic) const;
+	PilotHelper::PilotTarget GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic);
 
 
 protected:
@@ -97,7 +97,10 @@ protected:
 	float                                TimeUntilFireReaction;
 	float                                TimeUntilNextComponentSwitch;
 	float								 SecurityRadius;
+	float								 SecurityRadiusDistance;
 	PilotHelper::PilotTarget             PilotTarget;
+
+	UPROPERTY()
 	UFlareSpacecraftComponent*			 PilotTargetShipComponent;
 
 	bool								 EveryOtherTick;

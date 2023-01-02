@@ -57,10 +57,13 @@ protected:
 	FText GetAsteroidValue() const;
 
 	FText GetDebrisValue() const;
+	FText GetQuantityValue(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order) const;
 
 	FText GetPlayerFleetTitle() const;
 
 	FText GetTotalShipCount() const;
+
+	FText GetTotalShipReserveCount() const;
 
 	FText GetEnemyFleetTitle() const;
 
@@ -79,8 +82,9 @@ protected:
 	FText GetAddToEnemyFleetText() const;
 
 	FText GetCopyHelpText() const;
+	FText GetReserveHelpText() const;
 
-	bool IsCopyButtonDisabled() const;
+	bool IsCopyButtonDisabled(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order) const;
 
 	bool IsAddToPlayerFleetDisabled() const;
 
@@ -126,6 +130,16 @@ protected:
 	/** Duplicate spacecraft */
 	void OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, bool SpecifyPlayer = false, bool ForPlayer = false, bool UpdateList = true);
 
+	void OnChangeReserve(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order);
+	void OnSetReserve(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order);
+
+	/** Change quantity slider */
+	void OnQuantitySliderChanged(float Value, TSharedPtr<FFlareSkirmishSpacecraftOrder> Order);
+
+	/** Attempt to set quantity */
+	void QuantitySet(int32 Value, TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, bool SetBar = false);
+
+
 	// Upgrade callbacks
 	void OnUpgradeEngine(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, FName Upgrade);
 	void OnUpgradeRCS(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, FName Upgrade);
@@ -139,6 +153,8 @@ protected:
 
 	/** Quit the menu */
 	void OnMainMenu();
+
+	void UpdateShips();
 
 
 	/*----------------------------------------------------
@@ -156,6 +172,12 @@ protected:
 		Protected data
 	----------------------------------------------------*/
 
+	int32 PlayerShips = 0;
+	int32 EnemyShips = 0;
+
+	int32 PlayerShipsReserved = 0;
+	int32 EnemyShipsReserved = 0;
+
 	// Data
 	TWeakObjectPtr<class AFlareMenuManager>                  MenuManager;
 
@@ -167,7 +189,6 @@ protected:
 	TSharedPtr<SSlider>                                                DebrisSlider;
 	TSharedPtr<SFlareButton>                                           IcyButton;
 	TSharedPtr<SFlareButton>                                           MetalDebrisButton;
-
 	// Lists
 	TSharedPtr<SListView<TSharedPtr<FFlareSkirmishSpacecraftOrder>>>   PlayerSpacecraftList;
 	TSharedPtr<SListView<TSharedPtr<FFlareSkirmishSpacecraftOrder>>>   EnemySpacecraftList;

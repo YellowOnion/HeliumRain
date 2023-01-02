@@ -104,7 +104,18 @@ void SFlareSkirmishScoreMenu::Construct(const FArguments& InArgs)
 				.Text(LOCTEXT("Retry", "Retry"))
 				.OnClicked(this, &SFlareSkirmishScoreMenu::OnRetry)
 			]
-			
+
+			// Back
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SFlareButton)
+				.Transparent(true)
+			.Width(3)
+			.Text(LOCTEXT("SkirmishMenu", "Skirmish Menu"))
+			.OnClicked(this, &SFlareSkirmishScoreMenu::OnSkirmishMenu)
+			]
+
 			// Back
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -253,6 +264,11 @@ void SFlareSkirmishScoreMenu::OnRetry()
 void SFlareSkirmishScoreMenu::OnMainMenu()
 {
 	MenuManager->OpenMenu(EFlareMenu::MENU_Main);
+}
+
+void SFlareSkirmishScoreMenu::OnSkirmishMenu()
+{
+	MenuManager->OpenMenu(EFlareMenu::MENU_SkirmishSetup);
 }
 
 

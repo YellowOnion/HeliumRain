@@ -357,7 +357,7 @@ FText SFlareNotifier::GetSkirmishCountdown() const
 
 EVisibility SFlareNotifier::GetSkirmishCountdownVisibility() const
 {
-	if (MenuManager->GetSkirmishCountdown() > 0)
+	if (MenuManager->GetSkirmishCountdown() >= 0)
 	{
 		return EVisibility::Visible;
 	}

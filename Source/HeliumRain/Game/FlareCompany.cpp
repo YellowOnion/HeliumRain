@@ -1193,16 +1193,16 @@ void UFlareCompany::GiveResearch(int64 Amount)
 			Multiplier = 1.00f;
 			break;
 		case 1: // Hard
-			Multiplier = 1.20f;
+			Multiplier = 1.15f;
 			break;
 		case 2: // Very Hard
-			Multiplier = 1.40f;
+			Multiplier = 1.30f;
 			break;
 		case 3: // Expert
-			Multiplier = 1.60f;
+			Multiplier = 1.50f;
 			break;
 		case 4: // Unfair
-			Multiplier = 1.80f;
+			Multiplier = 1.75f;
 			break;
 		}
 

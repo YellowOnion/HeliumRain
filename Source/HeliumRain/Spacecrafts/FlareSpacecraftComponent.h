@@ -559,8 +559,8 @@ protected:
 
 	float                                   ImpactEffectChance;
 
-	bool										   IsSafeDestroyingRunning;
-	bool										   SafeDestroyed;
+	bool									IsSafeDestroyingRunning;
+	bool									SafeDestroyed;
 
 public:
 
@@ -570,11 +570,7 @@ public:
 
 	virtual AFlareSpacecraft* GetSpacecraft() const
 	{
-		if (IsValidLowLevel())
-		{
-			return Spacecraft;
-		}
-		return NULL;
+		return Spacecraft;
 	}
 
 	virtual FFlareSpacecraftComponentDescription* GetDescription() const

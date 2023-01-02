@@ -785,7 +785,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 							[
 								SNew(SFlareButton)
 								.Text(LOCTEXT("HappinessColumnTitleInfo", "Happiness"))
-								.HelpText(LOCTEXT("HappinessColumnTitleHelp", "Total happiness of sector. Higher happiness increases population birth and is also increases migration desirability"))
+								.HelpText(LOCTEXT("HappinessColumnTitleHelp", "Total happiness of sector. Higher happiness increases population birth and also increases migration desirability"))
 								.Width(ECONOMY_TABLE_BUTTON_SMALL)
 								.Transparent(true)
 								.Icon(this, &SFlareWorldEconomyMenu::GetSortIconPop, EFlareEconomySort::ES_Pop_Happiness)
@@ -1011,7 +1011,7 @@ bool SFlareWorldEconomyMenu::PassesFilterList(UFlareSimulatedSpacecraft* Station
 	{
 		if (TargetCompanies.Num() > 0)
 		{
-			if (!(TargetCompanies.Find(StationCandidate->GetCompany()) != INDEX_NONE))
+			if (!(TargetCompanies.Find(StationCandidate->GetCompany()) != INDEX_NONE) && TargetCompany != StationCandidate->GetCompany())
 			{
 				return false;
 			}

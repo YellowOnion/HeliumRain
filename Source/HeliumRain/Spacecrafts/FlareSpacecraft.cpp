@@ -45,7 +45,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Hit"), STAT_FlareSpacecraft_Hit, STATGR
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Aim"), STAT_FlareSpacecraft_Aim, STATGROUP_Flare);
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraft"
-
+#define DELETION_DELAY 3.f
 
 /*----------------------------------------------------
 	Constructor
@@ -141,30 +141,11 @@ void AFlareSpacecraft::BeginPlay()
 
 void AFlareSpacecraft::Tick(float DeltaSeconds)
 {
-	if (IsActorBeingDestroyed() || IsPendingKill())
-	{
-		return;
-	}
-
-	if (IsSafeDestroyingRunning)
-	{
-// waiting a safe amount of time to self destruct
-		SafeDestroyTimer += DeltaSeconds;
-		if (SafeDestroyTimer >= 3 && !BegunSafeDestroy)
-		{
-			FinishSafeDestroy();
-		}
-		return;
-	}
-
-	if (IsSafeHidingRunning)
-	{
-		return;
-	}
-
-	FCHECK(IsValidLowLevel());
-
 	TimeToStopCached = false;
+	if (!this || this == nullptr || IsActorBeingDestroyed() || IsPendingKill() || IsSafeDestroyingRunning)
+	{
+		return;
+	}
 
 	// Wait for readiness to call some stuff on load
 	if (!LoadedAndReady)
@@ -173,20 +154,6 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		{
 			LoadedAndReady = true;
 			Redock();
-/*
-			if (Parent->GetSize() == EFlarePartSize::L)
-			{
-				ExplodingTimesMax = FMath::RandRange(5, 10);
-			}
-			else if (Parent->GetSize() == EFlarePartSize::S)
-			{
-				ExplodingTimesMax = FMath::RandRange(2, 5);
-			}
-			else
-			{
-				ExplodingTimesMax = FMath::RandRange(5, 10);
-			}
-			*/
 		}
 	}
 
@@ -227,19 +194,21 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 			{
 				WeaponsSystem->TickSystem(DeltaSeconds);
 			}
-			DamageSystem->TickSystem(DeltaSeconds);
+			if (!IsExploding)
+			{
+				DamageSystem->TickSystem(DeltaSeconds);
+			}
 		}
-/*
+
 		if (IsExploding)
 		{
-			TimeSinceLastExplosion - DeltaSeconds;
+			TimeSinceLastExplosion -= DeltaSeconds;
 			if (TimeSinceLastExplosion <= 0)
 			{
-				TimeSinceLastExplosion = FMath::FRandRange(1, 3)
 				ExplodingShip();
 			}
 		}
-*/
+
 		// Lights
 		TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < LightComponents.Num(); ComponentIndex++)
@@ -424,11 +393,6 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 }
 
-/*
-void AFlareSpacecraft::ExplodingShip()
-{
-}
-*/
 void AFlareSpacecraft::SetCurrentTarget(PilotHelper::PilotTarget const& Target)
 {
 	if (CurrentTarget != Target)
@@ -577,6 +541,52 @@ void AFlareSpacecraft::NotifyHit(class UPrimitiveComponent* MyComp, class AActor
 	}
 }
 
+TArray<AFlareBomb*> AFlareSpacecraft::GetIncomingBombs()
+{
+	return IncomingBombs;
+}
+
+int32 AFlareSpacecraft::GetIncomingActiveBombQuantity()
+{
+	return GetIncomingBombs().Num();
+}
+
+void AFlareSpacecraft::TrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.AddUnique(Bomb);
+	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
+	if (CurrentFleet)
+	{
+		CurrentFleet->TrackIncomingBomb(Bomb);
+	}
+}
+
+void AFlareSpacecraft::UnTrackAllIncomingBombs()
+{
+	for (AFlareBomb* Bomb : GetIncomingBombs())
+	{
+		UnTrackIncomingBomb(Bomb);
+	}
+}
+
+void AFlareSpacecraft::UnTrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.RemoveSwap(Bomb);
+	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
+	if (CurrentFleet)
+	{
+		CurrentFleet->UnTrackIncomingBomb(Bomb);
+	}
+}
+
 void AFlareSpacecraft::SetUndockedAllShips(bool Set)
 {
 	if (Pilot)
@@ -587,15 +597,16 @@ void AFlareSpacecraft::SetUndockedAllShips(bool Set)
 
 bool AFlareSpacecraft::IsSafeEither()
 {
-	if (IsSafeDestroying())
-	{
-		return true;
-	}
-	else if (IsSafeHiding())
+	if (IsSafeDestroying() || BegunSafeDestroy)
 	{
 		return true;
 	}
 	return false;
+}
+
+bool AFlareSpacecraft::CheckIsExploding()
+{
+	return IsExploding;
 }
 
 bool AFlareSpacecraft::IsSafeDestroying()
@@ -603,24 +614,192 @@ bool AFlareSpacecraft::IsSafeDestroying()
 	return IsSafeDestroyingRunning;
 }
 
-bool AFlareSpacecraft::IsSafeHiding()
+void AFlareSpacecraft::BeginExplodingShip()
 {
-	return IsSafeHidingRunning;
+	if (IsExploding)
+	{
+		return;
+	}
+
+	IsExploding = true;
+	TimeSinceLastExplosion = 0;
+	ExplodingTimes = 0;
+	if (Parent->GetSize() == EFlarePartSize::L)
+	{	
+		ExplodingTimesMax = FMath::RandRange(10, 20);
+	} 
+	else if (Parent->GetSize() == EFlarePartSize::S)
+	{
+		ExplodingTimesMax = FMath::RandRange(3, 5);
+	}
 }
 
-void AFlareSpacecraft::SafeHide()
+void AFlareSpacecraft::ExplodingShip()
 {
-	if (!IsSafeHidingRunning)
-	{
-		IsSafeHidingRunning = true;
-		StopFire();
-		DeactivateWeapon();
-		ResetCurrentTarget();
+	ExplodingTimes++;
 
-		Airframe->SetSimulatePhysics(false);
-		this->SetActorHiddenInGame(true);
-		this->SetActorEnableCollision(false);
+	if (ExplodingTimes >= ExplodingTimesMax)
+	{
+		IsExploding = false;
+		SafeHide();
+		return;
 	}
+	 
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	if (!Catalog)
+	{
+		return;
+	}
+	FFlareSpacecraftComponentDescription* DefaultWeaponFallback = Catalog->Get(FName("weapon-artemis"));
+	if (!DefaultWeaponFallback)
+	{
+		return;
+	}
+
+	UParticleSystem* ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
+	float SingleProbability = FMath::FRand();
+	int32 ExplosionsToDo = FMath::FRandRange(1, 5);
+	if (SingleProbability <= 0.75)
+	{
+		ExplosionsToDo = 1;
+	}
+	else
+	{
+		ExplosionsToDo = FMath::FRandRange(2, 5);
+	}
+
+	TimeSinceLastExplosion = FMath::FRandRange((0.25f * ExplosionsToDo), (0.50f * ExplosionsToDo));
+
+	if (ExplosionEffectTemplate)
+	{
+		FVector ExplosionLocation = FMath::VRand() * FMath::FRand() * 1000 + GetActorLocation();
+
+		if (IsPlayerShip())
+		{
+			TArray<UActorComponent*> Components = GetComponentsByClass(UPrimitiveComponent::StaticClass());
+			if (Components.Num() > 0)
+			{
+				UPrimitiveComponent* Component = Cast<UPrimitiveComponent>(Components[0]);
+				GetPC()->PlayLocalizedSound(DefaultWeaponFallback->WeaponCharacteristics.ImpactSound, ExplosionLocation, Component);
+			}
+		}
+
+		float MinSize = 1;
+		float MaxSize = 1;
+
+		float ScaleFactor = 10;
+		if (GetParent()->GetSize() == EFlarePartSize::S)
+		{
+			ScaleFactor = 2;
+		}
+		else
+		{
+			MinSize = 2;
+			MaxSize = 6;
+		}
+
+		while (ExplosionsToDo > 0)
+		{
+			if (GetGame()->GetActiveSector())
+			{
+				SingleProbability = FMath::FRand();
+				if (SingleProbability <= (0.75 - (0.05 * ExplosionsToDo)))
+				{
+					GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), ExplosionLocation, 1, MinSize, MaxSize);
+				}
+
+				UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
+					GetWorld(),
+					ExplosionEffectTemplate,
+					ExplosionLocation,
+					GetActorRotation(),
+					true);
+				if (PSC)
+				{
+					FVector ActorScale = GetActorScale();
+					PSC->SetWorldScale3D(ScaleFactor * ActorScale);
+				}
+				ExplosionLocation = FMath::VRand() * FMath::FRand() * 1000 + GetActorLocation();
+			}
+			else
+			{
+				break;
+			}
+			ExplosionsToDo--;
+		}
+	}
+}
+
+void AFlareSpacecraft::SafeHide(bool ShowExplosion)
+{
+	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
+	if (PC)
+	{
+		AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
+		if (PlayerShip && PlayerShip == this)
+		{
+			//PC in exploding ship, try to change and if fail abort final explosion
+			if (!PC->SwitchToNextShip())
+			{
+				return;
+			}
+		}
+	}
+
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	if (!Catalog)
+	{
+		return;
+	}
+	FFlareSpacecraftComponentDescription* DefaultWeaponFallback = Catalog->Get(FName("weapon-artemis"));
+	if (!DefaultWeaponFallback)
+	{
+		return;
+	}
+
+	if (ShowExplosion && GetGame()->GetActiveSector())
+	{
+		UParticleSystem* ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
+		if (ExplosionEffectTemplate)
+		{
+			float MinSize = 1;
+			float MaxSize = 2;
+			int32 Quantity = 1;
+
+			float ScaleFactor = 2;
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				Quantity = FMath::FRandRange(2, 3);
+			}
+			else
+			{
+				Quantity = FMath::FRandRange(3, 5);
+				MinSize = 3;
+				MaxSize = 7;
+				ScaleFactor = 10;
+			}
+
+			GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), GetActorLocation(), Quantity, MinSize, MaxSize);
+
+			UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				ExplosionEffectTemplate,
+				GetActorLocation(),
+				GetActorRotation(),
+				true);
+			if (PSC)
+			{
+				FVector ActorScale = GetActorScale();
+				float ScaleFactor = 50;
+				if (GetParent()->GetSize() == EFlarePartSize::S)
+				{
+					ScaleFactor = 10;
+				}
+				PSC->SetWorldScale3D(ScaleFactor * ActorScale);
+			}
+		}
+	}
+	SafeDestroy();
 }
 
 void AFlareSpacecraft::SafeDestroy()
@@ -628,71 +807,50 @@ void AFlareSpacecraft::SafeDestroy()
 	if (!IsSafeDestroyingRunning)
 	{
 		IsSafeDestroyingRunning = true;
-		StopFire();
-		DeactivateWeapon();
-		ResetCurrentTarget();
-
+		this->SetActorTickEnabled(false);
 		Airframe->SetSimulatePhysics(false);
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
+
+		SetLifeSpan(DELETION_DELAY);
+		IsExploding = false;
+
+		StopFire();
+
+		if (IsMilitary())
+		{
+			GetWeaponsSystem()->DeactivateWeapons();
+		}
+
+		ResetCurrentTarget();
+		SignalIncomingBombsDeadTarget();
 		InSectorSquad.Empty();
 
 		// Notify PC
-		if (Parent)
+		if (!IsPresentationMode() && Parent)
 		{
 			if (Parent->GetActive() == this)
 			{
 				Parent->SetActiveSpacecraft(NULL);
 			}
 		}
+		UnTrackAllIncomingBombs();
 	}
 }
 
-void AFlareSpacecraft::FinishAutoPilots()
+void AFlareSpacecraft::LifeSpanExpired()
 {
-	if (NavigationSystem)
-	{
-		if (NavigationSystem->IsAutoPilot())
-		{
-			NavigationSystem->ForceFinishAutoPilots();
-		}
-	}
-}
-
-void AFlareSpacecraft::AddToInsectorSquad(AFlareSpacecraft* Adding)
-{
-	InSectorSquad.AddUnique(Adding);
-}
-
-void AFlareSpacecraft::RemoveFromInsectorSquad(AFlareSpacecraft* Removing)
-{
-	InSectorSquad.RemoveSwap(Removing);
+	FinishSafeDestroy();
 }
 
 void AFlareSpacecraft::FinishSafeDestroy()
 {
-	if (!BegunSafeDestroy)
-	{
-		BegunSafeDestroy = true;
-		this->Destroy();
-	}
+	BegunSafeDestroy = this->Destroy();
 }
 
 void AFlareSpacecraft::Destroyed()
 {
 	Super::Destroyed();
-
-	// Notify PC
-	if (!IsPresentationMode())
-	{
-		if (Parent)
-		{
-			if (Parent->GetActive() == this)
-			{
-				Parent->SetActiveSpacecraft(NULL);
-			}
-		}
-	}
 
 	// Stop lights
 	TArray<UActorComponent*> LightComponents = GetComponentsByClass(USpotLightComponent::StaticClass());
@@ -716,7 +874,36 @@ void AFlareSpacecraft::Destroyed()
 		}
 	}
 	CurrentTarget.Clear();
-//	FinishSafeDestroy();
+}
+
+void AFlareSpacecraft::SignalIncomingBombsDeadTarget()
+{
+	for (AFlareBomb* Bomb : GetIncomingBombs())
+	{
+		Bomb->CurrentTargetDied();
+		UnTrackIncomingBomb(Bomb);
+	}
+}
+
+void AFlareSpacecraft::FinishAutoPilots()
+{
+	if (NavigationSystem)
+	{
+		if (NavigationSystem->IsAutoPilot())
+		{
+			NavigationSystem->ForceFinishAutoPilots();
+		}
+	}
+}
+
+void AFlareSpacecraft::AddToInsectorSquad(AFlareSpacecraft* Adding)
+{
+	InSectorSquad.AddUnique(Adding);
+}
+
+void AFlareSpacecraft::RemoveFromInsectorSquad(AFlareSpacecraft* Removing)
+{
+	InSectorSquad.RemoveSwap(Removing);
 }
 
 void AFlareSpacecraft::SetPause(bool Pause)
@@ -1380,16 +1567,19 @@ void AFlareSpacecraft::ApplyAsteroidData()
 
 UFlareSimulatedSector* AFlareSpacecraft::GetOwnerSector()
 {
-	TArray<UFlareSimulatedSector*> Sectors = GetGame()->GetGameWorld()->GetSectors();
-
-	for (int32 Index = 0; Index < Sectors.Num(); Index++)
+	if (GetGame()->GetGameWorld())
 	{
-		UFlareSimulatedSector* CandidateSector = Sectors[Index];
-		for (int32 ShipIndex = 0; ShipIndex < CandidateSector->GetSectorSpacecrafts().Num(); ShipIndex++)
+		TArray<UFlareSimulatedSector*> Sectors = GetGame()->GetGameWorld()->GetSectors();
+
+		for (int32 Index = 0; Index < Sectors.Num(); Index++)
 		{
-			if (CandidateSector->GetSectorSpacecrafts()[ShipIndex]->Save()->Identifier == GetData().Identifier)
+			UFlareSimulatedSector* CandidateSector = Sectors[Index];
+			for (int32 ShipIndex = 0; ShipIndex < CandidateSector->GetSectorSpacecrafts().Num(); ShipIndex++)
 			{
-				return CandidateSector;
+				if (CandidateSector->GetSectorSpacecrafts()[ShipIndex]->Save()->Identifier == GetData().Identifier)
+				{
+					return CandidateSector;
+				}
 			}
 		}
 	}
@@ -1880,26 +2070,30 @@ void AFlareSpacecraft::DeactivateWeapon()
 	if (IsMilitary())
 	{
 		FLOG("AFlareSpacecraft::DeactivateWeapon");
-
-		// Fighters have an unloading sound
-		if (GetDescription()->Size == EFlarePartSize::S)
-		{
-			if (GetWeaponsSystem()->GetActiveWeaponGroup())
-			{
-				GetPC()->ClientPlaySound(WeaponUnloadedSound);
-			}
-		}
-
 		GetWeaponsSystem()->DeactivateWeapons();
 		GetStateManager()->EnablePilot(false);
 
-		if (GetGame()->GetQuestManager() && GetParent() == GetGame()->GetPC()->GetPlayerShip())
+		if (GetParent() == GetGame()->GetPC()->GetPlayerShip())
 		{
-			GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("deactivate-weapon"));
+			// Fighters have an unloading sound
+			if (GetDescription()->Size == EFlarePartSize::S)
+			{
+				if (GetWeaponsSystem()->GetActiveWeaponGroup())
+				{
+					GetPC()->ClientPlaySound(WeaponUnloadedSound);
+				}
+			}
+			if (GetGame()->GetQuestManager())
+			{
+				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("deactivate-weapon"));
+			}
 		}
 	}
 
-	GetPC()->SetSelectingWeapon();
+	if (GetParent() == GetGame()->GetPC()->GetPlayerShip())
+	{
+		GetPC()->SetSelectingWeapon();
+	}
 }
 
 void AFlareSpacecraft::ActivateWeaponGroup1()

@@ -146,7 +146,8 @@ void AFlareGame::StartPlay()
 
 	// Spawn skirmish manager
 	SkirmishManager = NewObject<UFlareSkirmishManager>(this, UFlareSkirmishManager::StaticClass());
-	
+	SkirmishManager->InitialSetup(this);
+
 	// Setup registry
 	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
 	Registry.SearchAllAssets(true);
@@ -192,6 +193,12 @@ void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 		return;
 	}
 
+	// Sector to activate is already activating
+	if (ActivatingSector == Sector)
+	{
+		return;
+	}
+
 	// Stop processing notifications
 	GetPC()->SetBusy(true);
 
@@ -209,12 +216,6 @@ void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 
 		// Deactivate the sector
 		DeactivateSector();
-	}
-
-	// Sector to activate is already activating
-	if (ActivatingSector == Sector)
-	{
-		return;
 	}
 
 	// Load the sector level - Will call OnLevelLoaded()
@@ -252,7 +253,7 @@ UFlareSimulatedSector* AFlareGame::DeactivateSector()
 	// Destroy the active sector
 	DebrisFieldSystem->Reset();
 	UnloadStreamingLevel(ActiveSector->GetSimulatedSector()->GetDescription()->LevelName);
-	ActiveSector->DestroySector();
+	ActiveSector->DestroySector(false);
 
 	CombatLog::SectorDeactivated(Sector);
 
@@ -794,20 +795,30 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 
 	// Create player fleet
 	UFlareFleet* Fleet = NULL;
+	bool SetPlayerShip = false;
 	for (auto Order : Skirmish->GetData().Player.OrderedSpacecrafts)
 	{
 		UFlareSimulatedSpacecraft* Ship = CreateSkirmishSpacecraft(Sector, PlayerCompany, Order, TargetPosition1);
-
+		if (Order.IsReserve)
+		{
+			Sector->SetAddReserveShip(Ship);
+		}
+		
 		// Set fleet
 		if (Fleet == NULL)
 		{
 			Fleet = Ship->GetCurrentFleet();
-			PlayerDataL.LastFlownShipIdentifier = Ship->GetImmatriculation();
-			PlayerDataL.PlayerFleetIdentifier = Fleet->GetIdentifier();
 		}
 		else
 		{
 			Fleet->AddShip(Ship);
+		}
+
+		if (!Order.IsReserve&&!SetPlayerShip)
+		{
+			PlayerDataL.LastFlownShipIdentifier = Ship->GetImmatriculation();
+			PlayerDataL.PlayerFleetIdentifier = Fleet->GetIdentifier();
+			SetPlayerShip = true;
 		}
 	}
 
@@ -816,6 +827,10 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 	for (auto Order : Skirmish->GetData().Enemy.OrderedSpacecrafts)
 	{
 		UFlareSimulatedSpacecraft* Ship = CreateSkirmishSpacecraft(Sector, EnemyCompany, Order, TargetPosition2);
+		if (Order.IsReserve)
+		{
+			Sector->SetAddReserveShip(Ship);
+		}
 
 		// Set fleet
 		if (Fleet == NULL)
@@ -824,7 +839,7 @@ void AFlareGame::CreateSkirmishGame(UFlareSkirmishManager* Skirmish)
 		}
 		else
 		{
-			Ship->GetCurrentFleet()->Merge(Fleet);
+			Fleet->AddShip(Ship);
 		}
 	}
 
@@ -1041,6 +1056,13 @@ bool AFlareGame::SaveGame(AFlarePlayerController* PC, bool Async, bool Force)
 		Save->WorldData = *World->Save();
 		Save->CurrentImmatriculationIndex = CurrentImmatriculationIndex;
 		Save->CurrentIdentifierIndex = CurrentIdentifierIndex;
+
+		//sometimes during a force close the game errors due to nullptr questmanager
+		if (QuestManager == nullptr)
+		{
+			return false;
+		}
+
 		Save->PlayerData.QuestData = *QuestManager->Save();
 		Save->AutoSave = AutoSave;
 
@@ -1080,7 +1102,7 @@ void AFlareGame::UnloadGame()
 	if (ActiveSector)
 	{
 		UnloadStreamingLevel(ActiveSector->GetSimulatedSector()->GetDescription()->LevelName);
-		ActiveSector->DestroySector();
+		ActiveSector->DestroySector(false);
 		ActiveSector = NULL;
 	}
 	DebrisFieldSystem->Reset();

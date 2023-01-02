@@ -110,6 +110,8 @@ public:
 	/** Attach bomb */
 	void AttachBomb(AFlareSpacecraft* HitSpacecraft);
 
+	void CurrentTargetDied();
+
 	/** Save the bomb to a save file */
 	virtual FFlareBombSave* Save();
 

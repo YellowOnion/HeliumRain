@@ -1,10 +1,11 @@
 #pragma once
 
 #include "EngineMinimal.h"
+#include "../UI/Components/FlareButton.h"
 #include "Styling/SlateBrush.h"
 #include "Sound/SoundCue.h"
+#include "Engine.h"
 #include "FlareSpacecraftTypes.generated.h"
-
 
 class UFlareResourceCatalogEntry;
 class UFlareFactoryCatalogEntry;
@@ -116,7 +117,6 @@ namespace EFlareResourceLock
 		Hidden, // The slot is not available yet
 	};
 }
-
 /** Resource restruction type values */
 UENUM()
 namespace EFlareResourceRestriction
@@ -132,7 +132,6 @@ namespace EFlareResourceRestriction
 		Nobody, // Nobody can trade with this slot
 	};
 }
-
 /** Ship component turret save data */
 USTRUCT()
 struct FFlareSpacecraftComponentTurretSave
@@ -1036,7 +1035,11 @@ struct FFlareSkirmishSpacecraftOrder
 
 	// Menu hint
 	bool ForPlayer;
-
+	bool IsReserve;
+	int32 Quantity = 1;
+	TSharedPtr<SSlider> QuantitySlider;
+	TSharedPtr<SFlareButton> ReserveButton;
+	
 	// Constructors
 	FFlareSkirmishSpacecraftOrder(const FFlareSpacecraftDescription* Desc)
 		: Description(Desc)
@@ -1050,9 +1053,17 @@ struct FFlareSkirmishSpacecraftOrder
 	{
 		return MakeShareable(new FFlareSkirmishSpacecraftOrder(Desc));
 	}
+
+//todo: perhaps wrap the quantity/reserve buttons into their own struct
+	void SetQuantitySlider(TSharedPtr<SSlider> NewQuantitySlider)
+	{
+		QuantitySlider = NewQuantitySlider;
+	}
+	void SetReserveButton(TSharedPtr<SFlareButton> NewReserveButton)
+	{
+		ReserveButton = NewReserveButton;
+	}
 };
-
-
 
 UCLASS()
 class HELIUMRAIN_API UFlareSpacecraftTypes : public UObject

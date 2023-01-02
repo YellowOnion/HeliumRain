@@ -138,7 +138,7 @@ void UFlareTurret::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurret_Tick);
 
 	FCHECK(Pilot);
-	if (!Spacecraft || Spacecraft->IsPendingKill() || Spacecraft->IsActorBeingDestroyed())
+	if (!IsValid(Spacecraft) || Spacecraft->IsSafeEither())
 	{
 		return;
 	}

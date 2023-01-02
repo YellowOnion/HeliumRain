@@ -30,11 +30,12 @@ public:
 	virtual void Save();
 
 	/** Destroy the sector */
-	virtual void DestroySector();
+	virtual void DestroySector(bool InitialDestruction = false);
 
 	/** Remove spacecraft from sector */
-	virtual void RemoveSpacecraft(AFlareSpacecraft* Spacecraft);
-
+	virtual void RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSectorSpacecrafts = true);
+	virtual void SpaceCraftExplosionCheck(AFlareSpacecraft* Spacecraft);
+	
 	/** Add dead spacecraft to our dead array*/
 	virtual void AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft);
 
@@ -58,6 +59,7 @@ public:
 
 	void UnregisterShell(AFlareShell* Shell);
 
+	void UnRegisterCachedShell(AFlareShell* Shell);
 	void RegisterCachedShell(AFlareShell* Shell);
 
 	AFlareShell* RetrieveCachedShell();

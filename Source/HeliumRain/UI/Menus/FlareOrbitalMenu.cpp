@@ -465,7 +465,6 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 		.Phase(Sector->GetOrbitParameters()->Phase)
 		[
 			SAssignNew(CurrentSectorButton, SFlareSectorButton)
-//			SNew(SFlareSectorButton)
 			.Sector(Sector)
 			.PlayerCompany(MenuManager->GetPC()->GetCompany())
 			.OnClicked(this, &SFlareOrbitalMenu::OnOpenSector, IndexPtr)

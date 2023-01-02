@@ -28,7 +28,7 @@ UFlareTurretPilot::UFlareTurretPilot(const class FObjectInitializer& PCIP)
 	: Super(PCIP)
 {
 	TargetSelectionReactionTimeFast = FMath::FRandRange(1.0, 1.5);
-	TargetSelectionReactionTimeSlow = FMath::FRandRange(4.0, 6.0);
+	TargetSelectionReactionTimeSlow = FMath::FRandRange(2.0, 3.0);
 	TimeUntilNextTargetSelectionReaction = 0;
 
 	FireReactionTime = FMath::FRandRange(0.1, 0.2);
@@ -57,6 +57,7 @@ void UFlareTurretPilot::Initialize(const FFlareTurretPilotSave* Data, UFlareComp
 	if (Turret->GetDescription()->WeaponCharacteristics.FuzeType == EFlareShellFuzeType::Proximity)
 	{
 		SecurityRadius = Turret->GetDescription()->WeaponCharacteristics.AmmoExplosionRadius + Turret->GetSpacecraft()->GetMeshScale() / 100;
+		SecurityRadiusDistance = (SecurityRadius * 100);
 	}
 }
 
@@ -83,8 +84,14 @@ void UFlareTurretPilot::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarge
 {
 	if(PilotTarget == InvalidTarget)
 	{
-		PilotTarget.Clear();
+		ClearTarget();
 	}
+}
+
+void UFlareTurretPilot::ClearTarget()
+{
+	PilotTarget.Clear();
+	TimeUntilNextTargetSelectionReaction = 0;
 }
 
 void UFlareTurretPilot::TickPilot(float DeltaSeconds)
@@ -96,6 +103,11 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 		EveryOtherTick = false;
 		return;
 	}
+	if (!Turret->GetSpacecraft()->GetGame()->GetActiveSector())
+	{
+		return;
+	}
+
 	EveryOtherTick = true;
 
 	TimeUntilNextTargetSelectionReaction -= DeltaSeconds;
@@ -147,16 +159,23 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 				//FLOGV("%s Switch because of timeout", *Turret->GetReadableName());
 				PilotTargetShipComponent = NULL;
 			}
-			else if (PilotTargetShipComponent)
+			else if(PilotTargetShipComponent != nullptr && IsValid(PilotTargetShipComponent))
 			{
-				if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
+				if (PilotTargetShipComponent->IsValidLowLevel())
 				{
-					//FLOGV("%s Switch because the component %s is not in the target ship", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
-					PilotTargetShipComponent = NULL;
+					if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
+					{
+						//FLOGV("%s Switch because the component %s is not in the target ship", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
+						PilotTargetShipComponent = NULL;
+					}
+					else if (PilotTargetShipComponent->GetUsableRatio() <= 0)
+					{
+						//FLOGV("%s Switch because the component %s is destroyed", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
+						PilotTargetShipComponent = NULL;
+					}
 				}
-				else if (PilotTargetShipComponent->GetUsableRatio() <=0)
+				else
 				{
-					//FLOGV("%s Switch because the component %s is destroyed", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
 					PilotTargetShipComponent = NULL;
 				}
 			}
@@ -170,7 +189,8 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 
 			if (!PilotTargetShipComponent)
 			{
-				PilotTarget.Clear();
+				WantFire = false;
+				ClearTarget();
 				return;
 			}
 		}
@@ -284,22 +304,12 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 {
 	if (TimeUntilNextTargetSelectionReaction > 0)
 	{
-/*
-		AActor* HitTarget = NULL;
-		Turret->IsSafeToFire(0, HitTarget);
-*/
-
-		if(PilotTarget.SpacecraftTarget)
+		if (PilotTarget.IsValid())
 		{
-			if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed())
+			if (PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
 			{
-				AActor* HitTarget = NULL;
-				Turret->IsSafeToFire(0, HitTarget);
-				if (HitTarget == NULL)
-				{
-					PilotTarget.Clear();
-					TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeFast;
-				}
+				ClearTarget();
+				TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeSlow;
 			}
 			else
 			{
@@ -307,19 +317,87 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 			}
 		}
 		else
-		{ 
-			return;
+		{
+			ClearTarget();
+			TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeSlow;
 		}
 	}
 	else
 	{
-		TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeFast;
+		if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget != nullptr)
+		{
+			if (PilotTarget.SpacecraftTarget->GetParent()->GetDescription()->Size == EFlarePartSize::S)
+			{
+				TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeFast;
+			}
+		}
+		if (TimeUntilNextTargetSelectionReaction <= 0)
+		{
+			TimeUntilNextTargetSelectionReaction = TargetSelectionReactionTimeSlow;
+		}
 	}
 
-//	PilotHelper::PilotTarget OldPilotTargetShip = PilotTarget;
-	EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
+	bool CheckIndividualTarget = false;
+	UFlareFleet* CurrentFleet = Turret->GetSpacecraft()->GetParent()->GetCurrentFleet();
+	if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet &&  Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
+	{
+		CheckIndividualTarget = true;
+	}
+	else
+	{
+		PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
+		if (PilotTarget.IsValid())
+		{
+			if (PilotTarget.SpacecraftTarget)
+			{
+				if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+				{
+					//the station + military check is just encase someone throws weapons on a station via third party mods
+					if ((PilotTarget.SpacecraftTarget->IsStation() && !PilotTarget.SpacecraftTarget->IsMilitary()) || !Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()) || PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable() || (PilotTarget.SpacecraftTarget->IsMilitary() && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed()))
+					{
+						CheckIndividualTarget = true;
+					}
+				}
+				else
+				{
+					CheckIndividualTarget = true;
+				}
+			}
+			else
+			{
+				CheckIndividualTarget = true;
+			}
 
-	PilotTarget = GetNearestHostileTarget(true, Tactic);
+			if (!CheckIndividualTarget && !PilotTarget.IsEmpty())
+			{
+				FVector PilotLocation = Turret->GetTurretBaseLocation();
+				FVector TargetAxis = (PilotTarget.GetActorLocation() - PilotLocation).GetUnsafeNormal();
+				if (!Turret->IsReacheableAxis(TargetAxis))
+				{
+					CheckIndividualTarget = true;
+				}
+
+				if (!CheckIndividualTarget)
+				{
+					float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
+					if (Distance < SecurityRadiusDistance)
+					{
+						CheckIndividualTarget = true;
+					}
+				}
+			}
+		}
+		else
+		{
+			CheckIndividualTarget = true;
+		}
+	}
+
+	if (CheckIndividualTarget)
+	{
+		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
+		PilotTarget = GetNearestHostileTarget(true, Tactic);
+	}
 
 	if (Turret->GetWeaponGroup()->Target)
 	{
@@ -327,53 +405,22 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 
 		AFlareSpacecraft* TargetCandidate = Turret->GetWeaponGroup()->Target;
 
-		if(!TargetCandidate->GetParent()->GetDamageSystem()->IsAlive())
+		if (!TargetCandidate->GetParent()->GetDamageSystem()->IsAlive())
 		{
 			Turret->GetWeaponGroup()->Target = NULL;
 		}
 		else
 		{
-			FVector TargetAxis = (TargetCandidate->GetActorLocation()- Turret->GetTurretBaseLocation()).GetUnsafeNormal();
-			if(Turret->IsReacheableAxis(TargetAxis))
+			FVector TargetAxis = (TargetCandidate->GetActorLocation() - Turret->GetTurretBaseLocation()).GetUnsafeNormal();
+			if (Turret->IsReacheableAxis(TargetAxis))
 			{
 				PilotTarget = TargetCandidate;
 			}
 		}
 	}
-
-	if (PilotTarget.IsEmpty())
-	{
-		PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
-		if (!PilotTarget.IsEmpty())
-		{
-			if (PilotTarget.SpacecraftTarget && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
-			{
-				if (!Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
-				{
-					PilotTarget = PilotHelper::PilotTarget();
-				}
-				else if (PilotTarget.SpacecraftTarget->IsMilitary())
-				{
-					if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed())
-					{
-						PilotTarget = PilotHelper::PilotTarget();
-					}
-				}
-				else if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable())
-				{
-					PilotTarget = PilotHelper::PilotTarget();
-				}
-			}
-			else
-			{
-				PilotTarget = PilotHelper::PilotTarget();
-			}
-		}
-//PilotTarget = GetNearestHostileTarget(false, Tactic);
-	}
 }
 
-PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic) const
+PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_GetNearestHostileShip);
 
@@ -422,6 +469,7 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 	TargetPreferences.IsLarge = Turret->GetDescription()->WeaponCharacteristics.AntiLargeShipValue;
 	TargetPreferences.IsSmall = Turret->GetDescription()->WeaponCharacteristics.AntiSmallShipValue;
 	TargetPreferences.IsStation = Turret->GetDescription()->WeaponCharacteristics.AntiStationValue;
+
 
 	float AmmoRatio = float(Turret->GetCurrentAmmo()) / Turret->GetMaxAmmo();
 
@@ -472,20 +520,22 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 		}
 
 		float Distance = (PilotLocation - NearestHostileTarget.GetActorLocation()).Size();
-		if (Distance < SecurityRadius * 100)
+		if (Distance < SecurityRadiusDistance)
 		{
 			TargetPreferences.IgnoreList.Add(NearestHostileTarget);
 			NearestHostileTarget.Clear();
 			continue;
 		}
 
-		FVector TargetAxis = (NearestHostileTarget.GetActorLocation()- PilotLocation).GetUnsafeNormal();
-//		if (ReachableOnly && !Turret->IsReacheableAxis(TargetAxis))
-		if (!Turret->IsReacheableAxis(TargetAxis))
+		if (ReachableOnly)
 		{
-			TargetPreferences.IgnoreList.Add(NearestHostileTarget);
-			NearestHostileTarget.Clear();
-			continue;
+			FVector TargetAxis = (NearestHostileTarget.GetActorLocation() - PilotLocation).GetUnsafeNormal();
+			if(!Turret->IsReacheableAxis(TargetAxis))
+			{
+				TargetPreferences.IgnoreList.Add(NearestHostileTarget);
+				NearestHostileTarget.Clear();
+				continue;
+			}
 		}
 	}
 	return NearestHostileTarget;

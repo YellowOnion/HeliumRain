@@ -165,6 +165,15 @@ void UFlareCompanyAI::Tick()
 	}
 }
 
+bool UFlareCompanyAI::IsAboveMinimumMoney()
+{
+	if (Company->GetMoney() >= GetMinimumMoney())
+	{
+		return true;
+	}
+	return false;
+}
+
 void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 {
 //Called from Company->SimulateAI()
@@ -303,7 +312,8 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 			AIData.Pacifism -= (Behavior->PacifismDecrementRate * Multiplier);
 		}
 
-		int32 MinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic)/2);
+		MinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic));
+		int32 PacifismMinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic)/2);
 
 		if (Company->GetMoney() < MinimumMoney)
 		{

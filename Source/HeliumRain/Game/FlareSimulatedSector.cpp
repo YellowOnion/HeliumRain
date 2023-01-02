@@ -1304,7 +1304,7 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	FFlareSectorBattleState BattleState;
 	BattleState.Init();
 
-	if (GetSectorShips().Num() == 0)
+	if (this == nullptr || GetSectorShips().Num() == 0)
 	{
 		return BattleState;
 	}
@@ -1357,7 +1357,10 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 
 			if(!Spacecraft->GetDamageSystem()->IsUncontrollable())
 			{
-				FriendlyControllableShipCount++;
+				if (!Spacecraft->IsReserve())
+				{
+					FriendlyControllableShipCount++;
+				}
 			}
 
 		}
@@ -1435,7 +1438,11 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	BattleState.FriendlyStationCount = FriendlyStationCount;
 	BattleState.FriendlyStationInCaptureCount = FriendlyStationInCaptureCount;
 	BattleState.FriendlyControllableShipCount = FriendlyControllableShipCount;
-	
+
+	BattleState.DangerousHostileActiveSpacecraftCount = DangerousHostileActiveSpacecraftCount;
+	BattleState.DangerousFriendlyActiveMissileCount = DangerousFriendlyActiveMissileCount;
+	BattleState.DangerousHostileActiveMissileCount = DangerousHostileActiveMissileCount;
+
 	// Danger
 	if (DangerousHostileSpacecraftCount > 0 || DangerousHostileActiveMissileCount > 0)
 	{
@@ -2027,17 +2034,7 @@ void UFlareSimulatedSector::OnFleetSupplyConsumed(int32 Quantity)
 	SectorData.DailyFleetSupplyConsumption += Quantity;
 }
 
-void UFlareSimulatedSector::RemoveSectorReserves(UFlareSimulatedSpacecraft* RemovingShip)
-{
-	if (RemovingShip)
-	{
-		TArray<UFlareSimulatedSpacecraft*>& CompanyReserves = GetSectorReserves(RemovingShip->GetCompany());
-		CompanyReserves.Remove(RemovingShip);
-//		ReservesByCompany[RemovingShip->GetCompany()] = CompanyReserves;
-	}
-}
-
-bool UFlareSimulatedSector::BattleBringInReserveShips(UFlareCompany* PreferredCompany)
+bool UFlareSimulatedSector::BattleBringInReserveShips(UFlareCompany* PreferredCompany, UFlareSimulatedSpacecraft* ReplacedSpacecraft)
 {
 //	FLOGV("Battle bring reserve");
 	if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == this)
@@ -2113,12 +2110,17 @@ bool UFlareSimulatedSector::BattleBringInReserveShips(UFlareCompany* PreferredCo
 //						FLOGV("found reinforcing ship");
 						ViableShips.Remove(Ship);
 						RemoveSectorReserves(Ship);
-						Ship->SetReserve(false);
+						SetRemoveReserveShip(Ship);
+
 						if (Ship->GetData().SpawnMode != EFlareSpawnMode::InternalDocked || !Ship->GetShipMaster())
 						{
 							Ship->SetSpawnMode(EFlareSpawnMode::Exit);
 						}
 						Ship->GetGame()->GetActiveSector()->AddReinforcingShip(Ship);
+						if (ReplacedSpacecraft)
+						{
+							SetAddReserveShip(ReplacedSpacecraft);
+						}
 						return true;
 					}
 					else
@@ -2280,6 +2282,49 @@ void UFlareSimulatedSector::UpdateReserveShips()
 			}
 		}
 		ReservesByCompany.Add(Company, CompanyReserves);
+	}
+}
+
+void UFlareSimulatedSector::SetAddReserveShip(UFlareSimulatedSpacecraft* Ship)
+{
+	if (!Ship)
+	{
+		return;
+	}
+	Ship->SetReserve(true);
+	if (ReservesByCompany.Contains(Ship->GetCompany()))
+	{
+		TArray<UFlareSimulatedSpacecraft*>& CompanyReserves = ReservesByCompany[Ship->GetCompany()];
+		CompanyReserves.AddUnique(Ship);
+	}
+	else
+	{
+		TArray<UFlareSimulatedSpacecraft*> CompanyReserves;
+		CompanyReserves.Add(Ship);
+		ReservesByCompany.Add(Ship->GetCompany(), CompanyReserves);
+	}
+}
+
+void UFlareSimulatedSector::SetRemoveReserveShip(UFlareSimulatedSpacecraft* Ship)
+{
+	if (!Ship)
+	{
+		return;
+	}
+	Ship->SetReserve(false);
+	if (ReservesByCompany.Contains(Ship->GetCompany()))
+	{
+		TArray<UFlareSimulatedSpacecraft*>& CompanyReserves = ReservesByCompany[Ship->GetCompany()];
+		CompanyReserves.RemoveSwap(Ship);
+	}
+}
+
+void UFlareSimulatedSector::RemoveSectorReserves(UFlareSimulatedSpacecraft* RemovingShip)
+{
+	if (RemovingShip)
+	{
+		TArray<UFlareSimulatedSpacecraft*>& CompanyReserves = GetSectorReserves(RemovingShip->GetCompany());
+		CompanyReserves.Remove(RemovingShip);
 	}
 }
 

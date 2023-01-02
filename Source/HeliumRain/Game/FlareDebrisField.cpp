@@ -18,6 +18,21 @@ UFlareDebrisField::UFlareDebrisField(const FObjectInitializer& ObjectInitializer
 	: Super(ObjectInitializer)
 {
 	CurrentGenerationIndex = 0;
+	// Load catalog
+	struct FConstructorStatics
+	{
+		ConstructorHelpers::FObjectFinder<UFlareAsteroidCatalog> RockCatalog;
+		ConstructorHelpers::FObjectFinder<UFlareAsteroidCatalog> DebrisCatalog;
+		FConstructorStatics()
+			: RockCatalog(TEXT("/Game/ThirdParty/RocksDebris/RockDebrisCatalog.RockDebrisCatalog"))
+			, DebrisCatalog(TEXT("/Game/Environment/Debris/MetalDebrisCatalog.MetalDebrisCatalog"))
+		{}
+	};
+	static FConstructorStatics ConstructorStatics;
+
+	// Push catalog data into storage
+	RockCatalog = ConstructorStatics.RockCatalog.Object;
+	DebrisCatalog = ConstructorStatics.DebrisCatalog.Object;
 }
 
 void UFlareDebrisField::Setup(AFlareGame* GameMode, UFlareSimulatedSector* Sector)
@@ -48,7 +63,6 @@ void UFlareDebrisField::Setup(AFlareGame* GameMode, UFlareSimulatedSector* Secto
 			float Size = FMath::FRandRange(MinSize, MaxSize);
 
 			FName Name = FName(*(FString::Printf(TEXT("DebrisGen%dIndex%d"), CurrentGenerationIndex, Index)));
-
 			NewDebris.Add(AddDebris(Sector, DebrisFieldMeshes->Asteroids[DebrisIndex], Size, SectorScale, Name));
 		}
 	}
@@ -59,6 +73,7 @@ void UFlareDebrisField::Setup(AFlareGame* GameMode, UFlareSimulatedSector* Secto
 
 	// Remember new debris
 	DebrisField.Empty();
+
 	for (int DebrisIndex = 0; DebrisIndex < NewDebris.Num(); DebrisIndex++)
 	{
 		if (NewDebris[DebrisIndex])
@@ -90,11 +105,68 @@ void UFlareDebrisField::SetWorldPause(bool Pause)
 	}
 }
 
+void UFlareDebrisField::CreateDebris(UFlareSimulatedSector* Sector, FVector Location, int32 Quantity, float MinSize, float MaxSize, bool IsMetal)
+{
+	if (!Sector)
+	{
+		return;
+	}
+
+	bool IsActiveSector = Game->GetActiveSector() != nullptr;
+	if (IsActiveSector)
+	{
+		UFlareSimulatedSector* CurrentActiveSector = Game->GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector != Sector)
+		{
+			return;
+		}
+	}
+
+	UFlareAsteroidCatalog* DebrisFieldMeshes;
+	if (IsMetal)
+	{
+		DebrisFieldMeshes = DebrisCatalog;
+	}
+	else
+	{
+		DebrisFieldMeshes = RockCatalog;
+	}
+
+	if (!MinSize || !MaxSize)
+	{
+		const FFlareDebrisFieldInfo* DebrisFieldInfo = &Sector->GetDescription()->DebrisFieldInfo;
+		MinSize = DebrisFieldInfo->MinDebrisSize;
+		MaxSize = DebrisFieldInfo->MaxDebrisSize;
+	}
+
+	while (Quantity > 0)
+	{
+		FRotator Rotation = FRotator(FMath::FRandRange(0, 360), FMath::FRandRange(0, 360), FMath::FRandRange(0, 360));
+		float Size = FMath::FRandRange(MinSize, MaxSize);
+		int32 DebrisIndex = FMath::RandRange(0, DebrisFieldMeshes->Asteroids.Num() - 1);
+
+		int32 Index = DebrisField.Num();
+		FName Name = FName(*(FString::Printf(TEXT("DebrisGen%dIndex%d"), CurrentGenerationIndex, Index)));
+
+		FActorSpawnParameters Params;
+		Params.Name = Name;
+		Params.Owner = Game;
+		Params.bNoFail = false;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+		AStaticMeshActor* DebrisMesh = SpawnDebris(Sector, DebrisFieldMeshes->Asteroids[DebrisIndex], Location, Rotation, Size, Params);
+		if (DebrisMesh)
+		{
+			DebrisField.Add(DebrisMesh);
+		}
+		Quantity--;
+	}
+}
+
 
 /*----------------------------------------------------
 	Internals
 ----------------------------------------------------*/
-
 AStaticMeshActor* UFlareDebrisField::AddDebris(UFlareSimulatedSector* Sector, UStaticMesh* Mesh, float Size, float SectorScale, FName Name)
 {
 	FActorSpawnParameters Params;
@@ -107,6 +179,12 @@ AStaticMeshActor* UFlareDebrisField::AddDebris(UFlareSimulatedSector* Sector, US
 	FVector Location = FMath::VRand() * SectorScale * FMath::FRandRange(0.2, 1.0);
 	FRotator Rotation = FRotator(FMath::FRandRange(0, 360), FMath::FRandRange(0, 360), FMath::FRandRange(0, 360));
 
+	AStaticMeshActor* DebrisMesh = SpawnDebris(Sector, Mesh, Location, Rotation, Size, Params);
+	return DebrisMesh;
+}
+
+AStaticMeshActor* UFlareDebrisField::SpawnDebris(UFlareSimulatedSector* Sector,UStaticMesh* Mesh, FVector Location, FRotator Rotation, float Size, FActorSpawnParameters Params)
+{
 	// Spawn
 	AStaticMeshActor* DebrisMesh = Game->GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), Location, Rotation, Params);
 	if (DebrisMesh)
@@ -137,17 +215,15 @@ AStaticMeshActor* UFlareDebrisField::AddDebris(UFlareSimulatedSector* Sector, US
 			}
 			else
 			{
-				FLOG("UFlareDebrisField::AddDebris : failed to set material (no material or mesh)")
+				FLOG("UFlareDebrisField::CreateDebris : failed to set material (no material or mesh)")
 			}
 		}
 	}
 	else
 	{
-		FLOG("UFlareDebrisField::AddDebris : failed to spawn debris")
+		FLOG("UFlareDebrisField::CreateDebris : failed to spawn debris")
 	}
-
 	return DebrisMesh;
 }
-
 
 #undef LOCTEXT_NAMESPACE

@@ -343,7 +343,8 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 	for (AFlareSpacecraft* ShipCandidate :Ship->GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
-		if (!IsValid(ShipCandidate) || ShipCandidate->IsPendingKill() || ShipCandidate->IsActorBeingDestroyed())
+
+		if (!IsValid(ShipCandidate))
 		{
 			continue;
 		}
@@ -457,16 +458,11 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 		}
 
 		// Divise by 25 the stateScore per current incoming missile
-		for (AFlareBomb* Bomb : Ship->GetGame()->GetActiveSector()->GetBombs())
+
+		int32 IncomingBombs = ShipCandidate->GetIncomingActiveBombQuantity();
+		if (IncomingBombs > 0)
 		{
-			if (Bomb->IsSafeDestroying())
-			{
-				continue;
-			}
-			if (Bomb->GetTargetSpacecraft() == ShipCandidate && Bomb->IsActive())
-			{
-				StateScore /= 25;
-			}
+			StateScore /= (25 * IncomingBombs);
 		}
 
 		if(ShipCandidate->GetParent()->IsHarpooned()) {
@@ -980,21 +976,13 @@ bool PilotHelper::PilotTarget::IsValid()
 {
 	if (SpacecraftTarget)
 	{
-		if (SpacecraftTarget->IsValidLowLevel())
-		{
-			if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeEither())
-			{
-				SpacecraftTarget = nullptr;
-				return false;
-			}
-		}
-		else
+//		if (SpacecraftTarget->IsValidLowLevel())
+		if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsSafeEither() || SpacecraftTarget->CheckIsExploding())
 		{
 			SpacecraftTarget = nullptr;
 			return false;
 		}
 	}
-
 	return SpacecraftTarget != nullptr || MeteoriteTarget != nullptr || BombTarget != nullptr;
 }
 
@@ -1040,7 +1028,7 @@ void PilotHelper::PilotTarget::SetBomb(AFlareBomb* Bomb)
 
 FVector PilotHelper::PilotTarget::GetActorLocation() const
 {
-	if(SpacecraftTarget)
+	if(SpacecraftTarget&&SpacecraftTarget!=nullptr)
 	{
 		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
 		{
@@ -1048,7 +1036,7 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 		}
 	}
 
-	if(BombTarget)
+	if(BombTarget&&BombTarget!=nullptr)
 	{
 		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{
@@ -1069,36 +1057,30 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 
 FVector PilotHelper::PilotTarget::GetLinearVelocity() const
 {
-	if(SpacecraftTarget != nullptr)
+	if(SpacecraftTarget && SpacecraftTarget != nullptr)
 	{
-		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
+		if (!SpacecraftTarget->IsSafeDestroying() && !SpacecraftTarget->IsPendingKill())
 		{
 			return SpacecraftTarget->Airframe->GetPhysicsLinearVelocity();
 		}
 	}
 
-	if(BombTarget != nullptr)
+	if (BombTarget && BombTarget != nullptr)
 	{
-
 		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{
 			return Cast<UPrimitiveComponent>(BombTarget->GetRootComponent())->GetPhysicsLinearVelocity();
 		}
 	}
 
-	if(MeteoriteTarget != nullptr)
+	if(MeteoriteTarget && MeteoriteTarget != nullptr)
 	{
 		if (!MeteoriteTarget->IsActorBeingDestroyed() && !MeteoriteTarget->IsPendingKill())
 		{
 			return Cast<UPrimitiveComponent>(MeteoriteTarget->GetRootComponent())->GetPhysicsLinearVelocity();
 		}
 	}
-
-/*
-if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsPendingKill() || SpacecraftTarget->IsSafeEither())
-*/
-
-	return FVector::ZeroVector;
+	return FVector(0, 0, 0);
 }
 
 
@@ -1114,7 +1096,7 @@ float PilotHelper::PilotTarget::GetMeshScale()
 
 	if(BombTarget)
 	{
-		if (!BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
+		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{
 			FBox Box = BombTarget->GetComponentsBoundingBox();
 			return FMath::Max(Box.GetExtent().Size(), 1.0f);

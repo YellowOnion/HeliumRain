@@ -20,6 +20,7 @@ public:
 	void Initialize(class UFlareWeapon* Weapon, const FFlareSpacecraftComponentDescription* Description, FVector ShootDirection, FVector ParentVelocity, bool Tracer);
 
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void LifeSpanExpired() override;
 
 	virtual void SetPause(bool Pause);
 
@@ -32,8 +33,7 @@ public:
 	bool Trace(const FVector& Start, const FVector& End, FHitResult& HitOut);
 
 	virtual float ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* ImpactComponent, FVector ImpactLocation,  FVector ImpactAxis,  FVector ImpactNormal, float ImpactPower, float ImpactRadius, EFlareDamage::Type DamageType);
-
-//	virtual void Destroyed() override;
+	//	virtual void Destroyed() override;
 
 	FTraceHandle RequestTrace(const FVector& Start, const FVector& End);
 	void OnTraceCompleted(const FTraceHandle& Handle, FTraceDatum& Data);
@@ -49,7 +49,6 @@ public:
 	virtual void UnsetSafeDestroyed();
 
 protected:
-
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/

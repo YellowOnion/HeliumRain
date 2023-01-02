@@ -9,6 +9,7 @@
 class UFlareSimulatedSector;
 class UFlareSimulatedSpacecraft;
 class AFlareGame;
+class AFlareBomb;
 class UFlareCompany;
 class UFlareTravel;
 class UFlareTradeRoute;
@@ -168,11 +169,16 @@ protected:
 	UFlareTravel*                          CurrentTravel;
 	UFlareTradeRoute*                      CurrentTradeRoute;
 	uint32								   FleetCount;
+	TArray<AFlareBomb*>					   IncomingBombs;
 
 public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	void TrackIncomingBomb(AFlareBomb* Bomb);
+	void UnTrackIncomingBomb(AFlareBomb* Bomb);
+	TArray<AFlareBomb*> GetIncomingBombs();
 
 	AFlareGame* GetGame() const
 	{

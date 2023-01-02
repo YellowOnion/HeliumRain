@@ -135,6 +135,8 @@ void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
 	BombData.BurnDuration = 0;
 	TargetSpacecraft = Target;
 
+	TargetSpacecraft->TrackIncomingBomb(this);
+
 	// Notify player
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
 	if (PC && Target && Target->IsPlayerShip())
@@ -539,6 +541,33 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 	OnBombDetonated(Spacecraft, ShipComponent, HitLocation, ImpulseDirection);
 }
 
+//bomb target has signalled to the bomb that it died, destroy or add retargetting logic
+void AFlareBomb::CurrentTargetDied()
+{
+	if (TargetSpacecraft&&TargetSpacecraft != nullptr)
+	{
+		if (!TargetSpacecraft->GetActorEnableCollision())
+		{
+			if (ExplosionEffectTemplate)
+			{
+				//instead of disappearing we can visually show an explosion
+				UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				ExplosionEffectTemplate,
+				GetActorLocation(),
+				GetActorRotation(),
+				true);
+				if (PSC)
+				{
+					PSC->SetWorldScale3D(ExplosionEffectScale * FVector(1, 1, 1));
+				}
+			}
+
+			OnBombDetonated(NULL, NULL, FVector(), FVector());
+		}
+	}
+}
+
 void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal)
 {
 	UFlareCompany* OwnerCompany = ParentWeapon->GetSpacecraft()->GetCompany();
@@ -588,6 +617,11 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 
 void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal)
 {
+	if (TargetSpacecraft&&TargetSpacecraft !=nullptr)
+	{
+		TargetSpacecraft->UnTrackIncomingBomb(this);
+	}
+
 	// Attach to the hull if it's a salvage harpoon
 	if (HitSpacecraft && (
 			(WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage)
@@ -605,12 +639,6 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	}
 	else
 	{
-/*
-		if (ParentWeapon)
-		{
-			ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector()->UnregisterBomb(this);
-		}
-*/
 		UnregisterBombMethod();
 		CombatLog::BombDestroyed(GetIdentifier());
 		SafeDestroy();
@@ -688,11 +716,8 @@ void AFlareBomb::FinishSafeDestroy()
 {
 	if (!SafeDestroyed)
 	{
-
 		//TODO: find all references to this bomb and null them so GC can kill us "safely"
-
 		UnregisterBombMethod();
-		SafeDestroyed = true;
 
 		this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 		DamageSound = nullptr;
@@ -715,9 +740,9 @@ void AFlareBomb::FinishSafeDestroy()
 			BombComp->FinishSafeDestroy();
 			BombComp = NULL;
 		}
-*/
 		RootComponent = NULL;
-		Destroy();
+*/
+		SafeDestroyed=Destroy();
 	}
 }
 
@@ -765,7 +790,7 @@ bool AFlareBomb::IsActive() const
 bool AFlareBomb::IsSafeDestroying() const
 {
 	if (!this) return true;
-	if (!IsValidLowLevel()) return true;
+	if (this==nullptr) return true;
 	return IsSafeDestroyingRunning;
 }
 

@@ -80,6 +80,10 @@ struct FFlareSectorBattleState
 	int32 FriendlyStationCount;
 	int32 FriendlyStationInCaptureCount;
 
+	int32 DangerousHostileActiveSpacecraftCount;
+	int32 DangerousFriendlyActiveMissileCount;
+	int32 DangerousHostileActiveMissileCount;
+
 	FFlareSectorBattleState Init()
 	{
 		InBattle = false;
@@ -93,6 +97,9 @@ struct FFlareSectorBattleState
 		FriendlyStationCount = 0;
 		FriendlyStationInCaptureCount = 0;
 
+		DangerousHostileActiveSpacecraftCount = 0;
+		DangerousFriendlyActiveMissileCount = 0;
+		DangerousHostileActiveMissileCount = 0;
 		return *this;
 	}
 
@@ -608,7 +615,10 @@ public:
 
 	void UpdateReserveShips();
 
-	bool BattleBringInReserveShips(UFlareCompany* PreferredCompany);
+	void SetAddReserveShip(UFlareSimulatedSpacecraft* Ship);
+	void SetRemoveReserveShip(UFlareSimulatedSpacecraft* Ship);
+	
+	bool BattleBringInReserveShips(UFlareCompany* PreferredCompany, UFlareSimulatedSpacecraft* ReplacedSpacecraft);
 
 	static float GetDefaultResourcePrice(FFlareResourceDescription* Resource);
 

@@ -33,6 +33,7 @@ public:
 	void ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget);
 
 protected:
+	virtual void ClearTarget();
 	/*----------------------------------------------------
 		Pilot functions
 	----------------------------------------------------*/
@@ -109,6 +110,7 @@ public:
 	 */
 	virtual FVector GetAngularVelocityToAlignAxis(FVector LocalShipAxis, FVector TargetAxis, FVector TargetAngularVelocity, float DeltaSeconds) const;
 
+	virtual void SetupNewTarget();
 	virtual void FindBestHostileTarget(EFlareCombatTactic::Type Tactic);
 
 	void AlignToTargetVelocityWithThrust(float DeltaSeconds);
@@ -168,6 +170,7 @@ protected:
 	float										 CollisionVectorReactionTimeFast;
 	float										 CollisionVectorReactionTimeSlow;
 
+	UPROPERTY()
 	AFlareSpacecraft*							 LeaderShip;
 
 	// Pilot targets
@@ -199,6 +202,7 @@ protected:
 	float                                        TimeUntilNextDockingAttempt;
 	float                                        MaxTimeBetweenDockingAttempt;
 
+	UPROPERTY()
 	AFlareSpacecraft*							 PilotAvoidShip;
 	float										 TimeUntilNextPilotAvoidCheck;
 	float								 		 PilotAvoidCheckReactionTimeFast;

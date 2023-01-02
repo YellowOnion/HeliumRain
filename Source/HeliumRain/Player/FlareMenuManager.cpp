@@ -64,7 +64,7 @@ AFlareMenuManager::AFlareMenuManager(const class FObjectInitializer& PCIP)
 	, FadeFromBlack(true)
 	, NotifyExitSector(false)
 	, FadeDuration(0.3)
-	, SkirmishCountdownDuration(11)
+	, SkirmishCountdownDuration(10.50)
 	, SkirmishCountdownTimer(-1)
 	, CurrentSpacecraftInfo(NULL)
 {
@@ -776,7 +776,6 @@ bool AFlareMenuManager::CreateGame()
 	{
 		PC->GetGame()->CreateSkirmishGame(NextMenu.Value.Skirmish);
 		PC->GetGame()->ActivateCurrentSector();
-
 		NextMenu.Value.Skirmish = NULL;
 	}
 
@@ -1035,7 +1034,7 @@ void AFlareMenuManager::OpenMainMenu()
 	{
 		GetPC()->GetGame()->GetSkirmishManager()->EndSkirmish();
 	}
-	else
+	else if(GetPC()->GetGame()->GetQuestManager())
 	{
 		GetPC()->GetGame()->SaveGame(GetPC(), false);
 	}
@@ -1501,7 +1500,7 @@ int32 AFlareMenuManager::GetMainOverlayHeight()
 
 int32 AFlareMenuManager::GetSkirmishCountdown() const
 {
-	if (SkirmishCountdownTimer >= 0)
+	if (SkirmishCountdownTimer > 0)
 	{
 		return FMath::RoundToInt(SkirmishCountdownDuration - SkirmishCountdownTimer);
 	}

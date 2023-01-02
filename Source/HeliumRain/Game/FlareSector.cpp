@@ -31,7 +31,7 @@ UFlareSector::UFlareSector(const FObjectInitializer& ObjectInitializer)
 
 void UFlareSector::Load(UFlareSimulatedSector* Parent)
 {
-	DestroySector();
+	DestroySector(true);
 	ParentSector = Parent;
 	LocalTime = Parent->GetData()->LocalTime;
 	CompanyShipsPerCompanyCache.Empty();
@@ -138,14 +138,37 @@ void UFlareSector::AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft)
 {
 	if (Spacecraft)
 	{
-		if (ParentSector->BattleBringInReserveShips(Spacecraft->GetParent()->GetCompany()))
+		bool RemoveSectorSpacecrafts = false;
+		if (ParentSector->BattleBringInReserveShips(Spacecraft->GetParent()->GetCompany(), Spacecraft->GetParent()))
 		{
-			RemoveSpacecraft(Spacecraft);
+			RemoveSectorSpacecrafts = true;
+			SpaceCraftExplosionCheck(Spacecraft);
 		}
+		// lower chance in normal circumstances to cause an explosion chain-reaction
+		else if (FMath::FRand() <= 0.05)
+		{
+			RemoveSectorSpacecrafts = true;
+			SpaceCraftExplosionCheck(Spacecraft);
+		}
+		RemoveSpacecraft(Spacecraft, RemoveSectorSpacecrafts);
 	}
 }
 
-void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
+void UFlareSector::SpaceCraftExplosionCheck(AFlareSpacecraft* Spacecraft)
+{
+	//99% chance of ship violently exploding before death
+	//alternatively skip to the instant final large explosion
+	if (FMath::FRand() <= 0.99)
+	{
+		Spacecraft->BeginExplodingShip();
+	}
+	else
+	{
+		Spacecraft->SafeHide();
+	}
+}
+
+void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSectorSpacecrafts)
 {
 	if (Spacecraft)
 	{
@@ -158,13 +181,13 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
 			SectorShips.Remove(Spacecraft);
 		}
 
-		SectorSpacecrafts.Remove(Spacecraft);
+		if(RemoveSectorSpacecrafts)
+		{
+			SectorSpacecrafts.Remove(Spacecraft);
+		}
 
 		FName SpacecraftImmatriculation = Spacecraft->GetImmatriculation();
-//		if (SectorSpacecraftsCache.Contains(SpacecraftImmatriculation))
-//		{
 		SectorSpacecraftsCache.Remove(SpacecraftImmatriculation);
-//		}
 
 		UFlareCompany* Company = Spacecraft->GetCompany();
 
@@ -176,13 +199,10 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft)
 		{
 			CompanySpacecraftsPerCompanyCache[Company].Remove(Spacecraft);
 		}
-
-		Spacecraft->SafeHide();
-//		Spacecraft->Destroy();
 	}
 }
 
-void UFlareSector::DestroySector()
+void UFlareSector::DestroySector(bool InitialDestruction)
 {
 	FLOG("UFlareSector::DestroySector");
 	IsDestroyingSector = true;
@@ -209,7 +229,7 @@ void UFlareSector::DestroySector()
 		if (SectorBombs[BombIndex])
 		{
 			SectorBombs[BombIndex]->SafeDestroy();
-			SectorBombs[BombIndex]->Destroy();
+//			SectorBombs[BombIndex]->Destroy();
 		}		
 	}
 
@@ -221,14 +241,13 @@ void UFlareSector::DestroySector()
 	for (AFlareMeteorite* Meteorite : SectorMeteorites)
 	{
 		Meteorite->SafeDestroy();
-//		Meteorite->Destroy();
 	}
 
 	for (int ShellIndex = 0 ; ShellIndex < SectorShells.Num(); ShellIndex++)
 	{
 		if (SectorShells[ShellIndex])
 		{
-			SectorShells[ShellIndex]->SafeDestroy();
+			SectorShells[ShellIndex]->Destroy();
 		}
 	}
 
@@ -243,9 +262,11 @@ void UFlareSector::DestroySector()
 	CompanySpacecraftsPerCompanyCache.Empty();
 	SectorCachedShells.Empty();
 	SectorSpacecraftsCache.Empty();
-//	IsDestroyingSector = false;
+	if (InitialDestruction)
+	{
+		IsDestroyingSector = false;
+	}
 }
-
 
 /*----------------------------------------------------
 	Gameplay
@@ -579,8 +600,9 @@ void UFlareSector::UnregisterBomb(AFlareBomb* Bomb)
 {
 	if (!IsDestroyingSector)
 	{
-		if (SectorBombs.Remove(Bomb))
+		if (SectorBombs.RemoveSwap(Bomb))
 		{
+			//todo: let bomb know what's targetting it for smaller checks
 			for (AFlareSpacecraft* Spacecraft : SectorSpacecrafts)
 			{
 				Spacecraft->ClearInvalidTarget(PilotHelper::PilotTarget(Bomb));
@@ -602,11 +624,27 @@ void UFlareSector::UnregisterShell(AFlareShell* Shell)
 	}
 }
 
+
+void UFlareSector::UnRegisterCachedShell(AFlareShell* Shell)
+{
+	if (Shell)
+	{
+		SectorCachedShells.RemoveSwap(Shell);
+	}
+}
+
 void UFlareSector::RegisterCachedShell(AFlareShell* Shell)
 {
-	if (!IsDestroyingSector)
+	if (Shell)
 	{
-		SectorCachedShells.Add(Shell);
+		if (!IsDestroyingSector)
+		{
+			SectorCachedShells.Add(Shell);
+		}
+		else
+		{
+			Shell->Destroy();
+		}
 	}
 }
 
@@ -614,7 +652,7 @@ AFlareShell* UFlareSector::RetrieveCachedShell()
 {
 	if (!IsDestroyingSector)
 	{
-		if (SectorCachedShells.Num())
+		if (SectorCachedShells.Num()>0)
 		{
 			AFlareShell* Shell = SectorCachedShells.Pop();
 			return Shell;
@@ -831,16 +869,6 @@ AFlareSpacecraft* UFlareSector::FindSpacecraft(FName Immatriculation)
 	{
 		return SectorSpacecraftsCache[Immatriculation];
 	}
-/*
-	for (int i = 0 ; i < SectorSpacecrafts.Num(); i++)
-	{
-		if (SectorSpacecrafts[i]->GetImmatriculation() == Immatriculation)
-		{
-//			SectorSpacecraftsCache.Add(&Immatriculation, SectorSpacecrafts[i]);
-			return SectorSpacecrafts[i];
-		}
-	}
-*/
 	return NULL;
 }
 

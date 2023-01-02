@@ -10,11 +10,11 @@
 #include "Subsystems/FlareSpacecraftWeaponsSystem.h"
 #include "FlareSpacecraftStateManager.h"
 #include "FlarePilotHelper.h"
+#include "../Game/FlareDebrisField.h"
 #include "FlareSpacecraft.generated.h"
 
 class UFlareShipPilot;
 class AFlareSpacecraft;
-
 class UCanvasRenderTarget2D;
 
 
@@ -60,6 +60,8 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
+
+	virtual void LifeSpanExpired() override;
 
 	virtual void Destroyed() override;
 
@@ -148,7 +150,9 @@ public:
 	
 	void SetCurrentTarget(PilotHelper::PilotTarget const& Target);
 
-	void SafeHide();
+	void SafeHide(bool ShowExplosion = true);
+
+	void SignalIncomingBombsDeadTarget();
 
 	/** Slower actor destruction*/
 	void SafeDestroy();
@@ -160,8 +164,9 @@ public:
 	bool IsSafeEither();
 
 	bool IsSafeDestroying();
-	
-	bool IsSafeHiding();
+
+	bool CheckIsExploding();
+
 public:
 
 	/*----------------------------------------------------
@@ -182,7 +187,6 @@ public:
 	UFUNCTION()
 	void DrawShipName(UCanvas* TargetCanvas, int32 Width, int32 Height);
 	
-
 public:
 
 	/*----------------------------------------------------
@@ -283,13 +287,14 @@ public:
 	virtual void FindTarget();
 
 protected:
-
 	/*----------------------------------------------------
 		Internal data
 	----------------------------------------------------*/
 
 	// Component descriptions, save data
+	UPROPERTY()
 	UFlareSimulatedSpacecraft*	                   Parent;
+
 	FFlareSpacecraftComponentDescription*          OrbitalEngineDescription;
 	FFlareSpacecraftComponentDescription*          RCSDescription;
 	FVector                                        SmoothedVelocity;
@@ -363,17 +368,12 @@ protected:
 
 	FFlareMovingAverage<float>                     JoystickRollInputVal;
 
-	float										   TimeSinceLastExplosion;
-	int32										   ExplodingTimes;
-	int32										   ExplodingTimesMax;
-	bool										   IsExploding;
-
-	bool										   IsSafeHidingRunning;
 	bool										   IsSafeDestroyingRunning;
 	bool										   BegunSafeDestroy;
-	float										   SafeDestroyTimer;
+//	float										   SafeDestroyTimer;
 
 	TArray<AFlareSpacecraft*>					   InSectorSquad;
+	TArray<AFlareBomb*>							   IncomingBombs;
 
 	/*----------------------------------------------------
 		Target selection
@@ -401,12 +401,25 @@ protected:
 	mutable bool TimeToStopCached = false;
 	mutable float TimeToStopCache;
 
+	float										   TimeSinceLastExplosion;
+	int32										   ExplodingTimes;
+	int32										   ExplodingTimesMax;
+	bool										   IsExploding;
+
 public:
+	TArray<AFlareBomb*> GetIncomingBombs();
+	int32 GetIncomingActiveBombQuantity();
+	void TrackIncomingBomb(AFlareBomb* Bomb);
+	void UnTrackIncomingBomb(AFlareBomb* Bomb);
+	void UnTrackAllIncomingBombs();
 
 	void AddToInsectorSquad(AFlareSpacecraft* Adding);
 	void RemoveFromInsectorSquad(AFlareSpacecraft* Removing);
 	
 	void SetUndockedAllShips(bool Set);
+
+	void BeginExplodingShip();
+	void ExplodingShip();
 
 	/*----------------------------------------------------
 		Getters

@@ -359,7 +359,6 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 								.Toggle(true)
 							]
 						]
-
 						+ SVerticalBox::Slot()
 							.HAlign(HAlign_Left)
 							.AutoHeight()
@@ -379,6 +378,19 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 									.Text(this, &SFlareSkirmishSetupMenu::GetTotalShipCount)
 									.TextStyle(&Theme.TextFont)
 								]
+							]
+						// Text
+						+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(Theme.ContentPadding)
+							[
+								SNew(SBox)
+								.WidthOverride(LabelWidth)
+							[
+								SNew(STextBlock)
+								.Text(this, &SFlareSkirmishSetupMenu::GetTotalShipReserveCount)
+							.TextStyle(&Theme.TextFont)
+							]
 							]
 						]
 					]
@@ -419,7 +431,7 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 								.Width(4)
 								.Text(LOCTEXT("AddPlayerShip", "Add ship"))
 								.HelpText(this, &SFlareSkirmishSetupMenu::GetAddToPlayerFleetText)
-								.IsDisabled(this, &SFlareSkirmishSetupMenu::IsAddToPlayerFleetDisabled)
+//								.IsDisabled(this, &SFlareSkirmishSetupMenu::IsAddToPlayerFleetDisabled)
 								.OnClicked(this, &SFlareSkirmishSetupMenu::OnOrderShip, true)
 							]
 
@@ -511,7 +523,7 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 								.Width(4)
 								.Text(LOCTEXT("AddEnemyShip", "Add ship"))
 								.HelpText(this, &SFlareSkirmishSetupMenu::GetAddToEnemyFleetText)
-								.IsDisabled(this, &SFlareSkirmishSetupMenu::IsAddToEnemyFleetDisabled)
+//								.IsDisabled(this, &SFlareSkirmishSetupMenu::IsAddToEnemyFleetDisabled)
 								.OnClicked(this, &SFlareSkirmishSetupMenu::OnOrderShip, false)
 							]
 
@@ -544,7 +556,6 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 								.Width(4)
 								.Text(LOCTEXT("AutomaticFleet", "Automatic fleet"))
 								.OnClicked(this, &SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet)
-								.IsDisabled(this, &SFlareSkirmishSetupMenu::IsCopyButtonDisabled)
 							]
 						]
 
@@ -569,7 +580,6 @@ void SFlareSkirmishSetupMenu::Construct(const FArguments& InArgs)
 						]
 					]
 				]
-
 			]
 
 			// Start
@@ -792,6 +802,7 @@ void SFlareSkirmishSetupMenu::Enter()
 	EnemySpacecraftListData.Empty();
 	PlayerSpacecraftList->RequestListRefresh();
 	EnemySpacecraftList->RequestListRefresh();
+	UpdateShips();
 }
 
 void SFlareSkirmishSetupMenu::Exit()
@@ -831,14 +842,57 @@ FText SFlareSkirmishSetupMenu::GetDebrisValue() const
 	return FText::AsNumber(FMath::RoundToInt(100.0f * DebrisSlider->GetValue()));
 }
 
+void SFlareSkirmishSetupMenu::UpdateShips()
+{
+	PlayerShips = 0;
+	EnemyShips = 0;
+	PlayerShipsReserved = 0;
+	EnemyShipsReserved = 0;
+
+	for (auto Order : PlayerSpacecraftListData)
+	{
+		if (!Order->IsReserve)
+		{
+			PlayerShips += Order->Quantity;
+		}
+		else
+		{
+			PlayerShipsReserved += Order->Quantity;
+		}
+	}
+	for (auto Order : EnemySpacecraftListData)
+	{
+		if (!Order->IsReserve)
+		{
+			EnemyShips += Order->Quantity;
+		}
+		else
+		{
+			EnemyShipsReserved += Order->Quantity;
+		}
+	}
+}
+
 FText SFlareSkirmishSetupMenu::GetTotalShipCount() const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 	return FText::Format(LOCTEXT("TotalShipCount",\
-"Player Ships: {0}\n\
-Enemy Ships: {1}\n\
-Total Ships: ({2}/{3})"), PlayerSpacecraftListData.Num(), EnemySpacecraftListData.Num(), (PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()), (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
+"Active Ships\n\
+Player: {0}\n\
+Enemy: {1}\n\
+Total: {2}/{3}"), PlayerShips, EnemyShips, (PlayerShips + EnemyShips), (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
 }
+
+FText SFlareSkirmishSetupMenu::GetTotalShipReserveCount() const
+{
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	return FText::Format(LOCTEXT("TotalShipReserveCount", \
+"Reserves\n\
+{0}\n\
+{1}\n\
+{2}"), PlayerShipsReserved, EnemyShipsReserved, (PlayerShipsReserved + EnemyShipsReserved));
+}
+
 
 FText SFlareSkirmishSetupMenu::GetPlayerFleetTitle() const
 {
@@ -847,11 +901,11 @@ FText SFlareSkirmishSetupMenu::GetPlayerFleetTitle() const
 
 	for (auto Order : PlayerSpacecraftListData)
 	{
-		CombatValue += Order->Description->CombatPoints;
+		CombatValue += (Order->Description->CombatPoints * Order->Quantity);
 
 		for (auto Weapon : Order->WeaponTypes)
 		{
-			CombatValue += Catalog->Get(Weapon)->CombatPoints;
+			CombatValue += (Catalog->Get(Weapon)->CombatPoints * Order->Quantity);
 		}
 	}
 
@@ -865,11 +919,11 @@ FText SFlareSkirmishSetupMenu::GetEnemyFleetTitle() const
 
 	for (auto Order : EnemySpacecraftListData)
 	{
-		CombatValue += Order->Description->CombatPoints;
+		CombatValue += (Order->Description->CombatPoints * Order->Quantity);
 
 		for (auto Weapon : Order->WeaponTypes)
 		{
-			CombatValue += Catalog->Get(Weapon)->CombatPoints;
+			CombatValue += (Catalog->Get(Weapon)->CombatPoints * Order->Quantity);
 		}
 	}
 
@@ -880,9 +934,12 @@ TSharedRef<ITableRow> SFlareSkirmishSetupMenu::OnGenerateSpacecraftLine(TSharedP
 {
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	const FFlareSpacecraftDescription* Desc = Item->Description;
-
+	int32 LabelWidth = 0.225 * Theme.ContentWidth;
 	// Structure
-	return SNew(SFlareListItem, OwnerTable)
+	TSharedPtr<SSlider> QuantitySliderLocal;
+	TSharedPtr<SFlareButton> ReserveLocal;
+
+	TSharedRef<ITableRow> TemporaryTable = SNew(SFlareListItem, OwnerTable)
 	.Width(16)
 	.Height(2)
 	.Content()
@@ -927,6 +984,57 @@ TSharedRef<ITableRow> SFlareSkirmishSetupMenu::OnGenerateSpacecraftLine(TSharedP
 					.WrapTextAt(0.7 * Theme.ContentWidth)
 				]
 			]
+
+			//Quantity
+			+SVerticalBox::Slot()
+				.HAlign(HAlign_Left)
+				.AutoHeight()
+				[
+					SNew(SBox)
+					.WidthOverride(Theme.ContentWidth)
+				[
+					SNew(SHorizontalBox)
+
+					// Text
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(LabelWidth)
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("QuantityLabel", "Quantity"))
+				.TextStyle(&Theme.TextFont)
+				]
+				]
+
+			// Quantity Slider
+			+ SHorizontalBox::Slot()
+				.VAlign(VAlign_Center)
+				.Padding(Theme.ContentPadding)
+				[
+					SAssignNew(QuantitySliderLocal,SSlider)
+					.Value(0)
+					.Style(&Theme.SliderStyle)
+					.OnValueChanged(this, &SFlareSkirmishSetupMenu::OnQuantitySliderChanged, Item)
+				]
+
+			// Label
+			+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SBox)
+					.WidthOverride(LabelWidth / 2)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareSkirmishSetupMenu::GetQuantityValue, Item)
+				]
+				]
+				]
+				]
 		]
 		
 		// Action buttons
@@ -949,7 +1057,7 @@ TSharedRef<ITableRow> SFlareSkirmishSetupMenu::OnGenerateSpacecraftLine(TSharedP
 					.HelpText(LOCTEXT("UpgradeSpacecraftInfo", "Upgrade this spacecraft"))
 					.Icon(FFlareStyleSet::GetIcon("ShipUpgradeSmall"))
 					.OnClicked(this, &SFlareSkirmishSetupMenu::OnUpgradeSpacecraft, Item)
-					.Width(1)
+					.Width(1.13)
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -959,7 +1067,7 @@ TSharedRef<ITableRow> SFlareSkirmishSetupMenu::OnGenerateSpacecraftLine(TSharedP
 					.HelpText(LOCTEXT("RemoveSpacecraftInfo", "Remove this spacecraft"))
 					.Icon(FFlareStyleSet::GetIcon("Delete"))
 					.OnClicked(this, &SFlareSkirmishSetupMenu::OnRemoveSpacecraft, Item)
-					.Width(1)
+					.Width(1.13)
 				]
 			]
 
@@ -970,11 +1078,26 @@ TSharedRef<ITableRow> SFlareSkirmishSetupMenu::OnGenerateSpacecraftLine(TSharedP
 				.Text(LOCTEXT("DuplicateSpacecraft", "Copy"))
 				.HelpText(this, &SFlareSkirmishSetupMenu::GetCopyHelpText)
 				.OnClicked(this, &SFlareSkirmishSetupMenu::OnDuplicateSpacecraft, Item, false, false,true)
-				.IsDisabled(this, &SFlareSkirmishSetupMenu::IsCopyButtonDisabled)
-				.Width(2)
+				.IsDisabled(this, &SFlareSkirmishSetupMenu::IsCopyButtonDisabled, Item)
+				.Width(2.26)
 			]
+			+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SAssignNew(ReserveLocal,SFlareButton)
+					.Text(LOCTEXT("ReserveSpacecraft", "Reserve                         "))
+					.HelpText(this, &SFlareSkirmishSetupMenu::GetReserveHelpText)
+					.Toggle(true)
+					.OnClicked(this, &SFlareSkirmishSetupMenu::OnChangeReserve, Item)
+					.Width(2.26)
+				]
 		]
 	];
+	Item->SetQuantitySlider(QuantitySliderLocal);
+	Item->SetReserveButton(ReserveLocal);
+	QuantitySliderLocal->SetValue((float)Item->Quantity / 100.0f);
+	ReserveLocal->SetActive(Item->IsReserve);
+	return TemporaryTable;
 }
 
 TSharedRef<SWidget> SFlareSkirmishSetupMenu::OnGenerateCompanyComboLine(FFlareCompanyDescription Item)
@@ -1043,9 +1166,10 @@ FText SFlareSkirmishSetupMenu::GetAddToPlayerFleetText() const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 
-	if ((PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+	if ((PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
 	{
-		return LOCTEXT("TooManyPlayerShips", "You can't add more ships than the limit defined in settings");
+//		return LOCTEXT("TooManyPlayerShips", "You can't add more ships than the limit defined in settings");
+		return LOCTEXT("TooManyPlayerShips", "Add a new reserved ship to the player fleet");
 	}
 	else
 	{
@@ -1057,9 +1181,10 @@ FText SFlareSkirmishSetupMenu::GetAddToEnemyFleetText() const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 
-	if ((EnemySpacecraftListData.Num() + PlayerSpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+	if ((EnemyShips + PlayerShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
 	{
-		return LOCTEXT("TooManyEnemyShips", "You can't add more ships than the limit defined in settings");
+//		return LOCTEXT("TooManyEnemyShips", "You can't add more ships than the limit defined in settings");
+		return LOCTEXT("TooManyEnemyShips", "Add a new reserved ship to the enemy fleet");
 	}
 	else
 	{
@@ -1067,11 +1192,19 @@ FText SFlareSkirmishSetupMenu::GetAddToEnemyFleetText() const
 	}
 }
 
+
+
+FText SFlareSkirmishSetupMenu::GetReserveHelpText() const
+{
+	return LOCTEXT("ReserveHelpInfo", "Set this ship as a reserve. Reserves can join the battle as ships are destroyed.");
+}
+
+
 FText SFlareSkirmishSetupMenu::GetCopyHelpText() const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 
-	if ((EnemySpacecraftListData.Num() + PlayerSpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+	if ((EnemyShips + PlayerShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
 	{
 		return LOCTEXT("DuplicateSpacecraftInfoToomany", "You can't copy more ships than the limit defined in the settings");
 	}
@@ -1081,25 +1214,27 @@ FText SFlareSkirmishSetupMenu::GetCopyHelpText() const
 	}
 }
 
-
-
-
-bool SFlareSkirmishSetupMenu::IsCopyButtonDisabled() const
+bool SFlareSkirmishSetupMenu::IsCopyButtonDisabled(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order) const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	return ((PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
+	if (!Order->IsReserve)
+	{
+		return ((PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
+	}
+	return false;
 }
 
 bool SFlareSkirmishSetupMenu::IsAddToPlayerFleetDisabled() const
 {
+	return false;
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	return ((PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
+	return ((PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
 }
 
 bool SFlareSkirmishSetupMenu::IsAddToEnemyFleetDisabled() const
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	return ((EnemySpacecraftListData.Num() + PlayerSpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
+	return ((PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI));
 }
 
 FText SFlareSkirmishSetupMenu::GetStartHelpText() const
@@ -1140,6 +1275,7 @@ void SFlareSkirmishSetupMenu::OnClearFleet(bool ForPlayer)
 		EnemySpacecraftListData.Empty();
 		EnemySpacecraftList->RequestListRefresh();
 	}
+	UpdateShips();
 }
 
 static bool SortByCombatValue(const TSharedPtr<FFlareSkirmishSpacecraftOrder>& Ship1, const TSharedPtr<FFlareSkirmishSpacecraftOrder>& Ship2)
@@ -1167,10 +1303,16 @@ void SFlareSkirmishSetupMenu::OnMirrorFleet(bool ForPlayer)
 {
 // ForPlayer=true player is copying AI
 	OnClearFleet(ForPlayer);
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+
 	if (ForPlayer)
 	{
 		for (auto Order : EnemySpacecraftListData)
 		{
+			if (!Order->IsReserve && (PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+			{
+				break;
+			}
 			OnDuplicateSpacecraft(Order, true, ForPlayer,false);
 		}
 		PlayerSpacecraftList->RequestListRefresh();
@@ -1179,6 +1321,10 @@ void SFlareSkirmishSetupMenu::OnMirrorFleet(bool ForPlayer)
 	{
 		for (auto Order : PlayerSpacecraftListData)
 		{
+			if (!Order->IsReserve && (PlayerShips + EnemyShips) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+			{
+				break;
+			}
 			OnDuplicateSpacecraft(Order, true, ForPlayer,false);
 		}
 		EnemySpacecraftList->RequestListRefresh();
@@ -1187,10 +1333,11 @@ void SFlareSkirmishSetupMenu::OnMirrorFleet(bool ForPlayer)
 
 void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 {
+	OnClearFleet(false);
 	// Settings
-	float NerfRatio = 0.9f;
-	float ShipRatio = 0.9f;
-	float DiversityRatio = 0.6f;
+	float NerfRatio = FMath::FRandRange(0.85f, 0.95);
+	float ShipRatio = FMath::FRandRange(0.85f, 0.95);
+	float DiversityRatio = FMath::FRandRange(0.50f, 0.75);
 
 	// Data
 	UFlareSpacecraftCatalog* SpacecraftCatalog = MenuManager->GetGame()->GetSpacecraftCatalog();
@@ -1201,16 +1348,16 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 	int32 PlayerCombatValue = 0;
 	for (auto Order : PlayerSpacecraftListData)
 	{
-		PlayerCombatValue += Order->Description->CombatPoints;
+		PlayerCombatValue += (Order->Description->CombatPoints * Order->Quantity);
 
 		for (auto Weapon : Order->WeaponTypes)
 		{
-			PlayerCombatValue += PartsCatalog->Get(Weapon)->CombatPoints;
+			PlayerCombatValue += (PartsCatalog->Get(Weapon)->CombatPoints * Order->Quantity);
 		}
 
 		if (Order->Description->Size == EFlarePartSize::L)
 		{
-			PlayerLargeShips++;
+			PlayerLargeShips += Order->Quantity;
 		}
 	}
 
@@ -1221,7 +1368,7 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 	int32 CurrentCombatValue = 0;
 
 	// Add ships, starting with the most powerful
-	EnemySpacecraftListData.Empty();
+//	EnemySpacecraftListData.Empty();
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 
 	for (int32 Index = SpacecraftCatalog->ShipCatalog.Num() - 1; Index >= 0; Index--)
@@ -1233,36 +1380,39 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 				continue;
 			}
 
-			if((PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
-			{
-				break;
-			}
-
 			int32 RemainingCombatValue = TargetShipCombatValue - CurrentCombatValue;
-
 			if (Spacecraft->Data.CombatPoints > 0 && Spacecraft->Data.CombatPoints < RemainingCombatValue)
 			{
 				// Define how much of this ship we want
 				float RawShipCount = (DiversityRatio * RemainingCombatValue) / (float)Spacecraft->Data.CombatPoints;
 				int32 ShipCount = IsHighValueFleet ? FMath::FloorToInt(RawShipCount) :  FMath::CeilToInt(RawShipCount);
-
-				// Order all copies
-				for (int OrderIndex = 0; OrderIndex < ShipCount; OrderIndex++)
+				if(ShipCount>0)
 				{
-					if ((PlayerSpacecraftListData.Num() + EnemySpacecraftListData.Num()) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+					//Max of 100 for each ship order so the order bars don't go out of bounds
+					if (ShipCount > 100)
 					{
-						break;
+						ShipCount = 100;
 					}
 
+					// Order all copies
 					TSharedPtr<FFlareSkirmishSpacecraftOrder> Order = FFlareSkirmishSpacecraftOrder::New(&Spacecraft->Data);
 					Order->ForPlayer = false;
 					SetOrderDefaults(Order);
 					EnemySpacecraftListData.Add(Order);
-					CurrentCombatValue += Spacecraft->Data.CombatPoints;
+					EnemyShips++;
+					if ((PlayerShips + EnemyShips + ShipCount) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+					{
+						Order->IsReserve = true;
+					}
+					else
+					{
+						Order->IsReserve = false;
+					}
+					QuantitySet(ShipCount, Order,true);
+					CurrentCombatValue += (Spacecraft->Data.CombatPoints * Order->Quantity);
 				}
 			}
 		}
-
 		// Value exceeded, break off
 		if (CurrentCombatValue >= TargetShipCombatValue)
 		{
@@ -1298,8 +1448,6 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 				continue;
 			}
 
-			// TODO : this algorithm always ends up using missiles if it upgrades at all, make it more diverse
-
 			float AntiLarge = Weapon->WeaponCharacteristics.AntiLargeShipValue;
 			if (AntiLarge > BestAntiLarge)
 			{
@@ -1317,10 +1465,10 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 
 		// Assign one anti-L weapon to each L ship, else use anti small
 		FFlareSpacecraftComponentDescription* UpgradeWeapon = NULL;
-		if (PlayerLargeShips && BestAntiLargeWeapon)
+		if (PlayerLargeShips > 0 && BestAntiLargeWeapon)
 		{
 			UpgradeWeapon = BestAntiLargeWeapon;
-			PlayerLargeShips--;
+			PlayerLargeShips = PlayerLargeShips - Order->Quantity;
 		}
 		else if (BestAntiSmallWeapon)
 		{
@@ -1343,6 +1491,8 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 
 void SFlareSkirmishSetupMenu::OnOrderShip(bool ForPlayer)
 {
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+
 	IsOrderingForPlayer = ForPlayer;
 
 	FFlareMenuParameterData Data;
@@ -1378,6 +1528,13 @@ void SFlareSkirmishSetupMenu::OnOrderShipConfirmed(FFlareSpacecraftDescription* 
 		EnemySpacecraftListData.AddUnique(Order);
 		EnemySpacecraftList->RequestListRefresh();
 	}
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	if((PlayerShips + EnemyShips +1) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+	{
+		Order->IsReserve = true;
+	}
+	UpdateShips();
 }
 
 void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order)
@@ -1487,6 +1644,92 @@ void SFlareSkirmishSetupMenu::OnRemoveSpacecraft(TSharedPtr<FFlareSkirmishSpacec
 		EnemySpacecraftListData.Remove(Order);
 		EnemySpacecraftList->RequestListRefresh();
 	}
+	UpdateShips();
+}
+
+FText SFlareSkirmishSetupMenu::GetQuantityValue(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order) const
+{
+	if (Order)
+	{
+		return FText::AsNumber(Order->Quantity);
+	}
+	return FText::AsNumber(0);
+}
+
+void SFlareSkirmishSetupMenu::OnQuantitySliderChanged(float Value, TSharedPtr<FFlareSkirmishSpacecraftOrder> Order)
+{
+	if (Order)
+	{
+		int32 NewQuantity = FMath::RoundToInt(100.0f * Value);
+		NewQuantity = FMath::Clamp(NewQuantity, 1, 100);
+		QuantitySet(NewQuantity, Order);
+	}
+}
+
+void SFlareSkirmishSetupMenu::QuantitySet(int32 Value, TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, bool SetBar)
+{
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	int32 MaximumAvailable = (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI);
+
+	int32 TotalShips = PlayerShips + EnemyShips;
+	int32 PreviousQuantity = Order->Quantity;
+
+	if (Order->IsReserve)
+	{
+		Order->Quantity = Value;
+	}
+	else
+	{
+		if (TotalShips + (Value - PreviousQuantity) <= MaximumAvailable)
+		{
+			Order->Quantity = Value;
+		}
+		else
+		{
+			MaximumAvailable = MaximumAvailable - TotalShips;
+			if (Order->Quantity < MaximumAvailable)
+			{
+				Order->Quantity = MaximumAvailable;
+			}
+			else
+			{
+				Order->Quantity = Order->Quantity + MaximumAvailable;
+			}
+		}
+
+		if (SetBar)
+		{
+			if (Order->QuantitySlider)
+			{
+				Order->QuantitySlider->SetValue((float)Order->Quantity / 100.0f);
+			}
+		}
+	}
+	UpdateShips();
+}
+
+void SFlareSkirmishSetupMenu::OnChangeReserve(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order)
+{
+	bool New = Order->ReserveButton->IsActive();
+	if (New == false)
+	{
+		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+		if((PlayerShips + EnemyShips + Order->Quantity) > (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+		{
+			New = true;
+			Order->ReserveButton->SetActive(true);
+		}
+	}
+	Order->IsReserve = New;
+
+	if (Order->IsReserve)
+	{
+		int32 NewQuantity = FMath::RoundToInt(100.0f * Order->QuantitySlider->GetValue());
+		NewQuantity = FMath::Clamp(NewQuantity, 1, 100);
+		QuantitySet(NewQuantity, Order, true);
+	}
+
+	UpdateShips();
 }
 
 void SFlareSkirmishSetupMenu::OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, bool SpecifyPlayer, bool ForPlayer, bool UpdateList)
@@ -1507,6 +1750,7 @@ void SFlareSkirmishSetupMenu::OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpa
 	}
 
 	NewOrder->ForPlayer = LocalPlayerValue;
+	NewOrder->IsReserve = Order->IsReserve;
 
 	// Add order
 	if (LocalPlayerValue)
@@ -1525,6 +1769,7 @@ void SFlareSkirmishSetupMenu::OnDuplicateSpacecraft(TSharedPtr<FFlareSkirmishSpa
 			EnemySpacecraftList->RequestListRefresh();
 		}
 	}
+	QuantitySet(Order->Quantity,NewOrder,true);
 }
 
 void SFlareSkirmishSetupMenu::OnUpgradeEngine(TSharedPtr<FFlareSkirmishSpacecraftOrder> Order, FName Upgrade)
@@ -1563,16 +1808,26 @@ void SFlareSkirmishSetupMenu::OnStartSkirmish()
 {
 	UFlareSkirmishManager* Skirmish = MenuManager->GetGame()->GetSkirmishManager();
 	OnCloseUpgradePanel();
-
+	
 	// Add ships
 	for (auto Order : PlayerSpacecraftListData)
 	{
-		Skirmish->AddShip(true, *Order.Get());
+		int32 WorkingQuantity = Order->Quantity;
+		while (WorkingQuantity > 0)
+		{
+			Skirmish->AddShip(true, *Order.Get());
+			WorkingQuantity--;
+		}
 	}
 	PlayerSpacecraftListData.Empty();
 	for (auto Order : EnemySpacecraftListData)
 	{
-		Skirmish->AddShip(false, *Order.Get());
+		int32 WorkingQuantity = Order->Quantity;
+		while (WorkingQuantity > 0)
+		{
+			Skirmish->AddShip(false, *Order.Get());
+			WorkingQuantity--;
+		}
 	}
 	EnemySpacecraftListData.Empty();
 
@@ -1602,9 +1857,8 @@ void SFlareSkirmishSetupMenu::OnStartSkirmish()
 
 void SFlareSkirmishSetupMenu::OnMainMenu()
 {
-	MenuManager->GetGame()->GetSkirmishManager()->EndSkirmish();
-
 	MenuManager->OpenMenu(EFlareMenu::MENU_Main);
+	MenuManager->GetGame()->GetSkirmishManager()->EndSkirmish();
 }
 
 
@@ -1616,12 +1870,12 @@ bool SFlareSkirmishSetupMenu::CanStartPlaying(FText& Reason) const
 {
 	Reason = FText();
 
-	if (PlayerSpacecraftListData.Num() == 0)
+	if (PlayerShips == 0)
 	{
 		Reason = LOCTEXT("SkirmishCantStartNoPlayer", "You don't have enough ships to start playing");
 		return false;
 	}
-	else if (EnemySpacecraftListData.Num() == 0)
+	else if (EnemyShips == 0)
 	{
 		Reason = LOCTEXT("SkirmishCantStartNoEnemy", "Your enemy doesn't have enough ships to start playing");
 		return false;
@@ -1656,4 +1910,3 @@ void SFlareSkirmishSetupMenu::SetOrderDefaults(TSharedPtr<FFlareSkirmishSpacecra
 
 
 #undef LOCTEXT_NAMESPACE
-

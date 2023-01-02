@@ -25,6 +25,7 @@
 
 #define MAX_QUEST_COUNT 40
 #define MAX_QUEST_PER_COMPANY_COUNT 10
+#define REQUIRED_TOTAL_COMPANY_MONEY 0.01
 
 /*----------------------------------------------------
 	Constructor
@@ -299,7 +300,6 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		return;
 	}
 
-	TArray<UFlareCompany*> CompaniesToProcess =  Game->GetGameWorld()->GetCompanies();
 	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
 
 	TArray<FFlareResourceDescription*> AvailableResources;
@@ -329,7 +329,20 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 	}
 
 
+	// Compute values
+	int64 TotalValue = 0;
+	int64 TotalCombatValue = 0;
+	for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
+	{
+		const CompanyValue& OtherValue = OtherCompany->GetCompanyValue();
+		TotalValue += OtherValue.TotalValue;
+		TotalCombatValue += OtherValue.ArmyCurrentCombatPoints;
+	}
+
 	// For each company in random order
+	int64 TotalCompaniesMoney = Game->GetGameWorld()->GetTotalCompaniesMoney();
+	TArray<UFlareCompany*> CompaniesToProcess = Game->GetGameWorld()->GetCompanies();
+
 	while (CompaniesToProcess.Num() > 0)
 	{
 		UFlareQuestGenerated* Quest = NULL;
@@ -343,104 +356,102 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 			continue;
 		}
 
+		//Below basic operating costs, no contracts offered
+		if (!Company->GetAI()->IsAboveMinimumMoney() && Company->GetMoney() >= (TotalCompaniesMoney * REQUIRED_TOTAL_COMPANY_MONEY))
+		{
+			continue;
+		}
+
 		// No luck, no quest this time
 		if (FMath::FRand() > ComputeQuestProbability(Company))
 		{
 			continue;
 		}
 
-		// Generate a VIP quest
-		if (FMath::FRand() < 0.15)
+		// Check friendlyness
+		if (Company->GetWarState(PlayerCompany) != EFlareHostility::Hostile)
 		{
-			Quest = UFlareQuestGeneratedVipTransport::Create(this, Sector, Company);
-		}
-
-		// Trade quests
-		if (Game->GetPC()->GetPlayerFleet()->GetFleetCapacity() > 0)
-		{
-			// Try to create a trade quest,
-			// if not, try to create a Purchase quest
-			// if not, try to create a Sell quest
-			if (!Quest)
+			// Generate a VIP quest
+			if (FMath::FRand() < 0.15)
 			{
-				Quest = UFlareQuestGeneratedResourceTrade::Create(this, Sector, Company);
+				Quest = UFlareQuestGeneratedVipTransport::Create(this, Sector, Company);
 			}
 
-			if (!Quest)
+			// Trade quests
+			if (Game->GetPC()->GetPlayerFleet()->GetFleetCapacity() > 0)
 			{
-				Quest = UFlareQuestGeneratedResourcePurchase::Create(this, Sector, Company, AvailableResources);
-			}
-
-			if (!Quest)
-			{
-				Quest = UFlareQuestGeneratedResourceSale::Create(this, Sector, Company);
-			}
-		}
-
-		// VIP strikes again
-		if (!Quest && (FMath::FRand() < 0.3 || QuestManager->GetVisibleQuestCount() == 0) )
-		{
-			Quest = UFlareQuestGeneratedVipTransport::Create(this, Sector, Company);
-		}
-
-		// Register quest
-		RegisterQuest(Quest);
-		
-		if (Game->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints > 0)
-		{
-			// Compute values
-			int64 TotalValue = 0;
-			int64 TotalCombatValue = 0;
-			CompanyValue Value = Company->GetCompanyValue();
-			for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
-			{
-				const CompanyValue& OtherValue = OtherCompany->GetCompanyValue();
-				TotalValue += OtherValue.TotalValue;
-				TotalCombatValue += OtherValue.ArmyCurrentCombatPoints;
-			}
-
-			// Hunt quests
-			for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
-			{
-				if (OtherCompany == PlayerCompany || Company == OtherCompany)
+				// Try to create a trade quest,
+				// if not, try to create a Purchase quest
+				// if not, try to create a Sell quest
+				if (!Quest)
 				{
-					continue;
+					Quest = UFlareQuestGeneratedResourceTrade::Create(this, Sector, Company);
 				}
 
-				CompanyValue OtherValue = OtherCompany->GetCompanyValue();
-
-				// Cargo hunt
-				if (OtherValue.TotalValue > Value.TotalValue * 1.1)
+				if (!Quest)
 				{
-					// 1% per day per negative reputation point
-					float ValueRatio = float(OtherValue.TotalValue) / TotalValue;
+					Quest = UFlareQuestGeneratedResourcePurchase::Create(this, Sector, Company, AvailableResources);
+				}
 
-					float CargoHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
+				if (!Quest)
+				{
+					Quest = UFlareQuestGeneratedResourceSale::Create(this, Sector, Company);
+				}
+			}
 
-					// No luck, no quest this time
-					if (FMath::FRand() > CargoHuntQuestProbability)
+			// VIP strikes again
+			if (!Quest && (FMath::FRand() < 0.3 || QuestManager->GetVisibleQuestCount() == 0))
+			{
+				Quest = UFlareQuestGeneratedVipTransport::Create(this, Sector, Company);
+			}
+
+			// Register quest
+			RegisterQuest(Quest);
+			if (Game->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints > 0)
+			{
+				CompanyValue Value = Company->GetCompanyValue();
+
+				// Hunt quests
+				for (UFlareCompany* OtherCompany : GetGame()->GetGameWorld()->GetCompanies())
+				{
+					if (OtherCompany == PlayerCompany || Company == OtherCompany)
 					{
 						continue;
 					}
 
-					RegisterQuest(UFlareQuestGeneratedCargoHunt2::Create(this, Company, OtherCompany));
-				}
+					CompanyValue OtherValue = OtherCompany->GetCompanyValue();
 
-				// Military hunt
-				if (OtherValue.ArmyCurrentCombatPoints > Value.ArmyCurrentCombatPoints*1.1)
-				{
-					float ValueRatio = float(OtherValue.ArmyCurrentCombatPoints) / TotalCombatValue;
-
-					// 1% per day per negative reputation point
-					float MilitaryHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
-
-					// No luck, no quest this time
-					if (FMath::FRand() > MilitaryHuntQuestProbability)
+					// Cargo hunt
+					if (OtherValue.TotalValue > Value.TotalValue * 1.1)
 					{
-						continue;
+						// 1% per day per negative reputation point
+						float ValueRatio = float(OtherValue.TotalValue) / TotalValue;
+						float CargoHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
+
+						// No luck, no quest this time
+						if (FMath::FRand() > CargoHuntQuestProbability)
+						{
+							continue;
+						}
+
+						RegisterQuest(UFlareQuestGeneratedCargoHunt2::Create(this, Company, OtherCompany));
 					}
 
-					RegisterQuest(UFlareQuestGeneratedMilitaryHunt2::Create(this, Company, OtherCompany));
+					// Military hunt
+					if (OtherValue.ArmyCurrentCombatPoints > Value.ArmyCurrentCombatPoints*1.1)
+					{
+						// 1% per day per negative reputation point
+						float ValueRatio = float(OtherValue.ArmyCurrentCombatPoints) / TotalCombatValue;
+						float MilitaryHuntQuestProbability = FMath::Clamp(FMath::Square(ValueRatio) * 0.5f, 0.f, 1.f);
+
+						// No luck, no quest this time
+						if (FMath::FRand() > MilitaryHuntQuestProbability)
+						{
+							continue;
+						}
+
+						RegisterQuest(UFlareQuestGeneratedMilitaryHunt2::Create(this, Company, OtherCompany));
+					}
 				}
 			}
 		}
@@ -792,25 +803,20 @@ UFlareQuestGenerated* UFlareQuestGeneratedVipTransport::Create(UFlareQuestGenera
 
 	// Find a random friendly station in sector
 	TArray<UFlareSimulatedSpacecraft*> CandidateStations;
-	for (UFlareSimulatedSpacecraft* CandidateStation : Sector->GetSectorStations())
+	for (UFlareSimulatedSpacecraft* CandidateStation : Company->GetCompanySectorStations(Sector))
 	{
-		if (CandidateStation->GetCompany() != Company)
-		{
-			continue;
-		}
-
 		if (CandidateStation->IsBeingCaptured())
 		{
 			continue;
 		}
-
+/*
 		// Check friendlyness
 		if (CandidateStation->IsHostile(PlayerCompany) || CandidateStation->GetCompany()->GetWarState(PlayerCompany) != EFlareHostility::Neutral)
 		{
 			// Me or at war company or is target of a mission
 			continue;
 		}
-
+*/
 		// Check if there is another distant station
 		bool HasDistantSector = false;
 		for(UFlareSimulatedSpacecraft* CompanyStation : CandidateStation->GetCompany()->GetCompanyStations())
@@ -990,13 +996,8 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourceSale::Create(UFlareQuestGenera
 
 	// Find a random friendly station in sector
 	TArray<UFlareSimulatedSpacecraft*> CandidateStations;
-	for (UFlareSimulatedSpacecraft* CandidateStation : Sector->GetSectorStations())
+	for (UFlareSimulatedSpacecraft* CandidateStation : Company->GetCompanySectorStations(Sector))
 	{
-		if (CandidateStation->GetCompany() != Company)
-		{
-			continue;
-		}
-
 		if (CandidateStation->IsBeingCaptured())
 		{
 			continue;
@@ -1006,16 +1007,16 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourceSale::Create(UFlareQuestGenera
 		{
 			continue;
 		}
-
+/*
 		// Check friendlyness
 		if (CandidateStation->IsHostile(PlayerCompany) || CandidateStation->GetCompany()->GetWarState(PlayerCompany) != EFlareHostility::Neutral)
 		{
 			// Me or at war company
 			continue;
 		}
+*/
 
 		// Check if have too much stock there is another distant station
-
 		for (FFlareCargo& Slot : CandidateStation->GetActiveCargoBay()->GetSlots())
 		{
 			if (Slot.Lock != EFlareResourceLock::Output)
@@ -1026,7 +1027,7 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourceSale::Create(UFlareQuestGenera
 
 			if (Slot.Quantity <= CandidateStation->GetActiveCargoBay()->GetSlotCapacity() * 0.5f)
 			{
-				// Not enought resources
+				// Not enough resources
 				continue;
 			}
 
@@ -1076,7 +1077,7 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourceSale::Create(UFlareQuestGenera
 
 		if (ExcessResourceQuantity <= 0)
 		{
-			// Not enought resources
+			// Not enough resources
 			continue;
 		}
 
@@ -1205,13 +1206,8 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourcePurchase::Create(UFlareQuestGe
 
 	// Find a random friendly station in sector
 	TArray<UFlareSimulatedSpacecraft*> CandidateStations;
-	for (UFlareSimulatedSpacecraft* CandidateStation : Sector->GetSectorStations())
+	for (UFlareSimulatedSpacecraft* CandidateStation : Company->GetCompanySectorStations(Sector))
 	{
-		if (CandidateStation->GetCompany() != Company)
-		{
-			continue;
-		}
-
 		if (CandidateStation->IsBeingCaptured())
 		{
 			continue;
@@ -1221,14 +1217,14 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourcePurchase::Create(UFlareQuestGe
 		{
 			continue;
 		}
-
+/*
 		// Check friendlyness
 		if (CandidateStation->IsHostile(PlayerCompany) || CandidateStation->GetCompany()->GetWarState(PlayerCompany) != EFlareHostility::Neutral)
 		{
 			// Me or at war company
 			continue;
 		}
-
+*/
 		// Check if have too low stock there is another distant station
 
 		for (FFlareCargo& Slot : CandidateStation->GetActiveCargoBay()->GetSlots())
@@ -1299,7 +1295,7 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourcePurchase::Create(UFlareQuestGe
 
 		if (MissingResourceAffordableQuantity <= 0)
 		{
-			// Enought resources
+			// Enough resources
 			continue;
 		}
 
@@ -1434,25 +1430,21 @@ UFlareQuestGenerated* UFlareQuestGeneratedResourceTrade::Create(UFlareQuestGener
 {
 	UFlareCompany* PlayerCompany = Parent->GetGame()->GetPC()->GetCompany();
 
-	if (Company->GetWarState(PlayerCompany) == EFlareHostility::Hostile)
-	{
-		return NULL;
-	}
-
 	// Find a best friendly station in sector
 	TMap<FFlareResourceDescription*, int32> BestQuantityToBuyPerResource;
 	TMap<FFlareResourceDescription*, UFlareSimulatedSpacecraft*> BestStationToBuyPerResource;
 	TMap<FFlareResourceDescription*, int32> BestQuantityToSellPerResource;
 	TMap<FFlareResourceDescription*, UFlareSimulatedSpacecraft*> BestStationToSellPerResource;
 
-	for (UFlareSimulatedSpacecraft* CandidateStation : Sector->GetSectorStations())
+	for (UFlareSimulatedSpacecraft* CandidateStation : Company->GetCompanySectorStations(Sector))
 	{
+/*
 		// Check friendlyness
 		if (CandidateStation->IsHostile(PlayerCompany) || CandidateStation->GetCompany()->GetWarState(Company) != EFlareHostility::Owned)
 		{
 			continue;
 		}
-
+*/
 		if (CandidateStation->IsBeingCaptured())
 		{
 			continue;
@@ -2820,11 +2812,6 @@ UFlareQuestGenerated* UFlareQuestGeneratedCargoHunt2::Create(UFlareQuestGenerato
 {
 	UFlareCompany* PlayerCompany = Parent->GetGame()->GetPC()->GetCompany();
 
-	if (Company->GetWarState(PlayerCompany) == EFlareHostility::Hostile)
-	{
-		return NULL;
-	}
-
 	// Check unicity
 	if (Parent->FindUniqueTag(Parent->GenerateHarassTag(Company, HostileCompany)))
 	{
@@ -3007,11 +2994,6 @@ UFlareQuestGeneratedMilitaryHunt2::UFlareQuestGeneratedMilitaryHunt2(const FObje
 UFlareQuestGenerated* UFlareQuestGeneratedMilitaryHunt2::Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany)
 {
 	UFlareCompany* PlayerCompany = Parent->GetGame()->GetPC()->GetCompany();
-
-	if (Company->GetWarState(PlayerCompany) == EFlareHostility::Hostile)
-	{
-		return NULL;
-	}
 
 	// Check unicity
 	if (Parent->FindUniqueTag(Parent->GenerateHarassTag(Company, HostileCompany)))

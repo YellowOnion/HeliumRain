@@ -359,6 +359,28 @@ FLinearColor UFlareFleet::GetFleetColor() const
 	return FleetData.FleetColor;
 }
 
+void UFlareFleet::TrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.AddUnique(Bomb);
+}
+
+void UFlareFleet::UnTrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.RemoveSwap(Bomb);
+}
+
+TArray<AFlareBomb*> UFlareFleet::GetIncomingBombs()
+{
+	return IncomingBombs;
+}
 
 int32 UFlareFleet::GetRepairDuration() const
 {

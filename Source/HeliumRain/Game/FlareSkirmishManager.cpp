@@ -27,23 +27,13 @@
 UFlareSkirmishManager::UFlareSkirmishManager(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	// Load catalog
-	struct FConstructorStatics
-	{
-		ConstructorHelpers::FObjectFinder<UFlareAsteroidCatalog> RockCatalog;
-		ConstructorHelpers::FObjectFinder<UFlareAsteroidCatalog> DebrisCatalog;
-		FConstructorStatics()
-			: RockCatalog(TEXT("/Game/ThirdParty/RocksDebris/RockDebrisCatalog.RockDebrisCatalog"))
-			, DebrisCatalog(TEXT("/Game/Environment/Debris/MetalDebrisCatalog.MetalDebrisCatalog"))
-		{}
-	};
-	static FConstructorStatics ConstructorStatics;
-
-	// Push catalog data into storage
-	RockCatalog = ConstructorStatics.RockCatalog.Object;
-	DebrisCatalog = ConstructorStatics.DebrisCatalog.Object;
-
 	CurrentPhase = EFlareSkirmishPhase::Idle;
+}
+
+void UFlareSkirmishManager::InitialSetup(AFlareGame* GameMode)
+{
+	FCHECK(GameMode);
+	Game = GameMode;
 }
 
 void UFlareSkirmishManager::Update(float DeltaSeconds)
@@ -87,11 +77,11 @@ void UFlareSkirmishManager::StartPlay()
 	// Use the appropriate debris
 	if (Data.MetallicDebris)
 	{
-		Data.SectorDescription.DebrisFieldInfo.DebrisCatalog = DebrisCatalog;
+		Data.SectorDescription.DebrisFieldInfo.DebrisCatalog = GetGame()->GetDebrisFieldSystem()->GetDebrisCatalog();
 	}
 	else
 	{
-		Data.SectorDescription.DebrisFieldInfo.DebrisCatalog = RockCatalog;
+		Data.SectorDescription.DebrisFieldInfo.DebrisCatalog = GetGame()->GetDebrisFieldSystem()->GetRockCatalog();
 	}
 
 	// Set level name
@@ -108,15 +98,15 @@ void UFlareSkirmishManager::StartPlay()
 	Data.PlayerCompanyData.Emblem = GetGame()->GetCustomizationCatalog()->GetEmblem(0);
 	Data.PlayerCompanyData.Name = FText::FromString("Player");
 	Data.PlayerCompanyData.ShortName = "PLY";
-	
-	// Set phase
-	CurrentPhase = EFlareSkirmishPhase::Play;
 
 	// Start the game
 	FFlareMenuParameterData MenuData;
 	MenuData.ScenarioIndex = -1;
 	MenuData.Skirmish = this;
 	AFlareMenuManager::GetSingleton()->OpenMenu(EFlareMenu::MENU_CreateGame, MenuData);
+
+	// Set phase
+	CurrentPhase = EFlareSkirmishPhase::Play;
 }
 
 void UFlareSkirmishManager::RestartPlay()
@@ -126,38 +116,42 @@ void UFlareSkirmishManager::RestartPlay()
 	// Reset
 	Result = FFlareSkirmishResultData();
 
-	// Set phase
-	CurrentPhase = EFlareSkirmishPhase::Play;
-
 	// Start the game
 	FFlareMenuParameterData MenuData;
 	MenuData.ScenarioIndex = -1;
 	MenuData.Skirmish = this;
 	AFlareMenuManager::GetSingleton()->OpenMenu(EFlareMenu::MENU_CreateGame, MenuData);
+
+	// Set phase
+	CurrentPhase = EFlareSkirmishPhase::Play;
 }
 
 void UFlareSkirmishManager::EndPlay()
 {
 	// Start skirmish countdown
-	if (CurrentPhase == EFlareSkirmishPhase::Play)
+	if (GetGame()->GetActiveSector())
 	{
-		AFlareMenuManager::GetSingleton()->PrepareSkirmishEnd();
-	}
+		if (CurrentPhase == EFlareSkirmishPhase::Play)
+		{
+			AFlareMenuManager::GetSingleton()->PrepareSkirmishEnd();
+		}
 
-	// Detect victory
-	AFlarePlayerController* PC = GetGame()->GetPC();
-	FFlareSectorBattleState BattleState = GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany());
-	if (BattleState.FriendlyControllableShipCount > 0 && !BattleState.HasDanger)
-	{
-		Result.PlayerVictory = true;
+		// Detect victory
+		{
+			AFlarePlayerController* PC = GetGame()->GetPC();
+			FFlareSectorBattleState BattleState = GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany());
+			if (BattleState.FriendlyControllableShipCount > 0 && !BattleState.HasDanger)
+			{
+				Result.PlayerVictory = true;
+			}
+			else
+			{
+				Result.PlayerVictory = false;
+			}
+		}
+		// Reset phase
+		CurrentPhase = EFlareSkirmishPhase::End;
 	}
-	else
-	{
-		Result.PlayerVictory = false;
-	}
-
-	// Reset phase
-	CurrentPhase = EFlareSkirmishPhase::End;
 }
 
 void UFlareSkirmishManager::EndSkirmish()

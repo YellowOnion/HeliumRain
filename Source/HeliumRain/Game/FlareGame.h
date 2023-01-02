@@ -366,6 +366,11 @@ public:
 		return QuestManager;
 	}
 
+	UFlareDebrisField* GetDebrisFieldSystem() const
+	{
+		return DebrisFieldSystem;
+	}                        
+
 	const FFlareCompanyDescription* GetCompanyDescription(int32 Index) const;
 
 	const FFlareCompanyDescription* GetPlayerCompanyDescription() const;
