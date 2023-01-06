@@ -23,7 +23,6 @@ DECLARE_CYCLE_STAT(TEXT("PilotHelper CheckRelativeDangerosity"), STAT_PilotHelpe
 bool PilotHelper::CheckFriendlyFire(UFlareSector* Sector, UFlareCompany* MyCompany, FVector FireBaseLocation, FVector FireBaseVelocity , float AmmoVelocity, FVector FireAxis, float MaxDelay, float AimRadius)
 {
 	SCOPE_CYCLE_COUNTER(STAT_PilotHelper_CheckFriendlyFire);
-
 	//FLOG("CheckFriendlyFire");
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSpacecrafts().Num(); SpacecraftIndex++)
 	{
@@ -343,7 +342,6 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 	for (AFlareSpacecraft* ShipCandidate :Ship->GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
-
 		if (!IsValid(ShipCandidate))
 		{
 			continue;
@@ -385,7 +383,7 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			StateScore *= Preferences.IsLarge;
 		}
 
-		if (ShipCandidate->GetParent()->GetSize() == EFlarePartSize::S)
+		else if (ShipCandidate->GetParent()->GetSize() == EFlarePartSize::S)
 		{
 			StateScore *= Preferences.IsSmall;
 		}
@@ -976,7 +974,6 @@ bool PilotHelper::PilotTarget::IsValid()
 {
 	if (SpacecraftTarget)
 	{
-//		if (SpacecraftTarget->IsValidLowLevel())
 		if (SpacecraftTarget->IsActorBeingDestroyed() || SpacecraftTarget->IsSafeEither() || SpacecraftTarget->CheckIsExploding())
 		{
 			SpacecraftTarget = nullptr;

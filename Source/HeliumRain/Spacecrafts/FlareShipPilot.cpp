@@ -35,6 +35,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Flagship"), STAT_FlareShipPilot_Flagship
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot FindBestHostileTarget"), STAT_FlareShipPilot_FindBestHostileTarget, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ExitAvoidance"), STAT_FlareShipPilot_ExitAvoidance, STATGROUP_Flare);
 
+#define PILOT_AI_TICKRATE 0.033f
 #define PILOT_ANTICOLLISION_SPEED -200.f
 //Large ships get 4 subordinates = wing of 5 ships
 #define LEADER_SQUAD_LARGE 4
@@ -53,14 +54,13 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	ComponentSwitchReactionTime = FMath::FRandRange(4.5, 5.5);
 
 	PilotAvoidCheckReactionTimeFast = FMath::FRandRange(1, 2);
-	PilotAvoidCheckReactionTimeSlow = FMath::FRandRange(4, 5);
+	PilotAvoidCheckReactionTimeSlow = FMath::FRandRange(3, 5);
 	NextExitAvoidanceCheckReactionFast = FMath::FRandRange(0.90, 1.10);
 	NextExitAvoidanceCheckReactionSlow = FMath::FRandRange(3, 4);
 	HostileTargetSwitchReactionTimeFast = FMath::FRandRange(1.0, 1.5);
 	HostileTargetSwitchReactionTimeSlow = FMath::FRandRange(4, 6);
 	CollisionVectorReactionTimeFast = FMath::FRandRange(0.25, 0.35);;
 	CollisionVectorReactionTimeSlow = FMath::FRandRange(0.75, 1.25);
-
 
 	TimeUntilNextHostileTargetSwitch = 0;
 	TimeUntilNextReaction = 0;
@@ -81,22 +81,21 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	MaxTimeBetweenDockingAttempt = 60.0f;
 }
 
-
 /*----------------------------------------------------
 	Gameplay events
 ----------------------------------------------------*/
 
 void UFlareShipPilot::TickPilot(float DeltaSeconds)
 {
-	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Tick);
+	PreviousTick += DeltaSeconds;
 
-	if (EveryOtherTick)
+	if (PreviousTick < PILOT_AI_TICKRATE)
 	{
-		EveryOtherTick = false;
 		return;
 	}
 
-	EveryOtherTick = true;
+	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Tick);
+	PreviousTick -= PILOT_AI_TICKRATE;
 
 	if (Ship->IsStation())
 	{
@@ -110,6 +109,7 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 		{
 			ArmedStationPilot(DeltaSeconds);
 		}
+		return;
 	}
 
 	if(!Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
@@ -204,7 +204,6 @@ bool UFlareShipPilot::DroneReturnToCarrier(float DeltaSeconds)
 		FVector Location = LocalMaster->GetActorLocation();
 		FVector DeltaLocation = LocalMaster->GetActorLocation() - Ship->GetActorLocation();
 		float Distance = (DeltaLocation.Size() ) * 0.01f; // Distance in meters
-
 		if (Distance < 100)
 		{
 			Ship->GetParent()->SetInternalDockedTo(Ship->GetParent()->GetShipMaster());
@@ -301,11 +300,15 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 
 	if (Ship->GetNavigationSystem()->IsDocked() && ( Ship->GetParent()->GetCompany() != PlayerCompany || Ship->GetParent()->GetCurrentSector()->GetSectorBattleState(PlayerCompany).HasDanger))
 	{
+		PilotLastTargetStation = PilotTargetStation;
+		PilotTargetStation = NULL;
+		CurrentWaitTime = 0;
 		WantFire = false;
 		// Let's undock
 		Ship->GetNavigationSystem()->Undock();
 		return;
 	}
+
 	else if (Ship->GetNavigationSystem()->IsAutoPilot())
 	{
 		WantFire = false;
@@ -462,7 +465,6 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Cargo);
 
 	TimeSinceLastDockingAttempt += DeltaSeconds;
-
 	FindPilotAvoidShip(DeltaSeconds);
 
 	// If enemy near, run away !
@@ -480,7 +482,6 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 				Ship->GetNavigationSystem()->Undock();
 			}
 			LinearTargetVelocity = -DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity() * 100;
-			
 			UseOrbitalBoost = true;
 		}
 		else
@@ -489,79 +490,66 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 		}
 	}
 
-	// Docking wait time
-	if (!PilotAvoidShip && Ship->GetNavigationSystem()->IsDocked() && Ship->GetParent()->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
+	if (Ship->GetNavigationSystem()->IsAutoPilot())
 	{
-		// Dock
-		if (CurrentWaitTime <= 0)
+		return;
+	}
+
+	//Cargo ships can "dock for repairs" if needed as long as they aren't already doing something
+	if (Ship->GetParent()->IsRepairing())
+	{
+		if (Ship->GetNavigationSystem()->IsDocked())
 		{
-			CurrentWaitTime = DockWaitTime;
+			return;
 		}
-
-		// Undock
-		else if (CurrentWaitTime < 0.1)
-		{
-			Ship->GetNavigationSystem()->Undock();
-
-			// Swap target station
-			PilotLastTargetStation = PilotTargetStation;
-			PilotTargetStation = NULL;
-			CurrentWaitTime = 0;
-		}
-
-		// Wait
 		else
 		{
-			CurrentWaitTime -= DeltaSeconds;
+			GetRandomFriendlyStation(true);
+			if (DockAtStation(DeltaSeconds))
+			{
+				return;
+			}
 		}
-
-		return;
 	}
-
-	// Wait maneuver
-	else if (Ship->GetNavigationSystem()->IsAutoPilot())
-	{
-		return;
-	}
-
-	// If no station target, find a target : a random friendly station different from the last station
 	else if(Ship->GetParent()->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
 	{
-		if (!PilotTargetStation)
+		// Docking wait time for non-player ships
+		if (!PilotAvoidShip && Ship->GetNavigationSystem()->IsDocked())
 		{
-			TArray<AFlareSpacecraft*> FriendlyStations = GetFriendlyStations();
-			if (FriendlyStations.Num() > 0)
+			// Dock
+			if (CurrentWaitTime <= 0)
 			{
-				int32 Index = FMath::RandHelper(FriendlyStations.Num());
+				CurrentWaitTime = DockWaitTime;
+			}
 
-				if (PilotLastTargetStation != FriendlyStations[Index])
-				{
-					PilotTargetStation = FriendlyStations[Index];
-				}
-			}
-		}
+			// Undock
+			else if (CurrentWaitTime < 0.1)
+			{
+				Ship->GetNavigationSystem()->Undock();
 
-		if (PilotTargetStation)
-		{
-			FVector DeltaLocation = (PilotTargetStation->GetActorLocation() - Ship->GetActorLocation()) / 100.f;
-			float Distance = DeltaLocation.Size(); // Distance in meters
-			
-			if (Distance < 1000 && TimeSinceLastDockingAttempt > TimeUntilNextDockingAttempt)
-			{
-				if (!Ship->GetNavigationSystem()->DockAt(PilotTargetStation))
-				{
-					TimeSinceLastDockingAttempt = 0;
-					TimeUntilNextDockingAttempt = FMath::FRand() * MaxTimeBetweenDockingAttempt;
-					LinearTargetVelocity = -DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
-				}
+				// Swap target station
+				PilotLastTargetStation = PilotTargetStation;
+				PilotTargetStation = NULL;
+				CurrentWaitTime = 0;
 			}
-			else if (Distance < 200)
-			{
-				LinearTargetVelocity = FVector::ZeroVector;
-			}
+
+			// Wait
 			else
 			{
-				LinearTargetVelocity = DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+				CurrentWaitTime -= DeltaSeconds;
+			}
+
+			return;
+		}
+		else
+		{
+			// If no station target, find a target : a random friendly station different from the last station
+			{
+				GetRandomFriendlyStation(false);
+				if (DockAtStation(DeltaSeconds))
+				{
+					return;
+				}
 			}
 		}
 	}
@@ -581,6 +569,81 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 	//FLOGV("%s Location = %s Velocity = %s LinearTargetVelocity = %s",  *Ship->GetImmatriculation().ToString(), * Ship->GetActorLocation().ToString(), *Ship->GetLinearVelocity().ToString(), *LinearTargetVelocity.ToString());
 }
 
+void UFlareShipPilot::GetRandomFriendlyStation(bool CanDock)
+{
+	if (!PilotTargetStation)
+	{
+		TArray<AFlareSpacecraft*> FriendlyStations = GetFriendlyStations(CanDock);
+		if (FriendlyStations.Num() > 0)
+		{
+			int32 Index = FMath::RandHelper(FriendlyStations.Num());
+			if (PilotLastTargetStation != FriendlyStations[Index])
+			{
+				PilotTargetStation = FriendlyStations[Index];
+			}
+		}
+	}
+}
+
+bool UFlareShipPilot::DockAtStation(float DeltaSeconds)
+{
+	if (PilotTargetStation)
+	{
+		if (TimeSinceLastDockingAttempt > TimeUntilNextDockingAttempt && Ship->GetNavigationSystem()->DockAt(PilotTargetStation))
+		{
+			TimeSinceLastDockingAttempt = 0;
+			TimeUntilNextDockingAttempt = FMath::FRand() * MaxTimeBetweenDockingAttempt;
+			return true;
+		}
+		PilotTargetStation = NULL;
+	}
+	return false;
+}
+/*
+{
+	if(PilotTargetStation)
+	{
+		FVector DeltaLocation = (PilotTargetStation->GetActorLocation() - Ship->GetActorLocation()) / 100.f;
+		float Distance = DeltaLocation.Size(); // Distance in meters
+
+		if (Distance < 1000 && TimeSinceLastDockingAttempt > TimeUntilNextDockingAttempt)
+		{
+			if (!Ship->GetNavigationSystem()->DockAt(PilotTargetStation))
+			{
+				DockingAttemptTries = 0;
+				if (DockingAttemptTries < 3)
+				{
+					TimeSinceLastDockingAttempt = 0;
+					TimeUntilNextDockingAttempt = FMath::FRand() * MaxTimeBetweenDockingAttempt;
+					LinearTargetVelocity = -DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+					return true;
+				}
+				else
+				{
+					TimeSinceLastDockingAttempt = 0;
+					TimeUntilNextDockingAttempt = 0;
+					PilotTargetStation = NULL;
+				}
+			}
+			else
+			{
+				DockingAttemptTries = 0;
+				return true;
+			}
+
+		}
+		else if (Distance < 200)
+		{
+			LinearTargetVelocity = FVector::ZeroVector;
+		}
+		else
+		{
+			LinearTargetVelocity = DeltaLocation.GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+		}
+	}
+	return false;
+}
+*/
 void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Fighter);
@@ -627,7 +690,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 	{
 		FireTargetAxis = (PilotAimTargetLocation - BaseLocation).GetUnsafeNormal();
 	}
-
 
 	FVector AmmoIntersectionPredictedLocation;
 	float AmmoIntersectionPredictedTime = SpacecraftHelper::GetIntersectionPosition(PilotAimTargetLocation, PilotTarget.GetLinearVelocity(), BaseLocation, ShipVelocity, AmmoVelocity, PredictionDelay, &AmmoIntersectionPredictedLocation);
@@ -734,7 +796,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 	// 0 - Prepare attack : change velocity to approch the target
 	// 1 - Attacking : target is approching
 	// 2 - Withdraw : target is passed, wait a security distance to attack again
-	float SecurityDistance = (DangerousTarget ? 1200: 800) + TargetSize * 4;
 	bool ClearTarget = false;
 	if (AttackPhase == 0)
 	{
@@ -771,6 +832,7 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 		}
 		else
 		{
+			float SecurityDistance = (DangerousTarget ? 1200 : 800) + TargetSize * 4;
 			FQuat AttackDistanceQuat = FQuat(TargetAxis, AttackAngle);
 			FVector TopVector = Ship->GetActorRotation().RotateVector(FVector(0,0,AttackDistance));
 			FVector AttackMargin =  AttackDistanceQuat.RotateVector(TopVector);
@@ -795,6 +857,7 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 
 	if (AttackPhase == 2)
 	{
+		float SecurityDistance = (DangerousTarget ? 1200 : 800) + TargetSize * 4;
 		if (Distance > SecurityDistance)
 		{
 			// Security distance reach
@@ -1004,13 +1067,11 @@ void UFlareShipPilot::BomberPilot(float DeltaSeconds)
 	TimeUntilNextReaction /= 5;
 
 	// Compute distances and reaction times
-	float ApproachDistance = 15 * PreferedVelocity * WeigthCoef ;
 	float AlignTime = 12 * WeigthCoef;
 	float DropTime = (IsSalvage ? 3 : 5) * WeigthCoef;
 	float EvadeTime = 2 * WeigthCoef;
 	float TimeBetweenDrop = (IsSalvage ? 5.0 : 0.5) * WeigthCoef;
-	float SecurityDistance = 1500;
-	
+
 	// Setup behaviour flags
 	UseOrbitalBoost = false;
 	bool WantClearTarget = false;
@@ -1022,6 +1083,7 @@ void UFlareShipPilot::BomberPilot(float DeltaSeconds)
 	if (AttackPhase == 0)
 	{
 		// Target is approching, prepare attack
+		float ApproachDistance = 15 * PreferedVelocity * WeigthCoef;
 		if (Distance < ApproachDistance)
 		{
 			AttackPhase = 1;
@@ -1111,6 +1173,7 @@ void UFlareShipPilot::BomberPilot(float DeltaSeconds)
 	if (AttackPhase == 3)
 	{
 		// Security distance reached
+		float SecurityDistance = 1500;
 		FVector DeltaVelocity = (PilotTarget.GetLinearVelocity() / 100.f - Ship->GetLinearVelocity()) / 100.;
 		if (Distance > SecurityDistance)
 		{
@@ -1246,7 +1309,6 @@ void UFlareShipPilot::MissilePilot(float DeltaSeconds)
 	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, Ship->GetPreferedAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED, DeltaSeconds);
 }
 
-
 void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Idle);
@@ -1268,7 +1330,6 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 	// If enemy near, run away !
 	if (PilotAvoidShip)
 	{
-
 		FVector DeltaLocation = (PilotAvoidShip->GetActorLocation() - Ship->GetActorLocation()) / 100.f;
 		float Distance = DeltaLocation.Size(); // Distance in meters
 
@@ -1289,14 +1350,26 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 	}
 
 	// If not, and outside the player fleet, find a leader and follow it
-	else// if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
+	else
 	{
-		if (!LeaderShip || (LeaderShip&&!LeaderShip->GetParent()->GetDamageSystem()->IsAlive()) || !FoundOutOfCombatLeader)
+		// Ship is refilling or repairing, find a station to dock with
+		if (Ship->GetParent()->IsRefilling() || Ship->GetParent()->IsRepairing())
 		{
-			if (Ship->GetCompany() != Ship->GetGame()->GetPC()->GetCompany())
+			if (Ship->GetNavigationSystem()->IsDocked())
 			{
-				GetNewLeaderShip();
 			}
+			else
+			{
+				TimeSinceLastDockingAttempt += DeltaSeconds;
+				GetRandomFriendlyStation(true);
+				DockAtStation(DeltaSeconds);
+			}
+			return;
+		}
+
+		if (!LeaderShip || (LeaderShip && (!LeaderShip->GetParent()->GetDamageSystem()->IsAlive()) || LeaderShip->GetParent()->GetDamageSystem()->IsUncontrollable()) || !FoundOutOfCombatLeader)
+		{
+			GetNewLeaderShip();
 			FoundOutOfCombatLeader = true;
 			InitiatedCombat = false;
 		}
@@ -1915,17 +1988,18 @@ void UFlareShipPilot::FindPilotAvoidShip(float DeltaSeconds)
 			TimeUntilNextPilotAvoidCheck = 0;
 		}
 	}
-	else
-	{
-		TimeUntilNextPilotAvoidCheck = 0;
-	}
 
 	if (TimeUntilNextPilotAvoidCheck <= 0)
 	{
-		PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::S);
-		if (!PilotAvoidShip)
+		GetNearestHostileShip(true);
+
+		if (NearestHostileShipSmall)
 		{
-			PilotAvoidShip = GetNearestHostileShip(true, EFlarePartSize::L);
+			PilotAvoidShip = NearestHostileShipSmall;
+		}
+		else
+		{
+			PilotAvoidShip = NearestHostileShipLarge;
 		}
 
 		if (!PilotAvoidShip)
@@ -1939,7 +2013,7 @@ void UFlareShipPilot::FindPilotAvoidShip(float DeltaSeconds)
 	}
 }
 
-AFlareSpacecraft* UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly, EFlarePartSize::Type Size) const
+void UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly)
 {
 	// For now an host ship is a the nearest host ship with the following critera:
 	// - Alive
@@ -1947,14 +2021,17 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly, EFl
 	// - From another company
 	// - Is the nearest
 
+	NearestHostileShipSmall = NULL;
+	NearestHostileShipLarge = NULL;
+
 	if (!Ship || Ship->IsPendingKill() || Ship->IsSafeDestroying() || !Ship->GetGame()->GetActiveSector())
 	{
-		return NULL;
+		return;
 	}
 
 	FVector PilotLocation = Ship->GetActorLocation();
-	float MinDistanceSquared = -1;
-	AFlareSpacecraft* NearestHostileShip = NULL;
+	float MinDistanceSquaredSmall = -1;
+	float MinDistanceSquaredLarge = -1;
 
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Ship->GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
 	{
@@ -1965,7 +2042,7 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly, EFl
 			continue;
 		}
 
-		if (ShipCandidate->GetSize() != Size)
+		if (ShipCandidate == PilotTargetStation)
 		{
 			continue;
 		}
@@ -1990,14 +2067,23 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly, EFl
 		}
 
 		float DistanceSquared = (PilotLocation - ShipCandidate->GetActorLocation()).SizeSquared();
-		if (NearestHostileShip == NULL || DistanceSquared < MinDistanceSquared)
+		if (ShipCandidate->GetSize() == EFlarePartSize::S)
 		{
-			MinDistanceSquared = DistanceSquared;
-			NearestHostileShip = ShipCandidate;
+			if (NearestHostileShipSmall == NULL || DistanceSquared < MinDistanceSquaredSmall)
+			{
+				MinDistanceSquaredSmall = DistanceSquared;
+				NearestHostileShipSmall = ShipCandidate;
+			}
 		}
-
+		else
+		{
+			if (MinDistanceSquaredLarge == NULL || DistanceSquared < MinDistanceSquaredLarge)
+			{
+				MinDistanceSquaredLarge = DistanceSquared;
+				NearestHostileShipLarge = ShipCandidate;
+			}
+		}
 	}
-	return NearestHostileShip;
 }
 
 AFlareSpacecraft* UFlareShipPilot::GetNearestShip(bool IgnoreDockingShip) const
@@ -2138,22 +2224,22 @@ AFlareSpacecraft* UFlareShipPilot::GetNearestAvailableStation(bool RealStation) 
 	return NearestStation;
 }
 
-TArray<AFlareSpacecraft*> UFlareShipPilot::GetFriendlyStations() const
+TArray<AFlareSpacecraft*> UFlareShipPilot::GetFriendlyStations(bool CanDock) const
 {
 	TArray<AFlareSpacecraft*> FriendlyStations;
-
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Ship->GetGame()->GetActiveSector()->GetStations().Num(); SpacecraftIndex++)
 	{
 		AFlareSpacecraft* StationCandidate = Ship->GetGame()->GetActiveSector()->GetStations()[SpacecraftIndex];
-
 		if (StationCandidate->GetDockingSystem()->GetDockCount() > 0)
 		{
-
-			if (StationCandidate->IsHostile(Ship->GetCompany()) == EFlareHostility::Hostile)
+			if (StationCandidate->IsHostile(Ship->GetCompany()))
 			{
 				continue;
 			}
-
+			if (CanDock && !StationCandidate->GetDockingSystem()->HasAvailableDock(Ship))
+			{
+				continue;
+			}
 			FriendlyStations.Add(StationCandidate);
 		}
 	}

@@ -18,6 +18,7 @@
 #include "StaticMeshResources.h"
 #include "PhysicsEngine/BodySetup.h"
 
+#define MAXIMUM_VISUAL_TEMPERATURE 7500
 
 /*----------------------------------------------------
 	Constructor
@@ -72,7 +73,6 @@ UFlareSpacecraftComponent::UFlareSpacecraftComponent(const class FObjectInitiali
 void UFlareSpacecraftComponent::OnRegister()
 {
 	Super::OnRegister();
-
 	Activate(true);
 }
 
@@ -254,6 +254,12 @@ void UFlareSpacecraftComponent::SetTemperature(int32 TemperatureKelvin)
 {
 	if (ComponentMaterial && TemperatureKelvin != PreviousTemperatureKelvin && IsComponentVisible())
 	{
+		//Work around. Damaged stations constantly heat up and eventually get so hot that the temperature effect
+		//emits extremely bright and rather blinding lights if this Temperature variable goes too high
+		if (TemperatureKelvin >= MAXIMUM_VISUAL_TEMPERATURE)
+		{
+			TemperatureKelvin = MAXIMUM_VISUAL_TEMPERATURE;
+		}
 		ComponentMaterial->SetScalarParameterValue("Temperature", TemperatureKelvin);
 		PreviousTemperatureKelvin = TemperatureKelvin;
 	}
@@ -672,23 +678,40 @@ void UFlareSpacecraftComponent::OnRepaired()
 		if (DestroyedEffects)
 		{
 			DestroyedEffects->Deactivate();
+			HasCreatedDestroyedDebris = false;
 		}
 	}
 }
 
 void UFlareSpacecraftComponent::StartDestroyedEffects()
 {
-	if (!DestroyedEffects && DestroyedEffectTemplate && IsDestroyedEffectRelevant())
+	if (IsDestroyedEffectRelevant())
 	{
-		// Calculate smoke origin
-		FVector Position = GetComponentLocation();
-		if (DoesSocketExist(FName("Smoke")))
+		if (!HasCreatedDestroyedDebris)
 		{
-			Position = GetSocketLocation(FName("Smoke"));
+			if (SpacecraftPawn)
+			{
+				HasCreatedDestroyedDebris = true;
+				float DebrisProbability = FMath::FRand();
+				if (DebrisProbability <= 0.50)
+				{
+					FVector Position = GetComponentLocation();
+					SpacecraftPawn->GetGame()->GetDebrisFieldSystem()->CreateDebris(SpacecraftPawn->GetGame()->GetActiveSector()->GetSimulatedSector(), Position, 1, 1, 1);
+				}
+			}
 		}
 
-		// Start smoke
-		DestroyedEffects = UGameplayStatics::SpawnEmitterAttached(
+		if (!DestroyedEffects && DestroyedEffectTemplate)
+		{
+			// Calculate smoke origin
+			FVector Position = GetComponentLocation();
+			if (DoesSocketExist(FName("Smoke")))
+			{
+				Position = GetSocketLocation(FName("Smoke"));
+			}
+
+			// Start smoke
+			DestroyedEffects = UGameplayStatics::SpawnEmitterAttached(
 			DestroyedEffectTemplate,
 			this,
 			NAME_None,
@@ -696,6 +719,7 @@ void UFlareSpacecraftComponent::StartDestroyedEffects()
 			GetComponentRotation(),
 			EAttachLocation::KeepWorldPosition,
 			true);
+		}
 	}
 }
 
@@ -731,11 +755,11 @@ void UFlareSpacecraftComponent::StartDamagedEffect(FVector Location, FRotator Ro
 	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAttached(
 		(Size == EFlarePartSize::L) ? ImpactEffectTemplateL : ImpactEffectTemplateS,
 		this,
-		NAME_None,
+		NAME_None,	
 		Location,
 		Rotation + FRotator::MakeFromEuler(FVector(0, -90, 0)),
 		EAttachLocation::KeepWorldPosition,
-		true);
+		false);
 
 	if (PSC)
 	{
@@ -777,12 +801,31 @@ FLinearColor UFlareSpacecraftComponent::NormalizeColor(FLinearColor Col)
 	}
 }
 
+bool UFlareSpacecraftComponent::GetIsSafeDestroyingRunning()
+{
+	return IsSafeDestroyingRunning;
+}
+
+bool UFlareSpacecraftComponent::GetSafeDestroyed()
+{
+	return SafeDestroyed;
+}
+
 void UFlareSpacecraftComponent::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
 	{
+
+		PrimaryComponentTick.bCanEverTick = false;
 		IsSafeDestroyingRunning = true;
+		UnregisterComponent();
 	}
+}
+
+void UFlareSpacecraftComponent::UnSafeDestroy()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	RegisterComponent();
 }
 
 void UFlareSpacecraftComponent::FinishSafeDestroy()
@@ -790,24 +833,11 @@ void UFlareSpacecraftComponent::FinishSafeDestroy()
 	if (!SafeDestroyed)
 	{
 		SafeDestroyed = true;
-
-		SpacecraftPawn = nullptr;
-		Spacecraft = nullptr;
-		PlayerCompany = nullptr;
-		ComponentMaterial = nullptr;
-		LightMaterial = nullptr;
-		BillboardMaterial = nullptr;
-		ComponentDescription = nullptr;
-		ShipComponentData = nullptr;
-		DestroyedEffectTemplate = nullptr;
+		HasCreatedDestroyedDebris = false;
 
 		if (DestroyedEffects)
 		{
 			DestroyedEffects->Deactivate();
 		}
-
-		DestroyedEffects = nullptr; 
-		ImpactEffectTemplateS = nullptr;
-		ImpactEffectTemplateL = nullptr;
 	}
 }

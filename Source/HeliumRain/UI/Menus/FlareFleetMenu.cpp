@@ -218,7 +218,7 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 					]
 
-					// Add
+					// Remove
 					+ SHorizontalBox::Slot()
 					.HAlign(HAlign_Left)
 					.Padding(Theme.SmallContentPadding)
@@ -246,7 +246,7 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 							.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
 							.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
 							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-							.Width(5)
+							.Width(4)
 						]
 					+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Left)
@@ -261,47 +261,34 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 							.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
 							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 							.Toggle(true)
-							.Width(5)
+							.Width(4)
 						]
 					]
-/*
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.ContentPadding)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Left)
-					.Padding(Theme.SmallContentPadding)
-					.AutoWidth()
+					// Inspect trade route
+
+				// Hide Travel
+				+SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
 					[
-						// Inspect trade route
-						SAssignNew(TradeRouteButton, SFlareButton)
-						.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
-						.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Width(6)
-					]
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Left)
-					.Padding(Theme.SmallContentPadding)
-					.AutoWidth()
-					[
-						// Auto Trade Button
-						SAssignNew(AutoTradeButton, SFlareButton)
-						.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
-						.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+						[
+							// Auto Trade Button
+							SAssignNew(HideTravelButton, SFlareButton)
+							.Text(LOCTEXT("HideTravel", "HIDE-TRAVEL"))
+						
+						.HelpText(this, &SFlareFleetMenu::GetToggleHideTravelHintText)
+						.IsDisabled(this, &SFlareFleetMenu::IsToggleHideTravelDisabled)
+						.OnClicked(this, &SFlareFleetMenu::OnToggleHideTravel)
 						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
 						.Toggle(true)
-						.Width(6)
+						.Width(4)
+						]
 					]
-				]
-*/
-					// Inspect trade route
 
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -387,6 +374,7 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 		EditFleetName->SetText(FleetToEdit->GetFleetName());
 		MenuManager->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("fleet-edited").PutName("fleet", FleetToEdit->GetIdentifier()));
 		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
+		HideTravelButton->SetActive(FleetToEdit->IsHiddenTravel());
 	}
 
 	// We are in preview mode
@@ -395,6 +383,7 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 		FleetList->SetTitle(LOCTEXT("AllFleetsListTitle", "Fleets"));
 		ShipList->SetUseCompactDisplay(false);
 		AutoTradeButton->SetActive(false);
+		HideTravelButton->SetActive(false);
 	}
 
 	UpdateFleetList();
@@ -527,6 +516,33 @@ FText SFlareFleetMenu::GetAutoTradeHintText() const
 	}
 }
 
+
+bool SFlareFleetMenu::IsToggleHideTravelDisabled() const
+{
+	if (FleetToEdit == FleetToEdit->GetGame()->GetPC()->GetPlayerFleet())
+	{
+		return true;
+	}
+	return false;
+}
+
+FText SFlareFleetMenu::GetToggleHideTravelHintText() const
+{
+	if (!FleetToEdit)
+	{
+		return FText();
+	}
+	else if (FleetToEdit == FleetToEdit->GetGame()->GetPC()->GetPlayerFleet())
+	{
+		return LOCTEXT("CantHideTravelPlayerFleetInfo", "Your personal fleet can't be hidden from the Sector travel list");
+	}
+	else
+	{
+		return LOCTEXT("HideTravelInfo", "Hide this fleet from the Sector travel list");
+	}
+}
+
+
 bool SFlareFleetMenu::IsAutoTradeDisabled() const
 {
 	if (!FleetToEdit)
@@ -571,6 +587,17 @@ void SFlareFleetMenu::OnToggleAutoTrade()
 		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
 	}
 }
+
+void SFlareFleetMenu::OnToggleHideTravel()
+{
+	if (FleetToEdit && FleetToEdit->GetGame()->GetPC())
+	{
+		FLOGV("SFlareFleetInfo::OnTogglHideTravel : TargetFleet=%p", FleetToEdit);
+		FleetToEdit->SetHideTravel(!FleetToEdit->IsHiddenTravel());
+		HideTravelButton->SetActive(FleetToEdit->IsHiddenTravel());
+	}
+}
+
 
 
 FText SFlareFleetMenu::GetRepairText() const

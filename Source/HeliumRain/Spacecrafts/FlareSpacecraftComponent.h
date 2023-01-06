@@ -478,8 +478,11 @@ public:
 	static FLinearColor NormalizeColor(FLinearColor Col);
 
 	virtual void SafeDestroy();
-
+	virtual void UnSafeDestroy();
 	virtual void FinishSafeDestroy();
+
+	bool GetIsSafeDestroyingRunning();
+	bool GetSafeDestroyed();
 
 	virtual void SetHeatSinkSurface(float NewHeatsinkValue);
 	virtual	void SetHeatProduction(float NewHeatProduction);
@@ -561,6 +564,7 @@ protected:
 
 	bool									IsSafeDestroyingRunning;
 	bool									SafeDestroyed;
+	bool									HasCreatedDestroyedDebris;
 
 public:
 

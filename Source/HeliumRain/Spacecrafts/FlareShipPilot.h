@@ -47,6 +47,9 @@ protected:
 
 	virtual void CargoPilot(float DeltaSeconds);
 
+	virtual bool DockAtStation(float DeltaSeconds);
+	void GetRandomFriendlyStation(bool CanDock);
+
 	virtual void FighterPilot(float DeltaSeconds);
 
 	virtual void BomberPilot(float DeltaSeconds);
@@ -88,10 +91,9 @@ public:
 	FVector ExitAvoidance(AFlareSpacecraft* Ship, FVector InitialVelocityTarget,float CurveTrajectoryLimit,float DeltaSeconds);
 
 	/**
-	 * Return the nearest hostile alive ship
+	 * Set the nearest hostile small/large ships
 	 */
-	virtual AFlareSpacecraft* GetNearestHostileShip(bool DangerousOnly, EFlarePartSize::Type Size) const;
-
+	void GetNearestHostileShip(bool DangerousOnly);
 	/**
 	 * Return the nearest ship, alive or not
 	 */
@@ -103,7 +105,7 @@ public:
 	virtual AFlareSpacecraft* GetNearestAvailableStation(bool RealStation) const;
 
 	/** Return all friendly station in the sector */
-	virtual TArray<AFlareSpacecraft*> GetFriendlyStations() const;
+	virtual TArray<AFlareSpacecraft*> GetFriendlyStations(bool CanDock) const;
 
 	/**
 	 * Return the angular velocity need to align the local ship axis to the target axis
@@ -183,6 +185,9 @@ protected:
 	UPROPERTY()
 	UFlareSpacecraftComponent*			         PilotTargetShipComponent;
 
+	AFlareSpacecraft*							 NearestHostileShipSmall;
+	AFlareSpacecraft*							 NearestHostileShipLarge;
+
 	float                                        AttackAngle;
 	float                                        AttackDistance;
 	float                                        MaxFollowDistance;
@@ -198,6 +203,8 @@ protected:
 	float                                        TimeSinceAiming;
 	float                                        TimeUntilNextComponentSwitch;
 	float										 ComponentSwitchReactionTime;
+
+	float                                        DockingAttemptTries;
 	float                                        TimeSinceLastDockingAttempt;
 	float                                        TimeUntilNextDockingAttempt;
 	float                                        MaxTimeBetweenDockingAttempt;
@@ -218,7 +225,7 @@ protected:
 	bool										 InitiatedCombat;
 	bool										 FoundOutOfCombatLeader;
 
-	bool								 		 EveryOtherTick;
+	float										 PreviousTick;
 
 	EFlareCombatTactic::Type			         CurrentTactic;
 

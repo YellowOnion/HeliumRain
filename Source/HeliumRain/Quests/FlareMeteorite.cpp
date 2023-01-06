@@ -175,7 +175,8 @@ void AFlareMeteorite::OnCollision(class AActor* Other, FVector HitLocation)
 				MeteoriteData->IsMetal ? MetalEffectTemplate : RockEffectTemplate,
 				GetActorLocation(),
 				FRotator::ZeroRotator,
-				false);
+				false,
+				EPSCPoolMethod::AutoRelease);
 
 			// Notify PC
 			Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteorite crashed"),
@@ -303,7 +304,8 @@ void AFlareMeteorite::ApplyDamage(float Energy, float Radius, FVector Location, 
 				MeteoriteData->IsMetal ? MetalEffectTemplate : RockEffectTemplate,
 				GetActorLocation(),
 				FRotator::ZeroRotator,
-				false);
+				false,
+				EPSCPoolMethod::AutoRelease);
 			PSC->SetVectorParameter("Velocity", CurrentVelocity);
 
 			// Apply damage

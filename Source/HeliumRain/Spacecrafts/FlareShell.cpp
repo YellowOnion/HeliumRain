@@ -14,6 +14,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine.h"
 
+#define DELETION_DELAY 1.f
+#define MAXIMUM_DETONATIONS_PER_TICK 10
 
 /*----------------------------------------------------
 	Constructor
@@ -29,6 +31,7 @@ AFlareShell::AFlareShell(const class FObjectInitializer& PCIP) : Super(PCIP)
 	FlightEffects = NULL;
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
+	SetActorTickInterval(0.025f);
 	ManualTurret = false;
 }
  
@@ -70,10 +73,10 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	// Spawn the flight effects
 	if (TracerShell)
 	{
-		if (FlightEffects != NULL)
+		if (FlightEffects != NULL && FlightEffects != nullptr)
 		{
 			FlightEffects->SetTemplate(FlightEffectsTemplate);
-			FlightEffects->Activate();
+			FlightEffects->Activate(true);
 		}
 		else
 		{
@@ -84,7 +87,7 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 			FVector(0, 0, 0),
 			FRotator(0, 0, 0),
 			EAttachLocation::KeepRelativeOffset,
-			true);
+			false);
 		}
 	}
 
@@ -96,21 +99,16 @@ void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftCompone
 	LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 }
 
-void AFlareShell::LifeSpanExpired()
-{
-	SafeDestroy();
-}
-
 void AFlareShell::Tick(float DeltaSeconds)
 {
-	Super::Tick(DeltaSeconds);
+	if (IsDetonating)
+	{
+		ProcessCurrentDetonations();
+		return;
+	}
 
 	if(IsSafeDestroyingRunning)
 	{
-		if (!SafeDestroyed)
-		{
-			FinishSafeDestroy();
-		}
 		return;
 	}
 /*
@@ -159,7 +157,7 @@ void AFlareShell::Tick(float DeltaSeconds)
 
 		FHitResult HitResult(ForceInit);
 		//TODO get async trace going without left over projectiles
-		RequestTrace(ActorLocation, NextActorLocation);
+//		RequestTrace(ActorLocation, NextActorLocation);
 
 		if (Trace(ActorLocation, NextActorLocation, HitResult))
 //		if(PreviousHitResult.GetActor() != nullptr)
@@ -179,7 +177,7 @@ void AFlareShell::Tick(float DeltaSeconds)
 			}
 			else if (ActiveTime > 0)
 			{
-//				CheckFuze(ActorLocation, NextActorLocation);
+				CheckFuze(ActorLocation, NextActorLocation);
 				ActiveTime -= DeltaSeconds;
 			}
 		}
@@ -195,7 +193,6 @@ void AFlareShell::CheckFuze(FVector ActorLocation, FVector NextActorLocation)
 
 	FVector Center = (NextActorLocation + ActorLocation) / 2;
 	float NearThresoldSquared = FMath::Square(100000); // 1km
-//	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
 
 	auto CheckTarget = [&](PilotHelper::PilotTarget TargetCandidate)
 	{
@@ -311,28 +308,53 @@ void AFlareShell::CheckFuze(FVector ActorLocation, FVector NextActorLocation)
 	};
 
 	// Check targets against every actor in the level, using index-based, not for-range, because this can affect the container
-	for (int32 Index = 0; Index < LocalSector->GetSpacecrafts().Num(); Index++)
+
+	PilotHelper::PilotTarget FuzeTarget;
+	UFlareSector* CurrentSector = LocalSector;
+	for (int32 Index = 0; Index < CurrentSector->GetSpacecrafts().Num(); Index++)
 	{
-		AFlareSpacecraft* Checker = LocalSector->GetSpacecrafts()[Index];
+		if (IsDetonating || IsSafeDestroyingRunning)
+		{
+			break;
+		}
+		AFlareSpacecraft* Checker = CurrentSector->GetSpacecrafts()[Index];
 		if (Checker)
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			FuzeTarget.Clear();
+			FuzeTarget.SetSpacecraft(Checker);
+			CheckTarget(FuzeTarget);
 		}
 	}
-	for (int32 Index = 0; Index < LocalSector->GetBombs().Num(); Index++)
+
+	for (int32 Index = 0; Index < CurrentSector->GetBombs().Num(); Index++)
 	{
-		AFlareBomb* Checker = LocalSector->GetBombs()[Index];
+		if (IsDetonating || IsSafeDestroyingRunning)
+		{
+			break;
+		}
+
+		AFlareBomb* Checker = CurrentSector->GetBombs()[Index];
 		if (Checker)
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			FuzeTarget.Clear();
+			FuzeTarget.SetBomb(Checker);
+			CheckTarget(FuzeTarget);
 		}
 	}
-	for (int32 Index = 0; Index < LocalSector->GetMeteorites().Num(); Index++)
+
+	for (int32 Index = 0; Index < CurrentSector->GetMeteorites().Num(); Index++)
 	{
-		AFlareMeteorite* Checker = LocalSector->GetMeteorites()[Index];
+		if (IsDetonating || IsSafeDestroyingRunning)
+		{
+			break;
+		}
+
+		AFlareMeteorite* Checker = CurrentSector->GetMeteorites()[Index];
 		if (Checker)
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			FuzeTarget.Clear();
+			FuzeTarget.SetMeteorite(Checker);
+			CheckTarget(FuzeTarget);
 		}
 	}
 }
@@ -413,7 +435,8 @@ void AFlareShell::OnImpact(const FHitResult& HitResult, const FVector& HitVeloci
 					HitResult.Location,
 					HitResult.ImpactNormal.Rotation(),
 					EAttachLocation::KeepWorldPosition,
-					true);
+					true,
+					EPSCPoolMethod::AutoRelease);
 				if (PSC)
 				{
 					PSC->SetWorldScale3D(ExplosionEffectScale * FVector(1, 1, 1));
@@ -437,7 +460,6 @@ void AFlareShell::OnImpact(const FHitResult& HitResult, const FVector& HitVeloci
 
 	if (DestroyProjectile)
 	{
-//		Destroy();
 		SafeDestroy();
 	}
 }
@@ -449,13 +471,52 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		return;
 	}
 
+	DetonationPoint = DetonatePoint;
 	UGameplayStatics::SpawnEmitterAtLocation(this,
-		ExplosionEffectTemplate,
-		DetonatePoint);
-//	UFlareSector* Sector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+	ExplosionEffectTemplate,
+	DetonatePoint);
+
+	IsDetonating = true;
+	DetonationSpacecraftCandidates.Empty();
+	DetonationBombCandidates.Empty();
+	DetonationMeteoriteCandidates.Empty();
+
+	for (int32 Index = 0; Index < LocalSector->GetSpacecrafts().Num(); Index++)
+	{
+		AFlareSpacecraft* Checker = LocalSector->GetSpacecrafts()[Index];
+		if (Checker)
+		{
+			DetonationSpacecraftCandidates.Add(Checker);
+		}
+	}
+
+	for (int32 Index = 0; Index < LocalSector->GetBombs().Num(); Index++)
+	{
+		AFlareBomb* Checker = LocalSector->GetBombs()[Index];
+		if (Checker)
+		{
+			DetonationBombCandidates.Add(Checker);
+		}
+	}
+
+	for (int32 Index = 0; Index < LocalSector->GetMeteorites().Num(); Index++)
+	{
+		AFlareMeteorite* Checker = LocalSector->GetMeteorites()[Index];
+		if (Checker)
+		{
+			DetonationMeteoriteCandidates.Add(Checker);
+		}
+	}
+	
+	SafeDestroy();
+	ProcessCurrentDetonations();
+}
+
+void AFlareShell::ProcessCurrentDetonations()
+{
+	int32 CurrentDetonationQuantity = 1;
 	auto CheckTarget = [&](PilotHelper::PilotTarget Target)
 	{
-
 		if (Target.IsEmpty())
 		{
 			return;
@@ -464,7 +525,7 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		//FLOGV("DetonateAt CheckTarget for %s",*Target.GetActor()->GetName());
 
 		// First check if in radius area
-		FVector CandidateOffset = Target.GetActorLocation() - DetonatePoint;
+		FVector CandidateOffset = Target.GetActorLocation() - DetonationPoint;
 		float CandidateDistance = CandidateOffset.Size();
 		float CandidateSize = Target.GetMeshScale();
 
@@ -474,6 +535,8 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 			return;
 		}
 
+		CurrentDetonationQuantity++;
+
 		// DrawDebugSphere(ParentWeapon->GetSpacecraft()->GetWorld(), ShipCandidate->GetActorLocation(), CandidateSize, 12, FColor::Magenta, true);
 
 		//FLOGV("CandidateOffset at %s",*CandidateOffset.ToString());
@@ -482,7 +545,7 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		// Apparent radius
 		float ApparentRadius = FMath::Sqrt(FMath::Square(CandidateDistance) + FMath::Square(CandidateSize));
 
-		float Angle = FMath::Acos(CandidateDistance/ApparentRadius);
+		float Angle = FMath::Acos(CandidateDistance / ApparentRadius);
 
 		// DrawDebugSphere(ParentWeapon->GetSpacecraft()->GetWorld(), DetonatePoint, ApparentRadius, 12, FColor::Yellow, true);
 
@@ -490,9 +553,7 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		float TotalSurface = 4 * PI * FMath::Square(ApparentRadius);
 
 		float ExposedSurfaceRatio = ExposedSurface / TotalSurface;
-
-
-		int FragmentCount =  FMath::RandRange(0,2) + ShellDescription->WeaponCharacteristics.AmmoFragmentCount * ExposedSurfaceRatio;
+		int FragmentCount = FMath::RandRange(0, 2) + ShellDescription->WeaponCharacteristics.AmmoFragmentCount * ExposedSurfaceRatio;
 
 		/*FLOGV("CandidateDistance %f",CandidateDistance);
 		FLOGV("CandidateSize %f",CandidateSize);
@@ -506,7 +567,7 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		TArray<UActorComponent*> Components = Target.GetActor()->GetComponentsByClass(UPrimitiveComponent::StaticClass());
 
 		//FLOGV("Component cont %d",Components.Num());
-		for (int i = 0; i < FragmentCount; i ++)
+		for (int i = 0; i < FragmentCount; i++)
 		{
 
 			FVector HitDirection = FMath::VRandCone(CandidateOffset, Angle);
@@ -524,10 +585,10 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 					FCollisionQueryParams TraceParams(FName(TEXT("Fragment Trace")), true, this);
 					TraceParams.bTraceComplex = true;
 					TraceParams.bReturnPhysicalMaterial = false;
-					Component->LineTraceComponent(HitResult, DetonatePoint, DetonatePoint + HitDirection * 2* CandidateDistance, TraceParams);
+					Component->LineTraceComponent(HitResult, DetonationPoint, DetonationPoint + HitDirection * 2 * CandidateDistance, TraceParams);
 
-					if (HitResult.Actor.IsValid()){
-						float HitDistance = (HitResult.Location - DetonatePoint).Size();
+					if (HitResult.Actor.IsValid()) {
+						float HitDistance = (HitResult.Location - DetonationPoint).Size();
 						if (!HasHit || HitDistance < BestHitDistance)
 						{
 							BestHitDistance = HitDistance;
@@ -538,7 +599,6 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 						HasHit = true;
 					}
 				}
-
 			}
 
 			if (HasHit)
@@ -593,36 +653,79 @@ void AFlareShell::DetonateAt(FVector DetonatePoint)
 		}
 	};
 
-	// Check targets against every actor in the level, using index-based, not for-range, because this can affect the container
-	for (int32 Index = 0; Index < LocalSector->GetSpacecrafts().Num(); Index++)
+	PilotHelper::PilotTarget ShrapnelTarget;
+	while(DetonationSpacecraftCandidates.Num())
 	{
-		AFlareSpacecraft* Checker = LocalSector->GetSpacecrafts()[Index];
-		if (Checker)
+		if (CurrentDetonationQuantity > MAXIMUM_DETONATIONS_PER_TICK)
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			break;
 		}
-	}
-	for (int32 Index = 0; Index < LocalSector->GetBombs().Num(); Index++)
-	{
-		AFlareBomb* Checker = LocalSector->GetBombs()[Index];
+
+		AFlareSpacecraft* Checker = DetonationSpacecraftCandidates[0];
 		if (Checker)
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			ShrapnelTarget.Clear();
+			ShrapnelTarget.SetSpacecraft(Checker);
+			CheckTarget(ShrapnelTarget);
+			DetonationSpacecraftCandidates.RemoveSwap(Checker);
 		}
-	}
-	for (int32 Index = 0; Index < LocalSector->GetMeteorites().Num(); Index++)
-	{
-		AFlareMeteorite* Checker = LocalSector->GetMeteorites()[Index];
-		if (Checker)
+		else
 		{
-			CheckTarget(PilotHelper::PilotTarget(Checker));
+			DetonationSpacecraftCandidates.RemoveAtSwap(0);
 		}
 	}
 
+	while (DetonationBombCandidates.Num())
+	{
+		if (CurrentDetonationQuantity > MAXIMUM_DETONATIONS_PER_TICK)
+		{
+			break;
+		}
 
-//	Destroy();
-	SafeDestroy();
+		AFlareBomb* Checker = DetonationBombCandidates[0];
+		if (Checker)
+		{
+			ShrapnelTarget.Clear();
+			ShrapnelTarget.SetBomb(Checker);
+			CheckTarget(ShrapnelTarget);
+			DetonationBombCandidates.RemoveSwap(Checker);
+		}
+		else
+		{
+			DetonationBombCandidates.RemoveAt(0);
+		}
+	}
+
+	while (DetonationMeteoriteCandidates.Num())
+	{
+		if (CurrentDetonationQuantity > MAXIMUM_DETONATIONS_PER_TICK)
+		{
+			break;
+		}
+
+		AFlareMeteorite* Checker = DetonationMeteoriteCandidates[0];
+		if (Checker)
+		{
+			ShrapnelTarget.Clear();
+			ShrapnelTarget.SetMeteorite(Checker);
+			CheckTarget(ShrapnelTarget);
+			DetonationMeteoriteCandidates.RemoveSwap(Checker);
+		}
+		else
+		{
+			DetonationMeteoriteCandidates.RemoveAt(0);
+		}
+	}
+
+	if (!DetonationSpacecraftCandidates.Num() && !DetonationBombCandidates.Num() && !DetonationMeteoriteCandidates.Num())
+	{
+		IsDetonating = false;
+		FinishSafeDestroy();
+	}
 }
+
+// Check targets against every actor in the level, using index-based, not for-range, because this can affect the container
+
 
 float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitComponent, FVector ImpactLocation,  FVector ImpactAxis,  FVector ImpactNormal, float ImpactPower, float ImpactRadius, EFlareDamage::Type DamageType)
 {
@@ -766,7 +869,8 @@ float AFlareShell::ApplyDamage(AActor *ActorToDamage, UPrimitiveComponent* HitCo
 			ImpactLocation,
 			ImpactNormal.Rotation(),
 			EAttachLocation::KeepWorldPosition,
-			true);
+			true,
+			EPSCPoolMethod::AutoRelease);
 		if (PSC)
 		{
 			PSC->SetWorldScale3D(ImpactEffectScale * FVector(1, 1, 1));
@@ -853,6 +957,13 @@ bool AFlareShell::Trace(const FVector& Start, const FVector& End, FHitResult& Hi
 	return (HitOut.GetActor() != NULL) ;
 }
 
+void AFlareShell::LifeSpanExpired()
+{
+	if (!IsDetonating)
+	{
+		FinishSafeDestroy();
+	}
+}
 
 void AFlareShell::SafeDestroy()
 {
@@ -861,25 +972,38 @@ void AFlareShell::SafeDestroy()
 		IsSafeDestroyingRunning = true;
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
+		if (!IsDetonating)
+		{
+			this->SetActorTickEnabled(false);
+			SetLifeSpan(DELETION_DELAY);
+		}
 	}
 }
 
 void AFlareShell::UnsetSafeDestroyed()
 {
-	SetActorScale3D(FVector(1, 1, 1));
+	SetLifeSpan(0);
 	IsSafeDestroyingRunning = false;
 	SafeDestroyed = false;
 	this->SetActorHiddenInGame(false);
 	this->SetActorEnableCollision(true);
-	SetActorTickEnabled(true);
+	this->SetActorTickEnabled(true);
+	SetActorScale3D(FVector(1, 1, 1));
 }
 
 void AFlareShell::FinishSafeDestroy()
 {
 	if (!SafeDestroyed)
 	{
-		SetActorTickEnabled(false);
+		SafeDestroy();
+		this->SetActorTickEnabled(false);
+
+		IsDetonating = false;
 		SafeDestroyed = true;
+
+		DetonationSpacecraftCandidates.Empty();
+		DetonationBombCandidates.Empty();
+		DetonationMeteoriteCandidates.Empty();
 
 		AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
 		FCHECK(Game);
@@ -901,20 +1025,13 @@ void AFlareShell::FinishSafeDestroy()
 		ParentWeapon = nullptr;
 		PC = nullptr;
 
-		if (LocalSector&&IsValid(LocalSector))
+		UFlareSector* Sector = Game->GetActiveSector();
+		if (Sector&&IsValid(Sector))
 		{
-			LocalSector->RegisterCachedShell(this);
-			LocalSector->UnregisterShell(this);
+			Sector->UnregisterShell(this);
 		}
-		else
-		{
-			UFlareSector* Sector = Game->GetActiveSector();
-			if (Sector&&IsValid(Sector))
-			{
-				Sector->RegisterCachedShell(this);
-				Sector->UnregisterShell(this);
-			}
-		}
+
+		Game->GetCacheSystem()->StoreCachedShell(this);
 		LocalSector = nullptr;
 	}
 }

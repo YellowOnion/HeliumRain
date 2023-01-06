@@ -29,6 +29,7 @@ UFlareAsteroidComponent::UFlareAsteroidComponent(const class FObjectInitializer&
 
 	// Settings
 	PrimaryComponentTick.bCanEverTick = true;
+
 	IsIcyAsteroid = true;
 	EffectsCount = FMath::RandRange(2, 5);
 	EffectsScale = 0.05;
@@ -44,6 +45,24 @@ UFlareAsteroidComponent::UFlareAsteroidComponent(const class FObjectInitializer&
 void UFlareAsteroidComponent::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void UFlareAsteroidComponent::SafeDestroy()
+{
+	PrimaryComponentTick.bCanEverTick = false;
+	UnregisterComponent();
+	SetSimulatePhysics(false);
+	for (int32 Index = 0; Index < Effects.Num(); Index++)
+	{
+		Effects[Index]->Deactivate();
+	}
+}
+
+void UFlareAsteroidComponent::UnSafeDestroy()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	RegisterComponent();
+	SetSimulatePhysics(true);
 }
 
 void UFlareAsteroidComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -64,6 +83,7 @@ void UFlareAsteroidComponent::TickComponent(float DeltaTime, enum ELevelTick Tic
 	 && (ShipPawn->GetActorLocation() - GetComponentLocation()).Size() < 500000
 	 && (GetWorld()->TimeSeconds - LastRenderTime) < 0.5)
 	{
+		PrimaryComponentTick.TickInterval = 0;
 		if (EffectsUpdateTimer > EffectsUpdatePeriod)
 		{
 			// World data
@@ -103,18 +123,26 @@ void UFlareAsteroidComponent::TickComponent(float DeltaTime, enum ELevelTick Tic
 					Effects[Index]->Deactivate();
 				}
 			}
-
 			EffectsUpdateTimer = 0;
 		}
 	}
-
 	// Disable all
 	else
 	{
+		PrimaryComponentTick.TickInterval = 1;
 		for (int32 Index = 0; Index < Effects.Num(); Index++)
 		{
 			Effects[Index]->Deactivate();
 		}
+	}
+}
+
+void UFlareAsteroidComponent::ResetEffects(bool Icy)
+{
+	IsIcyAsteroid = Icy;
+	for (int32 Index = 0; Index < Effects.Num(); Index++)
+	{
+		SetWhichTemplate(Effects[Index]);
 	}
 }
 
@@ -127,13 +155,25 @@ void UFlareAsteroidComponent::SetupEffects(bool Icy)
 	AFlareAsteroid* Asteroid = Cast<AFlareAsteroid>(GetOwner());
 	int32 Multiplier = Asteroid ? Asteroid->EffectsMultiplier : 1;
 
+	UParticleSystem* NewEffectTemplate;
+	if (Icy)
+	{
+		NewEffectTemplate = IceEffectTemplate;
+	}
+	else
+	{
+		NewEffectTemplate = DustEffectTemplate;
+	}
+
+	PreviousEffectTemplate = NewEffectTemplate;
+
 	// Create random effects
 	for (int32 Index = 0; Index < Multiplier * EffectsCount; Index++)
 	{
 		EffectsKernels.Add(FMath::VRand());
 
 		UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAttached(
-			IceEffectTemplate,
+			NewEffectTemplate,
 			this,
 			NAME_None,
 			GetComponentLocation(),
@@ -143,14 +183,26 @@ void UFlareAsteroidComponent::SetupEffects(bool Icy)
 
 		PSC->SetWorldScale3D(EffectsScale * FVector(1, 1, 1));
 		Effects.Add(PSC);
+	}
+}
 
-		if (IsIcyAsteroid)
+void UFlareAsteroidComponent::SetWhichTemplate(UParticleSystemComponent* PSC)
+{
+	if (IsIcyAsteroid)
+	{
+		if (PreviousEffectTemplate != IceEffectTemplate)
 		{
 			PSC->SetTemplate(IceEffectTemplate);
 		}
-		else
+		PreviousEffectTemplate = IceEffectTemplate;
+	}
+	else
+	{
+		if (PreviousEffectTemplate != DustEffectTemplate)
 		{
 			PSC->SetTemplate(DustEffectTemplate);
 		}
+
+		PreviousEffectTemplate = DustEffectTemplate;
 	}
 }

@@ -26,7 +26,11 @@ public:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	virtual void SetupEffects(bool Icy);
+	virtual void ResetEffects(bool Icy);
 
+	void SafeDestroy();
+	void UnSafeDestroy();
+	void SetWhichTemplate(UParticleSystemComponent* PSC);
 
 protected:
 
@@ -35,6 +39,9 @@ protected:
 	----------------------------------------------------*/
 
 	bool                                    IsIcyAsteroid;
+
+	UPROPERTY()
+	UParticleSystem*						PreviousEffectTemplate;
 
 	UPROPERTY()
 	UParticleSystem*                        IceEffectTemplate;

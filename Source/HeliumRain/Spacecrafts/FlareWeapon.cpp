@@ -322,8 +322,6 @@ bool UFlareWeapon::FireGun(int GunIndex)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Weapon_FireGun);
 
-	int32 remembertodelete = 0;
-
 	UFlareSector* ActiveSector = Spacecraft->GetGame()->GetActiveSector();
 	if (ActiveSector == nullptr)
 	{
@@ -346,13 +344,13 @@ bool UFlareWeapon::FireGun(int GunIndex)
 	FVector FiringDirection = FMath::VRandCone(FiringAxis, Imprecision);
 	FVector FiringVelocity = Spacecraft->Airframe->GetPhysicsLinearVelocity();
 
-	AFlareShell* Shell = ActiveSector->RetrieveCachedShell();
+	AFlareShell* Shell = Spacecraft->GetGame()->GetCacheSystem()->RetrieveCachedShell();
 	if (IsValid(Shell))
 	{
 		//retrieve a shell
 		Shell->Instigator = SpacecraftPawn;
-		Shell->UnsetSafeDestroyed();
 		Shell->SetActorLocationAndRotation(FiringLocation, FQuat(FRotator::ZeroRotator));
+		Shell->UnsetSafeDestroyed();
 	}
 	else
 	{
@@ -597,7 +595,6 @@ void UFlareWeapon::ClearBombs()
 		if (Bombs[i])
 		{
 			Bombs[i]->SafeDestroy();
-//			Bombs[i]->Destroy();
 		}
 	}
 	Bombs.Empty();

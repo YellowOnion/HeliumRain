@@ -473,17 +473,6 @@ AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation()
 	{
 		AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->FindSpacecraft(Data->DockedTo);
 		return Station;
-/*
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Spacecraft->GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
-		{
-			AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
-
-			if (Station && Station->GetParent()->GetImmatriculation() == Data->DockedTo)
-			{
-				return Station;
-			}
-		}
-*/
 	}
 	return NULL;
 }

@@ -795,6 +795,31 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 		if (TargetSpacecraft->IsShipyard())
 		{
 			AddMessage(LOCTEXT("ShipyardCapability", "You can order and upgrade ships at this station"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
+			FText ProductionShips;
+			FText QueueShips;
+
+			if (TargetSpacecraft->GetOngoingProductionList().Num() > 1)
+			{
+				ProductionShips = LOCTEXT("ProductionShipsShips", "ships");
+			}
+			else
+			{
+				ProductionShips = LOCTEXT("ProductionShipsShip", "ship");
+			}
+
+			if (TargetSpacecraft->GetShipyardOrderQueue().Num() > 1)
+			{
+				QueueShips = LOCTEXT("QueueShips", "ships");
+			}
+			else
+			{
+				QueueShips = LOCTEXT("QueueShip", "ship");
+			}
+
+			AddMessage(FText::Format(LOCTEXT("ShipyardQueCount", "{0} {1} in production. {2} {3} in queue"), FText::AsNumber(TargetSpacecraft->GetOngoingProductionList().Num()), ProductionShips, FText::AsNumber(TargetSpacecraft->GetShipyardOrderQueue().Num()), QueueShips),
+			FFlareStyleSet::GetIcon("Shipyard"),
+			NULL,
+			0);
 		}
 		else if (TargetSpacecraft->IsStation() && TargetSpacecraft->HasCapability(EFlareSpacecraftCapability::Upgrade))
 		{

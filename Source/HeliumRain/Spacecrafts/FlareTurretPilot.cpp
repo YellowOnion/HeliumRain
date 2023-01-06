@@ -19,6 +19,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareTurretPilot Tick Intersect Gun"), STAT_FlareTurret
 
 DECLARE_CYCLE_STAT(TEXT("FlareTurretPilot GetNearestHostileShip"), STAT_FlareTurretPilot_GetNearestHostileShip, STATGROUP_Flare);
 
+#define TURRET_AI_TICKRATE 0.10f
 
 /*----------------------------------------------------
 	Constructor
@@ -96,23 +97,23 @@ void UFlareTurretPilot::ClearTarget()
 
 void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 {
-	SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Tick);
-
-	if (EveryOtherTick)
-	{
-		EveryOtherTick = false;
-		return;
-	}
 	if (!Turret->GetSpacecraft()->GetGame()->GetActiveSector())
 	{
 		return;
 	}
 
-	EveryOtherTick = true;
-
+	SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Tick);
+	PreviousTick += DeltaSeconds;
 	TimeUntilNextTargetSelectionReaction -= DeltaSeconds;
 	TimeUntilFireReaction -= DeltaSeconds;
-	TimeUntilNextComponentSwitch-= DeltaSeconds;
+	TimeUntilNextComponentSwitch -= DeltaSeconds;
+
+	if (PreviousTick < TURRET_AI_TICKRATE)
+	{
+		return;
+	}
+
+	PreviousTick -= TURRET_AI_TICKRATE;
 
 	// Is the player manually controlling this ? If not, pick a target
 	bool IsManuallyFiring = Turret->GetSpacecraft()->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET;
@@ -159,23 +160,16 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 				//FLOGV("%s Switch because of timeout", *Turret->GetReadableName());
 				PilotTargetShipComponent = NULL;
 			}
-			else if(PilotTargetShipComponent != nullptr && IsValid(PilotTargetShipComponent))
+			else if (PilotTargetShipComponent != nullptr && IsValid(PilotTargetShipComponent) && !PilotTargetShipComponent->GetIsSafeDestroyingRunning())
 			{
-				if (PilotTargetShipComponent->IsValidLowLevel())
+				if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
 				{
-					if (!PilotTarget.Is(PilotTargetShipComponent->GetSpacecraft()))
-					{
-						//FLOGV("%s Switch because the component %s is not in the target ship", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
-						PilotTargetShipComponent = NULL;
-					}
-					else if (PilotTargetShipComponent->GetUsableRatio() <= 0)
-					{
-						//FLOGV("%s Switch because the component %s is destroyed", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
-						PilotTargetShipComponent = NULL;
-					}
+					//FLOGV("%s Switch because the component %s is not in the target ship", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
+					PilotTargetShipComponent = NULL;
 				}
-				else
+				else if (PilotTargetShipComponent->GetUsableRatio() <= 0)
 				{
+					//FLOGV("%s Switch because the component %s is destroyed", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
 					PilotTargetShipComponent = NULL;
 				}
 			}
@@ -186,13 +180,14 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 				TimeUntilNextComponentSwitch = 10;
 				//FLOGV("%s Select new target component %s ", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
 			}
-
+/*
 			if (!PilotTargetShipComponent)
 			{
 				WantFire = false;
 				ClearTarget();
 				return;
 			}
+*/
 		}
 		else
 		{
@@ -232,7 +227,6 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 
 		// If at range and aligned fire on the target
 		// TODO increase tolerance if target is near
-
 
 		if (AmmoIntersectionPredictedTime > 0 && AmmoIntersectionPredictedTime < 10.f && TimeUntilFireReaction < 0)
 		{
@@ -393,12 +387,6 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 		}
 	}
 
-	if (CheckIndividualTarget)
-	{
-		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
-		PilotTarget = GetNearestHostileTarget(true, Tactic);
-	}
-
 	if (Turret->GetWeaponGroup()->Target)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Target);
@@ -409,15 +397,23 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 		{
 			Turret->GetWeaponGroup()->Target = NULL;
 		}
-		else
+		else if(TargetCandidate)
 		{
 			FVector TargetAxis = (TargetCandidate->GetActorLocation() - Turret->GetTurretBaseLocation()).GetUnsafeNormal();
 			if (Turret->IsReacheableAxis(TargetAxis))
 			{
 				PilotTarget = TargetCandidate;
+				CheckIndividualTarget = false;
 			}
 		}
 	}
+
+	if (CheckIndividualTarget)
+	{
+		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
+		PilotTarget = GetNearestHostileTarget(true, Tactic);
+	}
+
 }
 
 PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic)
@@ -509,31 +505,28 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 		}
 	}
 
-	while (NearestHostileTarget.IsEmpty())
+	while(NearestHostileTarget.IsEmpty())
 	{
 		NearestHostileTarget = PilotHelper::GetBestTarget(Turret->GetSpacecraft(), TargetPreferences);
 
 		if(NearestHostileTarget.IsEmpty())
-		{
-			// No target
-			return PilotHelper::PilotTarget();
+		{ // No target
+			break;
 		}
 
 		float Distance = (PilotLocation - NearestHostileTarget.GetActorLocation()).Size();
 		if (Distance < SecurityRadiusDistance)
 		{
 			TargetPreferences.IgnoreList.Add(NearestHostileTarget);
-			NearestHostileTarget.Clear();
 			continue;
 		}
 
 		if (ReachableOnly)
 		{
 			FVector TargetAxis = (NearestHostileTarget.GetActorLocation() - PilotLocation).GetUnsafeNormal();
-			if(!Turret->IsReacheableAxis(TargetAxis))
+			if (!Turret->IsReacheableAxis(TargetAxis))
 			{
 				TargetPreferences.IgnoreList.Add(NearestHostileTarget);
-				NearestHostileTarget.Clear();
 				continue;
 			}
 		}

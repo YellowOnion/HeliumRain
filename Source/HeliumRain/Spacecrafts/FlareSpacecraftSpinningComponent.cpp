@@ -92,28 +92,28 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 					LocalPlanarSunDirection.Y = 0;
 				}
 
-				if(!LocalPlanarSunDirection.IsNearlyZero())
+				if (!LocalPlanarSunDirection.IsNearlyZero())
 				{
-//					FVector X(1, 0, 0);
+					//					FVector X(1, 0, 0);
 					float Angle = 0;
 					FVector RotationAxis = X;
 					LocalPlanarSunDirection.Normalize();
 
 					if (RotationAxisRoll)
 					{
-						Angle =  -FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Y,LocalPlanarSunDirection.Z));
+						Angle = -FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Y, LocalPlanarSunDirection.Z));
 						RotationAxis = X;
 					}
 					else if (RotationAxisYaw)
 					{
-						Angle =  - FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.X,LocalPlanarSunDirection.Y));
-//						FVector Z(0, 0, 1);
+						Angle = -FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.X, LocalPlanarSunDirection.Y));
+						//						FVector Z(0, 0, 1);
 						RotationAxis = Z;
 					}
 					else
 					{
-						Angle =  FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Z,LocalPlanarSunDirection.X));
-//						FVector Y(0, 1, 0);
+						Angle = FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Z, LocalPlanarSunDirection.X));
+						//						FVector Y(0, 1, 0);
 						RotationAxis = Y;
 					}
 
@@ -121,13 +121,13 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 
 					float DeltaAngle = FMath::Sign(Angle) * FMath::Min(RotationSpeed * DeltaSeconds, FMath::Abs(Angle));
 
-					if(NeedTackerInit)
+					if (NeedTackerInit)
 					{
 						DeltaAngle = Angle;
 						NeedTackerInit = false;
 					}
 
-					if(FMath::Abs(Angle) > 0.01)
+					if (FMath::Abs(Angle) > 0.01)
 					{
 						FRotator Delta = FQuat(RotationAxis, FMath::DegreesToRadians(DeltaAngle)).Rotator();
 						AddLocalRotation(Delta);
@@ -139,25 +139,7 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 		// Simple spinner
 		else
 		{
-/*
-			// Rotation axis
-			FRotator Axis;
-			if (RotationAxisRoll)
-			{
-				Axis = FRotator(0, 0, 1);
-			}
-			else if (RotationAxisYaw)
-			{
-				Axis = FRotator(0, 1, 0);
-			}
-			else
-			{
-				Axis = FRotator(1, 0, 0);
-			}
-*/
 			AddLocalRotation(RotationSpeed * DeltaSeconds * Axis);
 		}
 	}
 }
-
-

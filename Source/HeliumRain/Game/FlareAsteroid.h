@@ -26,6 +26,8 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	void SafeDestroy();
+	void UnSafeDestroy();
 
 	/** Properties setup */
 	virtual void Load(const FFlareAsteroidSave& Data);
@@ -75,5 +77,4 @@ public:
 	{
 		return Asteroid;
 	}
-
 };

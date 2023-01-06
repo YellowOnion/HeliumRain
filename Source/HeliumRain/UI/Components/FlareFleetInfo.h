@@ -127,7 +127,6 @@ public:
 	/** Can we toggle auto trade */
 	bool IsAutoTradeDisabled() const;
 
-
 	/** Get the fleet composition */
 	FText GetComposition() const;
 

@@ -104,6 +104,14 @@ protected:
 	/** Can we toggle auto trade */
 	bool IsAutoTradeDisabled() const;
 
+	/** Can we toggle hide travel */
+	bool IsToggleHideTravelDisabled() const;
+
+	/** Get the hide travel hint text */
+	FText GetToggleHideTravelHintText() const;
+
+	
+
 	/*----------------------------------------------------
 		Action callbacks
 	----------------------------------------------------*/
@@ -142,6 +150,8 @@ protected:
 	/** Toggle auto-trading */
 	void OnToggleAutoTrade();
 
+	/** Toggle Hide Travel*/
+	void OnToggleHideTravel();
 protected:
 
 	/*----------------------------------------------------
@@ -166,6 +176,7 @@ protected:
 	TSharedPtr<SFlareButton>						RemoveShipButton;
 	TSharedPtr<SFlareButton>						TradeRouteButton;
 	TSharedPtr<SFlareButton>				        AutoTradeButton;
+	TSharedPtr<SFlareButton>						HideTravelButton;
 	TSharedPtr<SFlareButton>					    RefillButton;
 	TSharedPtr<SFlareButton>					    RepairButton;
 

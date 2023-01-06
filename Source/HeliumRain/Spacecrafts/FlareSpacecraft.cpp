@@ -388,7 +388,6 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		SmoothedVelocity = SmoothedVelocity * (1 - SmoothedVelocityChangeSpeed) + GetLinearVelocity() * SmoothedVelocityChangeSpeed;
 	}
 
-
 	// The FlareSpacecraftPawn do the camera effective update in its Tick so call it after camera order update
 	Super::Tick(DeltaSeconds);
 }
@@ -614,6 +613,172 @@ bool AFlareSpacecraft::IsSafeDestroying()
 	return IsSafeDestroyingRunning;
 }
 
+
+FFlareSpacecraftComponentDescription* AFlareSpacecraft::GetDefaultWeaponFallback(bool IsFinalExplosion)
+{
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	if (!Catalog)
+	{
+		return NULL;
+	}
+
+	FFlareSpacecraftComponentDescription* ReturnValue = NULL;
+	int32 WhatFallBack = FMath::FRandRange(1, 10);
+	// small weapons
+	if (WhatFallBack == 10)
+	{
+		ReturnValue = Catalog->Get(FName("weapon-eradicator"));
+	}
+	else if (WhatFallBack == 9)
+	{
+		ReturnValue = Catalog->Get(FName("weapon-mjolnir"));
+	}
+	else if (WhatFallBack == 8)
+	{
+		ReturnValue = Catalog->Get(FName("weapon-hammer"));
+	}
+	//large weapons
+	//	ReturnValue = Catalog->Get(FName("weapon-hades"));
+	//	hades not an appropriate visual effect
+	else if (WhatFallBack >= 6)
+	{
+		ReturnValue = Catalog->Get(FName("weapon-ares"));
+	}
+	else
+	{
+		ReturnValue = Catalog->Get(FName("weapon-artemis"));
+	}
+
+	return ReturnValue;
+}
+
+float AFlareSpacecraft::GetExplosionScaleFactor(FFlareSpacecraftComponentDescription* WeaponFallback, bool IsFinalExplosion)
+{
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	if (!Catalog)
+	{
+		return 1;
+	}
+
+	float ScaleFactor = 0;
+
+	if (WeaponFallback == Catalog->Get(FName("weapon-eradicator")))
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(5,8);
+			}
+		}
+	}
+	else if (WeaponFallback == Catalog->Get(FName("weapon-mjolnir")))
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(6, 10);
+			}
+		}
+	}
+	else if (WeaponFallback == Catalog->Get(FName("weapon-hammer")))
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(6, 9);
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(40, 45);
+			}
+		}
+	}
+	else if (WeaponFallback == Catalog->Get(FName("weapon-hades")))
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(1, 2);
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(3, 5);
+			}
+		}
+		else
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = 1;
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(2, 3);
+			}
+		}
+	}
+	else if (WeaponFallback == Catalog->Get(FName("weapon-ares")))
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(2, 4);
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(28,32);
+			}
+		}
+		else
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = 1;
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(7, 10);
+			}
+		}
+	}
+	else if (WeaponFallback == Catalog->Get(FName("weapon-artemis")))
+	{
+	}
+
+	if (ScaleFactor == 0)
+	{
+		if (IsFinalExplosion)
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(8, 11);
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(49, 51);
+			}
+		}
+		else
+		{
+			if (GetParent()->GetSize() == EFlarePartSize::S)
+			{
+				ScaleFactor = FMath::RandRange(1, 2);
+			}
+			else
+			{
+				ScaleFactor = FMath::RandRange(8, 11);
+			}
+		}
+	}
+	
+	return ScaleFactor;
+}
+
 void AFlareSpacecraft::BeginExplodingShip()
 {
 	if (IsExploding)
@@ -644,26 +809,18 @@ void AFlareSpacecraft::ExplodingShip()
 		SafeHide();
 		return;
 	}
-	 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-	if (!Catalog)
-	{
-		return;
-	}
-	FFlareSpacecraftComponentDescription* DefaultWeaponFallback = Catalog->Get(FName("weapon-artemis"));
+
+	FFlareSpacecraftComponentDescription* DefaultWeaponFallback = GetDefaultWeaponFallback(false);
 	if (!DefaultWeaponFallback)
 	{
+		TimeSinceLastExplosion = 0.25f;
 		return;
 	}
 
 	UParticleSystem* ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
 	float SingleProbability = FMath::FRand();
-	int32 ExplosionsToDo = FMath::FRandRange(1, 5);
-	if (SingleProbability <= 0.75)
-	{
-		ExplosionsToDo = 1;
-	}
-	else
+	int32 ExplosionsToDo = 1;
+	if (SingleProbability > 0.75)
 	{
 		ExplosionsToDo = FMath::FRandRange(2, 5);
 	}
@@ -686,11 +843,10 @@ void AFlareSpacecraft::ExplodingShip()
 
 		float MinSize = 1;
 		float MaxSize = 1;
+		FVector ActorScale = GetActorScale();
 
-		float ScaleFactor = 10;
 		if (GetParent()->GetSize() == EFlarePartSize::S)
 		{
-			ScaleFactor = 2;
 		}
 		else
 		{
@@ -702,21 +858,24 @@ void AFlareSpacecraft::ExplodingShip()
 		{
 			if (GetGame()->GetActiveSector())
 			{
+				float ScaleFactor = GetExplosionScaleFactor(DefaultWeaponFallback, false);
 				SingleProbability = FMath::FRand();
 				if (SingleProbability <= (0.75 - (0.05 * ExplosionsToDo)))
 				{
 					GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), ExplosionLocation, 1, MinSize, MaxSize);
 				}
 
+				FRotator Rotation = FRotator(FMath::FRandRange(0, 360), FMath::FRandRange(0, 360), FMath::FRandRange(0, 360));
+
 				UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
-					GetWorld(),
-					ExplosionEffectTemplate,
-					ExplosionLocation,
-					GetActorRotation(),
-					true);
+				GetWorld(),
+				ExplosionEffectTemplate,
+				ExplosionLocation,
+				Rotation,
+				true,
+				EPSCPoolMethod::AutoRelease);
 				if (PSC)
 				{
-					FVector ActorScale = GetActorScale();
 					PSC->SetWorldScale3D(ScaleFactor * ActorScale);
 				}
 				ExplosionLocation = FMath::VRand() * FMath::FRand() * 1000 + GetActorLocation();
@@ -726,6 +885,8 @@ void AFlareSpacecraft::ExplodingShip()
 				break;
 			}
 			ExplosionsToDo--;
+			DefaultWeaponFallback = GetDefaultWeaponFallback(false);
+			ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
 		}
 	}
 }
@@ -746,56 +907,81 @@ void AFlareSpacecraft::SafeHide(bool ShowExplosion)
 		}
 	}
 
-	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
-	if (!Catalog)
-	{
-		return;
-	}
-	FFlareSpacecraftComponentDescription* DefaultWeaponFallback = Catalog->Get(FName("weapon-artemis"));
-	if (!DefaultWeaponFallback)
-	{
-		return;
-	}
-
 	if (ShowExplosion && GetGame()->GetActiveSector())
 	{
-		UParticleSystem* ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
-		if (ExplosionEffectTemplate)
+		FFlareSpacecraftComponentDescription* DefaultWeaponFallback = GetDefaultWeaponFallback(true);
+		if (DefaultWeaponFallback)
 		{
-			float MinSize = 1;
-			float MaxSize = 2;
-			int32 Quantity = 1;
-
-			float ScaleFactor = 2;
-			if (GetParent()->GetSize() == EFlarePartSize::S)
+			UParticleSystem* ExplosionEffectTemplate = DefaultWeaponFallback->WeaponCharacteristics.ExplosionEffect;
+			if (ExplosionEffectTemplate)
 			{
-				Quantity = FMath::FRandRange(2, 3);
-			}
-			else
-			{
-				Quantity = FMath::FRandRange(3, 5);
-				MinSize = 3;
-				MaxSize = 7;
-				ScaleFactor = 10;
-			}
+				float MinSize = 1;
+				float MaxSize = 2;
+				int32 Quantity = 1;
 
-			GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), GetActorLocation(), Quantity, MinSize, MaxSize);
-
-			UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
-				GetWorld(),
-				ExplosionEffectTemplate,
-				GetActorLocation(),
-				GetActorRotation(),
-				true);
-			if (PSC)
-			{
-				FVector ActorScale = GetActorScale();
-				float ScaleFactor = 50;
 				if (GetParent()->GetSize() == EFlarePartSize::S)
 				{
-					ScaleFactor = 10;
+					Quantity = FMath::FRandRange(2, 3);
 				}
-				PSC->SetWorldScale3D(ScaleFactor * ActorScale);
+				else
+				{
+					Quantity = FMath::FRandRange(3, 5);
+					MinSize = 3;
+					MaxSize = 7;
+				}
+
+				GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), GetActorLocation(), Quantity, MinSize, MaxSize);
+
+				UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+				FVector ActorScale = GetActorScale();
+
+				bool OmniDirectional = false;
+				if (Catalog && (DefaultWeaponFallback == Catalog->Get(FName("weapon-eradicator"))))
+				{
+					OmniDirectional = true;
+				}
+				if(OmniDirectional)
+				{
+					int8 ExplosionsToDo = 4;
+					//5 explosions
+					while (ExplosionsToDo >= 0)
+					{
+						float ScaleFactor = GetExplosionScaleFactor(DefaultWeaponFallback, true);
+						int32 CurrentRotation = 90 * ExplosionsToDo;
+						FRotator Rotation = FRotator(CurrentRotation, CurrentRotation, CurrentRotation);
+
+						UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ExplosionEffectTemplate,
+						GetActorLocation(),
+						Rotation,
+						true,
+						EPSCPoolMethod::AutoRelease);
+
+						if (PSC)
+						{
+							PSC->SetWorldScale3D(ScaleFactor * ActorScale);
+						}
+
+						ExplosionsToDo--;
+					}
+				}
+				else
+				{
+					UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ExplosionEffectTemplate,
+						GetActorLocation(),
+						GetActorRotation(),
+						true,
+						EPSCPoolMethod::AutoRelease);
+
+					if (PSC)
+					{
+						float ScaleFactor = GetExplosionScaleFactor(DefaultWeaponFallback, true);
+						PSC->SetWorldScale3D(ScaleFactor * ActorScale);
+					}
+				}
 			}
 		}
 	}
@@ -835,6 +1021,13 @@ void AFlareSpacecraft::SafeDestroy()
 			}
 		}
 		UnTrackAllIncomingBombs();
+
+		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+		{
+			UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+			Component->SafeDestroy();
+		}
 	}
 }
 
@@ -2677,8 +2870,6 @@ float AFlareSpacecraft::GetTimeToStop() const
 	else
 	{
 		FVector CurrentVelocityAxis = CurrentVelocity.GetUnsafeNormal();
-
-		// TODO Cache
 		TArray<UActorComponent*> Engines = GetComponentsByClass(UFlareEngine::StaticClass());
 
 		FVector Acceleration = GetNavigationSystem()->GetTotalMaxThrustInAxis(Engines, CurrentVelocityAxis, false) / GetSpacecraftMass();

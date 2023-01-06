@@ -784,7 +784,6 @@ bool AFlareMenuManager::CreateGame()
 	{
 		PC->GetGame()->CreateGame(*NextMenu.Value.CompanyDescription, NextMenu.Value.ScenarioIndex, NextMenu.Value.DifficultyIndex, NextMenu.Value.EconomyIndex, NextMenu.Value.PlayerEmblemIndex, NextMenu.Value.PlayTutorial, NextMenu.Value.PlayStory, NextMenu.Value.RandomizeStations);
 		PC->GetGame()->ActivateCurrentSector();
-
 		NextMenu.Value.ScenarioIndex = -1;
 	}
 

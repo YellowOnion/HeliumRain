@@ -24,7 +24,6 @@ AFlareAsteroid::AFlareAsteroid(const class FObjectInitializer& PCIP) : Super(PCI
 	SetActorEnableCollision(true);
 	Asteroid->SetNotifyRigidBodyCollision(true);
 
-
 	// Settings
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent->SetMobility(EComponentMobility::Movable);
@@ -65,6 +64,38 @@ void AFlareAsteroid::Tick(float DeltaSeconds)
 	}*/
 }
 
+void AFlareAsteroid::SafeDestroy()
+{
+	Asteroid->SafeDestroy();
+	this->SetActorHiddenInGame(true);
+	this->SetActorEnableCollision(false);
+	this->SetActorTickInterval(false);
+
+	AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
+	FCHECK(Game);
+	Game->GetCacheSystem()->StoreCachedAsteroid(this);
+}
+
+void AFlareAsteroid::UnSafeDestroy()
+{
+	AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
+	if (Game && Game->GetActiveSector())
+	{
+		Asteroid->ResetEffects(Game->GetActiveSector()->GetSimulatedSector()->GetDescription()->IsIcy);
+	}
+
+	Asteroid->UnSafeDestroy();
+
+	for (int32 LodIndex = 0; LodIndex < Asteroid->GetStaticMesh()->RenderData->LODResources.Num(); LodIndex++)
+	{
+		Asteroid->SetMaterial(LodIndex, NULL);
+	}
+
+	this->SetActorHiddenInGame(false);
+	this->SetActorEnableCollision(true);
+	this->SetActorTickInterval(true);
+}
+
 void AFlareAsteroid::Load(const FFlareAsteroidSave& Data)
 {
 	AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
@@ -99,12 +130,12 @@ void AFlareAsteroid::SetupAsteroidMesh(AFlareGame* Game, UStaticMeshComponent* C
 	BodyInst->UpdateMassProperties();
 
 	// Material
+
 	UMaterialInstanceDynamic* AsteroidMaterial = UMaterialInstanceDynamic::Create(Component->GetMaterial(0), Component->GetWorld());
 	for (int32 LodIndex = 0; LodIndex < Component->GetStaticMesh()->RenderData->LODResources.Num(); LodIndex++)
 	{
 		Component->SetMaterial(LodIndex, AsteroidMaterial);
 	}
-	
 	// Sector style
 	AsteroidMaterial->SetScalarParameterValue("IceMask", IsIcy);
 }
@@ -158,6 +189,4 @@ void AFlareAsteroid::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* 
 	{
 		Meteorite->OnCollision(this, HitLocation);
 	}
-
-
 }

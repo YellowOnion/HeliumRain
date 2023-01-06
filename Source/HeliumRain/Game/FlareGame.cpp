@@ -144,6 +144,9 @@ void AFlareGame::StartPlay()
 	// Spawn debris field system
 	DebrisFieldSystem = NewObject<UFlareDebrisField>(this, UFlareDebrisField::StaticClass());
 
+	CacheSystem = NewObject<UFlareCacheSystem>(this, UFlareCacheSystem::StaticClass());
+	CacheSystem->InitialSetup(this);
+
 	// Spawn skirmish manager
 	SkirmishManager = NewObject<UFlareSkirmishManager>(this, UFlareSkirmishManager::StaticClass());
 	SkirmishManager->InitialSetup(this);
@@ -253,7 +256,7 @@ UFlareSimulatedSector* AFlareGame::DeactivateSector()
 	// Destroy the active sector
 	DebrisFieldSystem->Reset();
 	UnloadStreamingLevel(ActiveSector->GetSimulatedSector()->GetDescription()->LevelName);
-	ActiveSector->DestroySector(false);
+	ActiveSector->DestroySector();
 
 	CombatLog::SectorDeactivated(Sector);
 
@@ -453,7 +456,7 @@ void AFlareGame::Tick(float DeltaSeconds)
 		SkirmishManager->Update(DeltaSeconds);
 	}
 
-	if (GetActiveSector() != NULL)
+	if (GetActiveSector() != NULL && ActivatingSector == NULL)
 	{
 		for (int CompanyIndex = 0; CompanyIndex < GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 		{
@@ -461,7 +464,6 @@ void AFlareGame::Tick(float DeltaSeconds)
 		}
 	}
 }
-
 
 /*----------------------------------------------------
 	Save slots
@@ -1102,7 +1104,7 @@ void AFlareGame::UnloadGame()
 	if (ActiveSector)
 	{
 		UnloadStreamingLevel(ActiveSector->GetSimulatedSector()->GetDescription()->LevelName);
-		ActiveSector->DestroySector(false);
+		ActiveSector->DestroySector();
 		ActiveSector = NULL;
 	}
 	DebrisFieldSystem->Reset();

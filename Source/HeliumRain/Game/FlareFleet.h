@@ -41,6 +41,10 @@ struct FFlareFleetSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	bool AutoTrade;
 
+	/** Fleet hide from sector travel list */
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool HideTravelList;
+
 	/** Days since last stats reset */
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 AutoTradeStatsDays;
@@ -145,6 +149,11 @@ public:
 		FleetData.AutoTradeStatsMoneyBuy = 0;
 	}
 
+	void SetHideTravel(bool NewHideTravel)
+	{
+		FleetData.HideTravelList = NewHideTravel;
+	}
+	
 	virtual void InitShipList();
 
 	void RemoveImmobilizedShips();
@@ -205,6 +214,11 @@ public:
 	bool IsAutoTrading() const
 	{
 		return FleetData.AutoTrade;
+	}
+
+	bool IsHiddenTravel() const
+	{
+		return FleetData.HideTravelList;
 	}
 
 	FFlareFleetSave* GetData()

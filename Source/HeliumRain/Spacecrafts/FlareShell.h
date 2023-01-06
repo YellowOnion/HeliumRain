@@ -20,6 +20,7 @@ public:
 	void Initialize(class UFlareWeapon* Weapon, const FFlareSpacecraftComponentDescription* Description, FVector ShootDirection, FVector ParentVelocity, bool Tracer);
 
 	virtual void Tick(float DeltaSeconds) override;
+//	virtual void TickShell(float DeltaSeconds);
 	virtual void LifeSpanExpired() override;
 
 	virtual void SetPause(bool Pause);
@@ -29,6 +30,7 @@ public:
 	void OnImpact(const FHitResult& HitResult, const FVector& ImpactVelocity);
 
 	virtual void DetonateAt(FVector DetonatePoint);
+	virtual void ProcessCurrentDetonations();
 
 	bool Trace(const FVector& Start, const FVector& End, FHitResult& HitOut);
 
@@ -114,4 +116,10 @@ protected:
 
 	bool										   IsSafeDestroyingRunning;
 	bool										   SafeDestroyed;
+
+	bool										   IsDetonating;
+	FVector										   DetonationPoint;
+	TArray<AFlareSpacecraft*>					   DetonationSpacecraftCandidates;
+	TArray<AFlareMeteorite*>	   				   DetonationMeteoriteCandidates;
+	TArray<AFlareBomb*>							   DetonationBombCandidates;
 };

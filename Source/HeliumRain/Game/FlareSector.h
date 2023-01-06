@@ -30,7 +30,7 @@ public:
 	virtual void Save();
 
 	/** Destroy the sector */
-	virtual void DestroySector(bool InitialDestruction = false);
+	virtual void DestroySector();
 
 	/** Remove spacecraft from sector */
 	virtual void RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSectorSpacecrafts = true);
@@ -59,11 +59,6 @@ public:
 
 	void UnregisterShell(AFlareShell* Shell);
 
-	void UnRegisterCachedShell(AFlareShell* Shell);
-	void RegisterCachedShell(AFlareShell* Shell);
-
-	AFlareShell* RetrieveCachedShell();
-	
 	virtual void SetPause(bool Pause);
 
 	AActor* GetNearestBody(FVector Location, float* NearestDistance, bool IncludeSize = true, AActor* ActorToIgnore = NULL);
@@ -99,14 +94,13 @@ protected:
 	TArray<AFlareBomb*>            SectorBombs;
 	UPROPERTY()
 	TArray<AFlareShell*>           SectorShells;
-	UPROPERTY()
-	TArray<AFlareShell*>           SectorCachedShells;
-	
+
 	int64						   LocalTime;
 	bool						   SectorRepartitionCache;
 	bool                           IsDestroyingSector;
 	FVector                        SectorCenter;
 	float                          SectorRadius;
+//	float						   ShellTick;
 
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
@@ -121,11 +115,6 @@ public:
 	inline TArray<AFlareBomb*> GetSectorBombs() const
 	{
 		return SectorBombs;
-	}
-
-	inline TArray<AFlareShell*> GetSectorCachedShells() const
-	{
-		return SectorCachedShells;
 	}
 
 	inline TArray<AFlareShell*> GetSectorShells() const

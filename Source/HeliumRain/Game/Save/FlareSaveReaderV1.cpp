@@ -843,6 +843,11 @@ void UFlareSaveReaderV1::LoadFleet(const TSharedPtr<FJsonObject> Object, FFlareF
 		Data->AutoTrade = false;
 	}
 
+	if (!Object->TryGetBoolField(TEXT("HideTravelList"), Data->HideTravelList))
+	{
+		Data->HideTravelList = false;
+	}
+
 	LoadInt32(Object, "AutoTradeStatsDays", &Data->AutoTradeStatsDays);
 	LoadInt32(Object, "AutoTradeStatsLoadResources", &Data->AutoTradeStatsLoadResources);
 	LoadInt32(Object, "AutoTradeStatsUnloadResources", &Data->AutoTradeStatsUnloadResources);

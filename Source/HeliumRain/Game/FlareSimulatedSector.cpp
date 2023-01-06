@@ -264,7 +264,6 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.Rotation = TargetRotation;
 	ShipData.LinearVelocity = FVector::ZeroVector;
 	ShipData.AngularVelocity = FVector::ZeroVector;
-//	ShipData.SpawnMode = SafeSpawnAtLocation ? EFlareSpawnMode::Safe : EFlareSpawnMode::Spawn;
 	switch (SpawnLocation)
 	{
 		case 0:

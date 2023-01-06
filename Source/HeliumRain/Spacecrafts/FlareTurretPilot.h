@@ -103,7 +103,7 @@ protected:
 	UPROPERTY()
 	UFlareSpacecraftComponent*			 PilotTargetShipComponent;
 
-	bool								 EveryOtherTick;
+	float								 PreviousTick;
 
 	/*----------------------------------------------------
 		Helper

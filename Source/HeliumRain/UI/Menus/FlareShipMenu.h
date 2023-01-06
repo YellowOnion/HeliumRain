@@ -53,6 +53,8 @@ public:
 	/** Update complex production breakdown*/
 	void UpdateProductionBreakdown();
 
+	void CheckDockedShips(TArray<AFlareSpacecraft*> DockedShips);
+
 protected:
 
 	/*----------------------------------------------------

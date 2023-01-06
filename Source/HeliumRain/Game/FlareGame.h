@@ -32,6 +32,7 @@ class UFlareSaveGameSystem;
 class UFlareQuestManager;
 class UFlareQuestCatalog;
 class UFlareDebrisField;
+class UFlareCacheSystem;
 class UFlareSectorCatalogEntry;
 class UFlareScenarioTools;
 struct FFlarePlayerSave;
@@ -220,6 +221,12 @@ protected:
 	UPROPERTY()
 	UFlareDebrisField*                         DebrisFieldSystem;
 
+	UPROPERTY()
+	UFlareCacheSystem*						   CacheSystem;
+
+
+	
+
 	/** Player controller */
 	UPROPERTY()
 	AFlarePlayerController*			           PlayerController;
@@ -370,6 +377,11 @@ public:
 	{
 		return DebrisFieldSystem;
 	}                        
+
+	UFlareCacheSystem* GetCacheSystem() const
+	{
+		return CacheSystem;
+	}
 
 	const FFlareCompanyDescription* GetCompanyDescription(int32 Index) const;
 

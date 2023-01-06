@@ -90,7 +90,16 @@ void UFlareDebrisField::Reset()
 	FLOGV("UFlareDebrisField::Reset : clearing debris field, size = %d", DebrisField.Num());
 	for (int i = 0; i < DebrisField.Num(); i++)
 	{
-		Game->GetWorld()->DestroyActor(DebrisField[i]);
+//		Game->GetWorld()->DestroyActor(DebrisField[i]);
+		Game->GetCacheSystem()->StoreCachedDebris(DebrisField[i]);
+		DebrisField[i]->SetActorEnableCollision(false);
+		DebrisField[i]->SetActorHiddenInGame(true);
+
+		UStaticMeshComponent* DebrisComponent = DebrisField[i]->GetStaticMeshComponent();
+		if (DebrisComponent)
+		{
+			DebrisComponent->SetSimulatePhysics(false);
+		}
 	}
 	DebrisField.Empty();
 }
@@ -107,7 +116,7 @@ void UFlareDebrisField::SetWorldPause(bool Pause)
 
 void UFlareDebrisField::CreateDebris(UFlareSimulatedSector* Sector, FVector Location, int32 Quantity, float MinSize, float MaxSize, bool IsMetal)
 {
-	if (!Sector)
+	if (!Sector || !Game)
 	{
 		return;
 	}
@@ -186,7 +195,19 @@ AStaticMeshActor* UFlareDebrisField::AddDebris(UFlareSimulatedSector* Sector, US
 AStaticMeshActor* UFlareDebrisField::SpawnDebris(UFlareSimulatedSector* Sector,UStaticMesh* Mesh, FVector Location, FRotator Rotation, float Size, FActorSpawnParameters Params)
 {
 	// Spawn
-	AStaticMeshActor* DebrisMesh = Game->GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), Location, Rotation, Params);
+	AStaticMeshActor* DebrisMesh = Game->GetCacheSystem()->RetrieveCachedDebris();
+	bool FromPool = false;
+	if (IsValid(DebrisMesh))
+	{
+		DebrisMesh->SetActorLocationAndRotation(Location, Rotation);
+		DebrisMesh->SetActorHiddenInGame(false);
+		FromPool = true;
+	}
+	else
+	{
+		DebrisMesh = Game->GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), Location, Rotation, Params);
+	}
+
 	if (DebrisMesh)
 	{
 		DebrisMesh->SetMobility(EComponentMobility::Movable);
@@ -202,6 +223,11 @@ AStaticMeshActor* UFlareDebrisField::SpawnDebris(UFlareSimulatedSector* Sector,U
 			DebrisComponent->SetCollisionProfileName("BlockAllDynamic");
 
 			int32 LODCOunt = DebrisComponent->GetStaticMesh()->GetNumLODs();
+
+			if (FromPool)
+			{
+				DebrisComponent->SetMaterial(0, NULL);
+			}
 
 			// Set material
 			UMaterialInstanceDynamic* DebrisMaterial = UMaterialInstanceDynamic::Create(DebrisComponent->GetMaterial(0), DebrisComponent->GetWorld());

@@ -565,25 +565,22 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	}
 
 	// Fill the docking list if it is visible
-	if (TargetSpacecraft->IsStation() && DockSystem && DockSystem->GetDockCount() > 0)
+	if (TargetSpacecraft->IsStation())
 	{
-//		ShipList->SetVisibility(EVisibility::Visible);
-
-		TArray<AFlareSpacecraft*> DockedShips = DockSystem->GetDockedShips();
-		for (int32 i = 0; i < DockedShips.Num(); i++)
+		if (DockSystem)
 		{
-			AFlareSpacecraft* Spacecraft = DockedShips[i];
-
-			if (Spacecraft)
+			if (DockSystem->GetDockCount() > 0)
 			{
-				FLOGV("SFlareShipMenu::Enter : Found docked ship %s", *Spacecraft->GetName());
+				CheckDockedShips(DockSystem->GetDockedShips());
 			}
-			if (DockedShips[i]->GetParent()->GetDamageSystem()->IsAlive())
+			if (TargetSpacecraft->IsComplex())
 			{
-				ShipList->AddShip(DockedShips[i]->GetParent());
+				for (UFlareSimulatedSpacecraft* Substation : TargetSpacecraft->GetComplexChildren())
+				{
+					CheckDockedShips(Substation->GetActive()->GetDockingSystem()->GetDockedShips());
+				}
 			}
 		}
-
 		ShipList->RefreshList();
 	}
 	else
@@ -613,6 +610,23 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	else
 	{
 		OwnedList->SetVisibility(EVisibility::Collapsed);
+	}
+}
+
+void SFlareShipMenu::CheckDockedShips(TArray<AFlareSpacecraft*> DockedShips)
+{
+	for (int32 i = 0; i < DockedShips.Num(); i++)
+	{
+		AFlareSpacecraft* Spacecraft = DockedShips[i];
+
+		if (Spacecraft)
+		{
+			FLOGV("SFlareShipMenu::Enter : Found docked ship %s", *Spacecraft->GetName());
+		}
+		if (DockedShips[i]->GetParent()->GetDamageSystem()->IsAlive())
+		{
+			ShipList->AddShip(DockedShips[i]->GetParent());
+		}
 	}
 }
 

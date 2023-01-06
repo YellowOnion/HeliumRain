@@ -40,6 +40,7 @@ AFlareBomb::AFlareBomb(const class FObjectInitializer& PCIP) : Super(PCIP)
 	// Settings
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
+	SetActorTickInterval(0.025f);
 	Paused = false;
 	BombLockedInCollision = 0;
 }
@@ -109,6 +110,7 @@ void AFlareBomb::Initialize(const FFlareBombSave* Data, UFlareWeapon* Weapon)
 		BombComp->SetSimulatePhysics(true);
 	}
 	LocalSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+	this->SetActorTickEnabled(true);
 }
 
 void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
@@ -445,7 +447,8 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 				ExplosionEffectTemplate,
 				HitLocation,
 				HitNormal.Rotation(),
-				true);
+				true,
+				EPSCPoolMethod::AutoRelease);
 		}
 		else
 		{
@@ -456,7 +459,8 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 				HitLocation,
 				HitNormal.Rotation(),
 				EAttachLocation::KeepWorldPosition,
-				true);
+				true,
+				EPSCPoolMethod::AutoRelease);
 		}
 		if (PSC)
 		{
@@ -556,7 +560,8 @@ void AFlareBomb::CurrentTargetDied()
 				ExplosionEffectTemplate,
 				GetActorLocation(),
 				GetActorRotation(),
-				true);
+				true,
+				EPSCPoolMethod::AutoRelease);
 				if (PSC)
 				{
 					PSC->SetWorldScale3D(ExplosionEffectScale * FVector(1, 1, 1));
@@ -642,7 +647,6 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 		UnregisterBombMethod();
 		CombatLog::BombDestroyed(GetIdentifier());
 		SafeDestroy();
-//		Destroy();
 	}
 }
 
@@ -693,6 +697,8 @@ void AFlareBomb::SafeDestroy()
 		IsSafeDestroyingRunning = true;
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
+		this->SetActorTickEnabled(false);
+		BombComp->SetSimulatePhysics(false);
 	}
 }
 
@@ -716,7 +722,9 @@ void AFlareBomb::FinishSafeDestroy()
 {
 	if (!SafeDestroyed)
 	{
-		//TODO: find all references to this bomb and null them so GC can kill us "safely"
+		AFlareGame* Game = Cast<AFlareGame>(GetWorld()->GetAuthGameMode());
+		FCHECK(Game);
+
 		UnregisterBombMethod();
 
 		this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
@@ -742,7 +750,9 @@ void AFlareBomb::FinishSafeDestroy()
 		}
 		RootComponent = NULL;
 */
-		SafeDestroyed=Destroy();
+
+//		SafeDestroyed=Destroy();
+		Game->GetCacheSystem()->StoreCachedBomb(this);
 	}
 }
 
