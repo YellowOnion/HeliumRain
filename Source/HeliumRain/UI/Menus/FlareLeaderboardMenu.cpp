@@ -116,7 +116,6 @@ void SFlareLeaderboardMenu::OnCompanySelectionChanged(TSharedPtr<FInterfaceConta
 void SFlareLeaderboardMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-//	if (CompanyList->GetNumItemsSelected() > 0)
 	if (CompanyList->GetNumItemsSelected() > 0)
 	{
 		UFlareCompany* Company = CompanyList->GetSelectedItems()[0]->CompanyPtr;

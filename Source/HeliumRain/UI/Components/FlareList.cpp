@@ -25,11 +25,13 @@ void SFlareList::Construct(const FArguments& InArgs)
 	// Data
 	MenuManager = InArgs._MenuManager;
 	UseCompactDisplay = InArgs._UseCompactDisplay;
+	UseSmallFont = InArgs._UseSmallFont;
 	FleetList = InArgs._FleetList;
 	StationList = InArgs._StationList;
 	WidthAdjuster = InArgs._WidthAdjuster;
 	ShowOwnedShips = InArgs._ShowOwnedShips;
 	ArraySelectionMode = InArgs._ArrayMode;
+	OriginatingMenu = InArgs._OriginatingMenu;
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
@@ -106,7 +108,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 					.Text(LOCTEXT("ShowFreighters", "Freighters"))
 					.HelpText(LOCTEXT("ShowFreightersInfo", "Show freighters in the list"))
 					.OnClicked(this, &SFlareList::OnToggleShowFlags)
-					.Visibility(this, &SFlareList::GetShipFiltersVisibility)
+					.Visibility(this, &SFlareList::GetFreighterFiltersVisibility)
 					.Small(true)
 					.Transparent(true)
 					.Toggle(true)
@@ -125,7 +127,6 @@ void SFlareList::Construct(const FArguments& InArgs)
 					.Transparent(true)
 					.Toggle(true)
 					.Width(2)
-
 				]
 			]
 	
@@ -638,6 +639,18 @@ EVisibility SFlareList::GetShipFiltersVisibility() const
 	return (((HasShips&&!StationList)||HasFleets || FleetList) ? EVisibility::Visible : EVisibility::Hidden);
 }
 
+EVisibility SFlareList::GetFreighterFiltersVisibility() const
+{
+//Orbital menu hides the Freighter button (which for fleets is the "AutoTrade" button)
+	if (OriginatingMenu == FString("Orbital"))
+	{
+		return EVisibility::Hidden;
+	}
+	return (((HasShips && !StationList) || HasFleets || FleetList) ? EVisibility::Visible : EVisibility::Hidden);
+}
+
+
+
 EVisibility SFlareList::GetFleetFiltersVisibility() const
 {
 	return (HasFleets||FleetList ? EVisibility::Visible : EVisibility::Hidden);
@@ -683,6 +696,8 @@ TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContai
 			.OwnerWidget(this)
 			.Minimized(true)
 			.OnRemoved(this, &SFlareList::OnShipRemoved)
+			.UseSmallFont(UseSmallFont)
+			.OriginatingMenu(OriginatingMenu)
 		];
 
 		Temp->SetSpacecraft(Item->SpacecraftPtr);
@@ -703,6 +718,8 @@ TSharedRef<ITableRow> SFlareList::GenerateTargetInfo(TSharedPtr<FInterfaceContai
 			.Player(MenuManager->GetPC())
 			.OwnerWidget(this)
 			.Minimized(true)
+			.UseSmallFont(UseSmallFont)
+			.OriginatingMenu(OriginatingMenu)
 		];
 
 		Temp->SetFleet(Item->FleetPtr);
@@ -801,4 +818,3 @@ void SFlareList::OnShipRemoved(UFlareSimulatedSpacecraft* Ship)
 }
 
 #undef LOCTEXT_NAMESPACE
-

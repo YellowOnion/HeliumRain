@@ -109,6 +109,7 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>      TravelShips;
 
 	UFlareFleet*                            Fleet;
+	UFlareSimulatedSector*					OldDestinationSector;
 	UFlareSimulatedSector*                  DestinationSector;
 	UFlareSimulatedSector*                  OriginSector;
 
@@ -116,7 +117,7 @@ protected:
 	UFlareSimulatedSector*                  TravelSector;
 
 	UPROPERTY()
-	FFlareSectorDescription          SectorDescription;
+	FFlareSectorDescription				  SectorDescription;
 
 	FFlareTravelSave                        TravelData;
 	AFlareGame*                             Game;
@@ -143,6 +144,11 @@ public:
 	UFlareSimulatedSector* GetDestinationSector()
 	{
 		return DestinationSector;
+	}
+
+	UFlareSimulatedSector* GetOldDestinationSector()
+	{
+		return OldDestinationSector;
 	}
 
 	UFlareFleet* GetFleet()

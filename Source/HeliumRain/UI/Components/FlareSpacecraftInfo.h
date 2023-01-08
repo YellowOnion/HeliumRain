@@ -23,6 +23,7 @@ class SFlareSpacecraftInfo : public SCompoundWidget
 		, _OwnerWidget(NULL)
 		, _NoInspect(false)
 		, _Minimized(false)
+		, _UseSmallFont(false)
 		, _WidthAdjuster(0.f)
 	{}
 
@@ -34,7 +35,9 @@ class SFlareSpacecraftInfo : public SCompoundWidget
 
 	SLATE_ARGUMENT(bool, NoInspect)
 	SLATE_ARGUMENT(bool, Minimized)
+	SLATE_ARGUMENT(bool, UseSmallFont)
 	SLATE_ARGUMENT(float, WidthAdjuster)
+	SLATE_ARGUMENT(FString, OriginatingMenu)
 
 	SLATE_END_ARGS()
 
@@ -181,6 +184,9 @@ protected:
 	AFlarePlayerController*           PC;
 	bool                              NoInspect;
 	bool                              Minimized;
+	bool							  UseSmallFont;
+
+	FString							  OriginatingMenu;
 
 	// Target data	
 	UFlareSimulatedSpacecraft*        TargetSpacecraft;

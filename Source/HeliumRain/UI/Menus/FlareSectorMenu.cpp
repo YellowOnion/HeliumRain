@@ -447,14 +447,22 @@ void SFlareSectorMenu::UpdateFleetList()
 		UFlareFleet* Fleet = PC->GetCompany()->GetCompanyFleets()[FleetIndex];
 		if (Fleet && Fleet->GetShips().Num())
 		{
-			UFlareSimulatedSector* CurrentSector = Fleet->GetCurrentSector();
 			if (!Fleet->IsAutoTrading() && !Fleet->IsHiddenTravel())
 			{
+				UFlareSimulatedSector* CurrentSector = Fleet->GetCurrentSector();
 				if (Fleet == PC->GetPlayerFleet() || TargetSector != CurrentSector)
 				{
 					if (Fleet->GetCurrentTradeRoute() && !Fleet->GetCurrentTradeRoute()->IsPaused())
 					{
 						continue;
+					}
+
+					if (Fleet != PC->GetPlayerFleet() && Fleet->IsTraveling())
+					{
+						if (!Fleet->GetCurrentTravel()->CanChangeDestination())
+						{
+							continue;
+						}
 					}
 
 					FleetList.Add(Fleet);

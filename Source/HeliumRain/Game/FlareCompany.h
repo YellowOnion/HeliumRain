@@ -56,8 +56,7 @@ public:
 
 	virtual void SimulateAI(bool GlobalWar, int32 TotalReservedResources);
 
-	virtual void TickAI();
-
+	virtual void SimulateActiveAI();
 
 	/** Check if we are friend or for toward the player */
 	virtual EFlareHostility::Type GetPlayerHostility() const;

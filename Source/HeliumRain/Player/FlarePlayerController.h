@@ -72,6 +72,8 @@ public:
 	/** Achievements are available now */
 	void OnQueryAchievementsComplete(const FUniqueNetId& PlayerId, const bool bWasSuccessful);
 	
+	/** Triggered when a ship has been destroyed */
+	void OnSpacecraftDestroyed();
 
 	/*----------------------------------------------------
 		Data management

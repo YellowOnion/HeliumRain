@@ -86,44 +86,44 @@ void UFlareAIBehavior::Simulate()
 	{
 		case -1: // Easy
 			PirateRepLoss = -0.25f;
-			RepLossDevisor = 32.f;
+			RepLossDevisor = 36.f;
 			PlayerExcessiveMoneyRepLoss = -0.25f;
-			PlayerExcessiveMoneyRatioRequirement = 1.0f;
+			PlayerExcessiveMoneyRatioRequirement = 0.95f;
 			break;
 		case 0: // Normal
 			PirateRepLoss = -0.5f;
 			RepLossDevisor = 30.f;
 			PlayerExcessiveMoneyRepLoss = -0.50f;
-			PlayerExcessiveMoneyRatioRequirement = 0.95f;
+			PlayerExcessiveMoneyRatioRequirement = 0.90f;
 			break;
 		case 1: // Hard
 			PirateRepLoss = -0.75f;
-			RepLossDevisor = 25.f;
+			RepLossDevisor = 18.f;
 			PlayerExcessiveMoneyRepLoss = -0.75f;
-			PlayerExcessiveMoneyRatioRequirement = 0.90f;
+			PlayerExcessiveMoneyRatioRequirement = 0.80f;
 			break;
 		case 2: // Very Hard
 			PirateRepLoss = -1.00f;
-			RepLossDevisor = 20.f;
+			RepLossDevisor = 11.f;
 			PlayerExcessiveMoneyRepLoss = -1.0f;
-			PlayerExcessiveMoneyRatioRequirement = 0.85f;
+			PlayerExcessiveMoneyRatioRequirement = 0.70f;
 			break;
 		case 3: // Expert
-			PirateRepLoss = -1.50f;
-			RepLossDevisor = 10.f;
+			PirateRepLoss = -1.25f;
+			RepLossDevisor = 7.f;
 			PlayerExcessiveMoneyRepLoss = -1.25f;
-			PlayerExcessiveMoneyRatioRequirement = 0.80f;
+			PlayerExcessiveMoneyRatioRequirement = 0.60f;
 			break;
 		case 4: // Unfair
-			PirateRepLoss = -2.00f;
-			RepLossDevisor = 5.f;
+			PirateRepLoss = -1.50f;
+			RepLossDevisor = 4.f;
 			PlayerExcessiveMoneyRepLoss = -1.50f;
-			PlayerExcessiveMoneyRatioRequirement = 0.75f;
+			PlayerExcessiveMoneyRatioRequirement = 0.50f;
 			break;
 	}
 
 	float ReputationLoss = (PlayerCompanyIndex + 1) / RepLossDevisor;
-/*
+	/*
 	GetGame()->GetPC()->Notify(
 		LOCTEXT("TestInfo", "Test Notification"),
 		FText::Format(
@@ -131,23 +131,26 @@ void UFlareAIBehavior::Simulate()
 			ReputationLoss, PlayerCompanyIndex),
 		"discover-sector",
 		EFlareNotification::NT_Info,
-		false);*/
+		false);
+	*/
+
 	// Pirates hate you
-
-	if (PlayerMoney >= (TotalCompaniesMoney * PlayerExcessiveMoneyRatioRequirement))
-	{
-		Company->GivePlayerReputation(PlayerExcessiveMoneyRepLoss);
-	}
-
 	if (PlayerCompanyIndex > 0 && Company == ST->Pirates)
 	{
 		Company->GivePlayerReputation(PirateRepLoss);
 	}
 
 	// Competitors hate you more if you're doing well
-	if (PlayerArmy > 0 && Company != ST->AxisSupplies && Company->GetPlayerReputation() > ReputationLoss)
+	if (Company != ST->AxisSupplies)
 	{
-		Company->GivePlayerReputation(-ReputationLoss);
+		if (PlayerArmy > 0 && Company->GetPlayerReputation() > ReputationLoss)
+		{
+			Company->GivePlayerReputation(-ReputationLoss);
+		}
+		if (PlayerMoney >= (TotalCompaniesMoney * PlayerExcessiveMoneyRatioRequirement))
+		{
+			Company->GivePlayerReputation(PlayerExcessiveMoneyRepLoss);
+		}
 	}
 
 	// Simulate the day

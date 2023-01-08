@@ -44,6 +44,7 @@ void UFlareTravel::Load(const FFlareTravelSave& Data)
 
 	Fleet = Game->GetGameWorld()->FindFleet(TravelData.FleetIdentifier);
 	DestinationSector = Game->GetGameWorld()->FindSector(TravelData.DestinationSectorIdentifier);
+	OldDestinationSector = DestinationSector;
 	OriginSector = Game->GetGameWorld()->FindSector(TravelData.OriginSectorIdentifier);
 
 	TravelShips.Reserve(Fleet->GetShips().Num());
@@ -374,6 +375,7 @@ void UFlareTravel::ChangeDestination(UFlareSimulatedSector* NewDestinationSector
 		return;
 	}
 
+	OldDestinationSector = DestinationSector;
 	DestinationSector = NewDestinationSector;
 
 	TravelData.DestinationSectorIdentifier = DestinationSector->GetIdentifier();

@@ -180,30 +180,61 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 				SNew(SHorizontalBox)
 			
 				// Action column 
-				+ SHorizontalBox::Slot()
+				+SHorizontalBox::Slot()
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
 					SNew(SScrollBox)
 					.Style(&Theme.ScrollBoxStyle)
 					.ScrollBarStyle(&Theme.ScrollBarStyle)
+		
 
-					// Travel title
 					+ SScrollBox::Slot()
-					.Padding(Theme.ContentPadding)
 					[
-						UFlareUITypes::Header(LOCTEXT("TravelsTitle", "Events"))
+						// Hide Events			
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+					[
+							SAssignNew(ShowEventsButton, SFlareButton)
+							.Width(3)
+							.Text(LOCTEXT("ShowEvents", "Events"))
+							.HelpText(LOCTEXT("ShowEventsInfo", "Toggle to enable events section"))
+							.Toggle(true)
+						]
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+						[
+							SAssignNew(ShowTradeButton, SFlareButton)
+							.Width(3)
+							.Text(LOCTEXT("ShowTrade", "Trade"))
+							.HelpText(LOCTEXT("ShowTradeInfo", "Toggle to enable trade routes section"))
+							.Toggle(true)
+						]
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						.AutoWidth()
+						[
+							SAssignNew(ShowFleetButton, SFlareButton)
+							.Width(3)
+							.Text(LOCTEXT("ShowFleet", "Fleet"))
+							.HelpText(LOCTEXT("ShowFleetInfo", "Toggle to enable fleets section"))
+							.Toggle(true)
+						]
 					]
 
-					// Travel list
-					+ SScrollBox::Slot()
-					.Padding(Theme.ContentPadding)
+					// Events Text
+					+SScrollBox::Slot()
+					.HAlign(HAlign_Left)
 					[
-						SNew(SRichTextBlock)
-						.TextStyle(&Theme.TextFont)
-						.Text(this, &SFlareOrbitalMenu::GetTravelText)
-						.WrapTextAt(0.5 * Theme.ContentWidth)
-						.DecoratorStyleSet(&FFlareStyleSet::Get())
+						SNew(SFlareTravelEventsInfo)
+						.MenuManager(MenuManager)
+						.Visibility(this, &SFlareOrbitalMenu::IsEventsVisible)
 					]
 
 					// Trade route list
@@ -212,9 +243,27 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(TradeRouteInfo, SFlareTradeRouteInfo)
 						.MenuManager(MenuManager)
+						.Visibility(this, &SFlareOrbitalMenu::IsTradeVisible)
+					]
+
+					// Fleets 
+					+ SScrollBox::Slot()
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(OrbitalFleetsInfo, SFlareOrbitalFleetInfo)
+						.MenuManager(MenuManager)
+						.Visibility(this, &SFlareOrbitalMenu::IsAutomatedFleetsVisible)
+					]
+
+					// Automated Fleets 
+					+ SScrollBox::Slot()
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(AutomatedFleetsInfo, SFlareAutomatedFleetsInfo)
+						.MenuManager(MenuManager)
+						.Visibility(this, &SFlareOrbitalMenu::IsAutomatedFleetsVisible)
 					]
 				]
-
 				// Moons 1
 				+ SHorizontalBox::Slot()
 				.HAlign(HAlign_Fill)
@@ -275,8 +324,10 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+	ShowEventsButton->SetActive(true);
+	ShowTradeButton->SetActive(true);
+	ShowFleetButton->SetActive(true);
 }
-
 
 /*----------------------------------------------------
 	Interaction
@@ -298,12 +349,15 @@ void SFlareOrbitalMenu::Enter()
 	if (!DisplayMode)
 	{
 		DisplayMode = EFlareOrbitalMode::Fleets;
+		PreviousDisplayMode = DisplayMode;
 	}
 
 	// Update stuff
 	StopFastForward();
 	UpdateMap();
 	TradeRouteInfo->Update();
+	AutomatedFleetsInfo->Update();
+	OrbitalFleetsInfo->Update();
 
 	Game->SaveGame(MenuManager->GetPC(), true);
 
@@ -325,7 +379,10 @@ void SFlareOrbitalMenu::Exit()
 	AdenaBox->ClearChildren();
 
 	TradeRouteInfo->Clear();
+	AutomatedFleetsInfo->Clear();
+	OrbitalFleetsInfo->Clear();
 	StopFastForward();
+	PreviouslySelectedSector = NULL;
 }
 
 void SFlareOrbitalMenu::SetShipyardOpen(bool ShipyardOpen)
@@ -345,12 +402,18 @@ void SFlareOrbitalMenu::StopFastForward()
 		FastForwardActive = false;
 		Game->SaveGame(MenuManager->GetPC(), true);
 		Game->ActivateCurrentSector();
+		OrbitalFleetsInfo->Update();
 	}
 }
 
 void SFlareOrbitalMenu::RequestStopFastForward()
 {
 	FastForwardStopRequested = true;
+}
+
+void SFlareOrbitalMenu::RequestOrbitalFleetsUpdate()
+{
+	OrbitalFleetsUpdateRequested = true;
 }
 
 void SFlareOrbitalMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
@@ -372,13 +435,17 @@ void SFlareOrbitalMenu::Tick(const FGeometry& AllottedGeometry, const double InC
 			{
 				MenuManager->GetGame()->GetGameWorld()->FastForward();
 				TimeSinceFastForward = 0;
-				ClearSectorButtonCaches();
+				RefreshTrackedButtons();
 			}
 
 			// Stop request
 			if (FastForwardStopRequested)
 			{
 				StopFastForward();
+			}
+			else if (OrbitalFleetsUpdateRequested)
+			{
+				OrbitalFleetsInfo->Update();
 			}
 		}
 	}
@@ -472,7 +539,7 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 		SectorButtons.AddUnique(CurrentSectorButton);
 	}
 	CurrentSectorButton = NULL;
-	ClearSectorButtonCaches();
+	RefreshTrackedButtons();
 }
 
 EFlareOrbitalMode::Type SFlareOrbitalMenu::GetDisplayMode() const
@@ -500,14 +567,37 @@ bool SFlareOrbitalMenu::IsCurrentDisplayMode(EFlareOrbitalMode::Type Mode) const
 	Callbacks
 ----------------------------------------------------*/
 
-void SFlareOrbitalMenu::ClearSectorButtonCaches()
+void SFlareOrbitalMenu::RefreshTrackedButtons()
 {
-//	FLOGV("Orbital Buttons");
 	for (TSharedPtr<SFlareSectorButton> Button : SectorButtons)
 	{
 		if (Button.IsValid())
 		{
-			Button->ClearCaches();
+			Button->RefreshButton();
+		}
+		else
+		{
+			SectorButtons.RemoveSwap(Button);
+		}
+	}
+}
+
+void SFlareOrbitalMenu::FleetsBegunTravel(UFlareSimulatedSector* TravelingFrom, UFlareSimulatedSector* TravelingTo, UFlareTravel* OldTravel)
+{
+	UFlareSimulatedSector* TravellingSector = nullptr;
+	if (OldTravel && OldTravel->GetOldDestinationSector())
+	{
+		TravellingSector = OldTravel->GetOldDestinationSector();
+	}
+
+	for (TSharedPtr<SFlareSectorButton> Button : SectorButtons)
+	{
+		if (Button.IsValid())
+		{
+			if (Button->GetSector() == TravelingFrom || Button->GetSector() == TravelingTo || Button->GetSector() == TravellingSector)
+			{
+				Button->RefreshButton();
+			}
 		}
 		else
 		{
@@ -618,7 +708,6 @@ FText SFlareOrbitalMenu::GetDateText() const
 			return FText::Format(LOCTEXT("DateCreditsInfoFormat", "Date : {0} - {1} credits"), DateText, FText::AsNumber(UFlareGameTools::DisplayMoney(Credits)));
 		}
 	}
-
 	return FText();
 }
 
@@ -676,15 +765,81 @@ void SFlareOrbitalMenu::OnShipyard()
 
 void SFlareOrbitalMenu::SetDisplayMode(EFlareOrbitalMode::Type Mode)
 {
-	DisplayMode = Mode;
+	if (Mode != PreviousDisplayMode)
+	{
+		PreviousDisplayMode = Mode;
+		DisplayMode = Mode;
+		RefreshTrackedButtons();
+	}
 }
 
 void SFlareOrbitalMenu::OnOpenSector(TSharedPtr<int32> Index)
 {
 	UFlareSimulatedSector* Sector = MenuManager->GetPC()->GetCompany()->GetKnownSectors()[*Index];
-	FFlareMenuParameterData Data;
-	Data.Sector = Sector;
-	MenuManager->OpenMenu(EFlareMenu::MENU_Sector, Data);
+	PreviouslySelectedSector = Sector;
+	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet())
+	{
+		UFlareFleet* TargetFleet = OrbitalFleetsInfo->GetSelectedFleet();
+		bool Escape = TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger
+			&& (TargetFleet != MenuManager->GetPC()->GetPlayerFleet() || TargetFleet->GetShipCount() > 1);
+		bool Abandon = TargetFleet->GetImmobilizedShipCount() != 0;
+
+		if (!Abandon && !Escape)
+		{
+			OnStartSelectedFleetTravelConfirmed();
+		}
+		else
+		{
+			FText TitleText;
+			if (Escape)
+			{
+				TitleText = LOCTEXT("ConfirmTravelEscapeTitle", "ESCAPE ?");
+			}
+			else if (Abandon)
+			{
+				TitleText = LOCTEXT("ConfirmTravelAbandonTitle", "ABANDON SHIPS ?");
+			}
+
+			FText ConfirmText = TargetFleet->GetTravelConfirmText();
+
+			if (TargetFleet->GetUnableToTravelShips() < TargetFleet->GetShips().Num())
+			{
+				// Open the confirmation
+				MenuManager->GetPC()->GetMenuManager()->Confirm(TitleText,
+					ConfirmText,
+					FSimpleDelegate::CreateSP(this, &SFlareOrbitalMenu::OnStartSelectedFleetTravelConfirmed),
+					FSimpleDelegate::CreateSP(this, &SFlareOrbitalMenu::OnStartSelectedFleetTravelCanceled));
+			}
+		}
+	}
+	else
+	{
+		FFlareMenuParameterData Data;
+		Data.Sector = Sector;
+		MenuManager->OpenMenu(EFlareMenu::MENU_Sector, Data);
+	}
+}
+
+void SFlareOrbitalMenu::OnStartSelectedFleetTravelConfirmed()
+{
+	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet())
+	{
+		UFlareFleet* TargetFleet = OrbitalFleetsInfo->GetSelectedFleet();
+		if (TargetFleet)
+		{
+			UFlareSimulatedSector* TravelingFrom = TargetFleet->GetCurrentSector();
+			UFlareTravel* OldTravel = TargetFleet->GetCurrentTravel();
+			UFlareTravel* Travel = MenuManager->GetGame()->GetGameWorld()->StartTravel(TargetFleet, PreviouslySelectedSector);
+			if (Travel)
+			{
+				FleetsBegunTravel(TravelingFrom, PreviouslySelectedSector, OldTravel);
+			}
+		}
+	}
+}
+
+void SFlareOrbitalMenu::OnStartSelectedFleetTravelCanceled()
+{
 }
 
 void SFlareOrbitalMenu::OnFastForwardClicked()
@@ -730,6 +885,7 @@ void SFlareOrbitalMenu::OnFastForwardConfirmed(bool Automatic)
 		// Mark FF
 		FastForwardActive = true;
 		FastForwardStopRequested = false;
+		RequestOrbitalFleetsUpdate();
 
 		// Prepare for FF
 		Game->SaveGame(MenuManager->GetPC(), true);
@@ -738,7 +894,8 @@ void SFlareOrbitalMenu::OnFastForwardConfirmed(bool Automatic)
 	else
 	{
 		MenuManager->GetPC()->SimulateConfirmed();
-		ClearSectorButtonCaches();
+		RefreshTrackedButtons();
+		AutomatedFleetsInfo->Update();
 	}
 }
 
@@ -747,6 +904,19 @@ void SFlareOrbitalMenu::OnFastForwardCanceled()
 	FastForwardAuto->SetActive(false);
 }
 
+EVisibility SFlareOrbitalMenu::IsEventsVisible() const
+{
+	return ShowEventsButton->IsActive() ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+EVisibility SFlareOrbitalMenu::IsTradeVisible() const
+{
+	return ShowTradeButton->IsActive() ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+EVisibility SFlareOrbitalMenu::IsAutomatedFleetsVisible() const
+{
+	return ShowFleetButton->IsActive() ? EVisibility::Visible : EVisibility::Collapsed;
+}
 
 #undef LOCTEXT_NAMESPACE
-

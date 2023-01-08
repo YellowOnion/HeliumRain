@@ -504,9 +504,9 @@ void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
 	}
 }
 
-void UFlareCompany::TickAI()
+void UFlareCompany::SimulateActiveAI()
 {
-	CompanyAI->Tick();
+	CompanyAI->SimulateActiveAI();
 }
 
 void UFlareCompany::ClearTemporaryCaches()
@@ -1067,6 +1067,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	{
 		Spacecraft->GetCurrentSector()->RemoveSpacecraft(Spacecraft);
 	}
+
 	GetGame()->GetGameWorld()->ClearFactories(Spacecraft);
 	CompanyAI->DestroySpacecraft(Spacecraft);
 	Spacecraft->SetDestroyed(true);
@@ -1235,7 +1236,7 @@ void UFlareCompany::GivePlayerReputation(float Amount, float Max)
 			float TechnologyBonus = 1.f;
 			float TechnologyBonusSecondary = this->GetTechnologyBonus("diplomatic-bonus");
 			TechnologyBonus += TechnologyBonusSecondary;
-			Amount *= TechnologyBonusSecondary;
+			Amount *= TechnologyBonus;
 		}
 		CompanyData.PlayerReputation = FMath::Max(-100.f, CompanyData.PlayerReputation + Amount);
 		CompanyData.PlayerReputation = FMath::Min(MaxReputation, CompanyData.PlayerReputation);

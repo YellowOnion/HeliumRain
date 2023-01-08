@@ -11,6 +11,7 @@
 #include "../../Game/FlareGameTools.h"
 #include "../../UI/Menus/FlareFleetMenu.h"
 #include "../../UI/Menus/FlareSectorMenu.h"
+#include "../../UI/Menus/FlareOrbitalMenu.h"
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftInfo"
 
@@ -25,8 +26,21 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 	PC = InArgs._Player;
 	OwnerWidget = InArgs._OwnerWidget->AsShared();
 	Minimized = InArgs._Minimized;
+	UseSmallFont = InArgs._UseSmallFont;
+	OriginatingMenu = InArgs._OriginatingMenu;
+
 	AFlareGame* Game = InArgs._Player->GetGame();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
+	FTextBlockStyle TextFont;
+	if (UseSmallFont)
+	{
+		TextFont = Theme.SmallFont;
+	}
+	else
+	{
+		TextFont = Theme.TextFont;
+	}
 
 	// Create the layout
 	ChildSlot
@@ -70,7 +84,7 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(this, &SFlareFleetInfo::GetComposition)
-		.TextStyle(&Theme.TextFont)
+			.TextStyle(&TextFont)
 		]
 
 	// Combat value icon
@@ -92,7 +106,7 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(this, &SFlareFleetInfo::GetCombatValue)
-		.TextStyle(&Theme.TextFont)
+			.TextStyle(&TextFont)
 		]
 		]
 
@@ -119,7 +133,7 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(this, &SFlareFleetInfo::GetDescription)
-		.TextStyle(&Theme.TextFont)
+			.TextStyle(&TextFont)
 		]
 		]
 
@@ -364,124 +378,27 @@ void SFlareFleetInfo::OnTravelHereClicked()
 	{
 		bool Escape = TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger
 			&& (TargetFleet != PC->GetPlayerFleet() || TargetFleet->GetShipCount() > 1);
-
 		bool Abandon = TargetFleet->GetImmobilizedShipCount() != 0;
 
 		if (!Abandon && !Escape)
 		{
 			OnStartTravelConfirmed();
 		}
-
 		else
 		{
 			FText TitleText;
-			FText ConfirmText;
-
-			FText SingleShip = LOCTEXT("ShipIsSingle", "ship is");
-			FText MultipleShips = LOCTEXT("ShipArePlural", "ships are");
-
-			int32 TradingShips = 0;
-			int32 InterceptedShips = 0;
-			int32 StrandedShips = 0;
-			int32 UnableToTravelShips = 0;
-
-			for (UFlareSimulatedSpacecraft* Ship : TargetFleet->GetShips())
-			{
-				if (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted())
-				{
-					UnableToTravelShips++;
-				}
-
-				if (Ship->IsTrading())
-				{
-					TradingShips++;
-				}
-
-				if (Ship->GetDamageSystem()->IsStranded())
-				{
-					StrandedShips++;
-				}
-
-				if (Ship->IsIntercepted())
-				{
-					InterceptedShips++;
-				}
-			}
-
-			FText TooDamagedTravelText;
-			FText TradingTravelText;
-			FText InterceptedTravelText;
-
-			bool useOr = false;
-
-			if (TradingShips > 0)
-			{
-				TradingTravelText = LOCTEXT("TradingTravelText", "trading");
-				useOr = true;
-			}
-
-			if (InterceptedShips > 0)
-			{
-				if (useOr)
-				{
-					InterceptedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrInterceptedTravelText", "or intercepted"));
-				}
-				else
-				{
-					InterceptedTravelText = LOCTEXT("InterceptedTravelText", "intercepted");
-				}
-				useOr = true;
-			}
-
-			if (StrandedShips > 0)
-			{
-				if (useOr)
-				{
-					TooDamagedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrTooDamagedToTravel", "or too damaged to travel"));
-				}
-				else
-				{
-					TooDamagedTravelText = LOCTEXT("TooDamagedToTravel", "too damaged to travel");
-				}
-			}
-
-			FText ReasonNotTravelText = FText::Format(LOCTEXT("ReasonNotTravelText", "{0}{1}{2} and will be left behind"),
-				TradingTravelText,
-				InterceptedTravelText,
-				TooDamagedTravelText);
-
-			// We can escape
 			if (Escape)
 			{
 				TitleText = LOCTEXT("ConfirmTravelEscapeTitle", "ESCAPE ?");
-				FText EscapeWarningText = LOCTEXT("ConfirmTravelEscapeWarningText", "Ships can be intercepted while escaping, are you sure ?");
-
-				if (Abandon)
-				{
-					ConfirmText = FText::Format(LOCTEXT("ConfirmTravelEscapeFormat", "{0} {1} {2} {3}."),
-						EscapeWarningText,
-						FText::AsNumber(TargetFleet->GetImmobilizedShipCount()),
-						(TargetFleet->GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
-						ReasonNotTravelText);
-				}
-				else
-				{
-					ConfirmText = EscapeWarningText;
-				}
 			}
-
-			// We have to abandon
-			else
+			else if (Abandon)
 			{
 				TitleText = LOCTEXT("ConfirmTravelAbandonTitle", "ABANDON SHIPS ?");
-
-				ConfirmText = FText::Format(LOCTEXT("ConfirmTravelAbandonFormat", "{0} {1} {2}."),
-					FText::AsNumber(TargetFleet->GetImmobilizedShipCount()),
-					(TargetFleet->GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
-					ReasonNotTravelText);
 			}
 
-			if (UnableToTravelShips < TargetFleet->GetShips().Num())
+			FText ConfirmText = TargetFleet->GetTravelConfirmText();
+
+			if (TargetFleet->GetUnableToTravelShips() < TargetFleet->GetShips().Num())
 			{
 				// Open the confirmation
 				PC->GetMenuManager()->Confirm(TitleText,
@@ -496,6 +413,8 @@ void SFlareFleetInfo::OnStartTravelConfirmed()
 {
 	if (TargetFleet&&TargetSectorTravel)
 	{
+		UFlareSimulatedSector* TravelingFrom = TargetFleet->GetCurrentSector();
+		UFlareTravel* OldTravel = TargetFleet->GetCurrentTravel();
 		UFlareTravel* Travel = PC->GetGame()->GetGameWorld()->StartTravel(TargetFleet, TargetSectorTravel);
 		if (Travel)
 		{
@@ -505,7 +424,11 @@ void SFlareFleetInfo::OnStartTravelConfirmed()
 			}
 			else if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Sector)
 			{
-				PC->GetMenuManager()->GetSectorMenu()->UpdateShipLists();//(TargetFleet);
+				PC->GetMenuManager()->GetSectorMenu()->UpdateShipLists();
+			}
+			else if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+			{
+				PC->GetMenuManager()->GetOrbitMenu()->FleetsBegunTravel(TravelingFrom, TargetSectorTravel, OldTravel);
 			}
 		}
 	}
@@ -991,8 +914,8 @@ void SFlareFleetInfo::Show()
 		RepairButton->SetVisibility(EVisibility::Collapsed);
 		SectorSelector->SetVisibility(EVisibility::Collapsed);
 		TravelButton->SetVisibility(EVisibility::Collapsed);
-
 	}
+
 	else if (TargetFleet && TargetFleet->IsValidLowLevel())
 	{
 		if (TargetFleet->GetFleetCompany() == TargetFleet->GetGame()->GetPC()->GetCompany())

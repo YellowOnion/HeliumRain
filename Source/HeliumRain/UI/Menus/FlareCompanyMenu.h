@@ -5,7 +5,7 @@
 #include "../Components/FlareList.h"
 #include "../Components/FlareCompanyInfo.h"
 #include "../Components/FlareTradeRouteInfo.h"
-
+#include "../Components/FlareAutomatedFleetsInfo.h"
 
 class UFlareCompany;
 
@@ -185,6 +185,7 @@ protected:
 	TSharedPtr<SFlareList>                   ShipList;
 	TSharedPtr<SFlareCompanyInfo>            CompanyInfo;
 	TSharedPtr<SFlareTradeRouteInfo>         TradeRouteInfo;
+	TSharedPtr<SFlareAutomatedFleetsInfo>    AutomatedFleetsInfo;
 	TSharedPtr<SEditableText>                CompanyName;
 	TSharedPtr<SFlareDropList<int32>>        EmblemPicker;
 	TSharedPtr<SFlareDropList<int32>>        DifficultyPicker;

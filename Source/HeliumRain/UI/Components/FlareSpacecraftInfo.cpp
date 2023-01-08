@@ -33,8 +33,10 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 	OwnerWidget = InArgs._OwnerWidget->AsShared();
 	NoInspect = InArgs._NoInspect;
 	Minimized = InArgs._Minimized;
+	UseSmallFont = InArgs._UseSmallFont;
 	OnRemoved = InArgs._OnRemoved;
 	WidthAdjuster = InArgs._WidthAdjuster;
+	OriginatingMenu = InArgs._OriginatingMenu;
 	AFlareGame* Game = InArgs._Player->GetGame();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
@@ -798,22 +800,22 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 			FText ProductionShips;
 			FText QueueShips;
 
-			if (TargetSpacecraft->GetOngoingProductionList().Num() > 1)
-			{
-				ProductionShips = LOCTEXT("ProductionShipsShips", "ships");
-			}
-			else
+			if (TargetSpacecraft->GetOngoingProductionList().Num() == 1)
 			{
 				ProductionShips = LOCTEXT("ProductionShipsShip", "ship");
 			}
-
-			if (TargetSpacecraft->GetShipyardOrderQueue().Num() > 1)
+			else
 			{
-				QueueShips = LOCTEXT("QueueShips", "ships");
+				ProductionShips = LOCTEXT("ProductionShipsShips", "ships");
+			}
+
+			if (TargetSpacecraft->GetShipyardOrderQueue().Num() == 1)
+			{
+				QueueShips = LOCTEXT("QueueShip", "ship");
 			}
 			else
 			{
-				QueueShips = LOCTEXT("QueueShip", "ship");
+				QueueShips = LOCTEXT("QueueShips", "ships");
 			}
 
 			AddMessage(FText::Format(LOCTEXT("ShipyardQueCount", "{0} {1} in production. {2} {3} in queue"), FText::AsNumber(TargetSpacecraft->GetOngoingProductionList().Num()), ProductionShips, FText::AsNumber(TargetSpacecraft->GetShipyardOrderQueue().Num()), QueueShips),

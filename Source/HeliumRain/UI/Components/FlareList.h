@@ -15,6 +15,7 @@ class SFlareList : public SCompoundWidget
 
 	SLATE_BEGIN_ARGS(SFlareList)
 	: _UseCompactDisplay(false)
+	, _UseSmallFont(false)
    	, _StationList(false)
 	, _FleetList(false)
 	, _WidthAdjuster(0.f)
@@ -23,6 +24,7 @@ class SFlareList : public SCompoundWidget
 	{}			 
 
 	SLATE_ARGUMENT(bool, UseCompactDisplay)
+	SLATE_ARGUMENT(bool, UseSmallFont)
 	SLATE_ARGUMENT(bool, StationList)
 	SLATE_ARGUMENT(bool, FleetList)
 	SLATE_ARGUMENT(bool, ShowOwnedShips) 
@@ -34,7 +36,8 @@ class SFlareList : public SCompoundWidget
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
 	SLATE_EVENT(FFlareListItemSelected, OnItemUnSelected)
 	SLATE_ARGUMENT(FText, Title)
-	
+	SLATE_ARGUMENT(FString, OriginatingMenu)
+
 	SLATE_END_ARGS()
 
 public:
@@ -93,6 +96,8 @@ protected:
 	/** Show ship filters when ships are present */
 	EVisibility GetShipFiltersVisibility() const;
 
+	EVisibility GetFreighterFiltersVisibility() const;
+
 	/** Show ship filters when ships are present */
 	EVisibility GetStationFilterVisibility() const;
 
@@ -129,6 +134,8 @@ protected:
 
 	// Menu components
 	TSharedPtr<STextBlock>                                       Title;
+	FString														 OriginatingMenu;
+
 	TSharedPtr< SListView< TSharedPtr<FInterfaceContainer> > >   WidgetList;
 	TArray< TSharedPtr<FInterfaceContainer> >                    ObjectList;
 	TArray< TSharedPtr<FInterfaceContainer> >                    FilteredObjectList;
@@ -148,6 +155,7 @@ protected:
 	FFlareListItemSelected                                       OnItemUnSelected;
 	FFlareListItemSelected                                       OnItemSelected;
 	bool                                                         UseCompactDisplay;
+	bool														 UseSmallFont;
 	bool                                                         HasShips;
 	bool                                                         HasFleets;
 	bool														 StationList;

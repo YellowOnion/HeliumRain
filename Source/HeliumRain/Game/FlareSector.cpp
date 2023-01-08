@@ -82,6 +82,12 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	}
 
 	IsDestroyingSector = false;
+
+
+	for (int CompanyIndex = 0; CompanyIndex < ParentSector->GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		ParentSector->GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex]->SimulateActiveAI();
+	}
 }
 
 void UFlareSector::AddReinforcingShip(UFlareSimulatedSpacecraft* Ship)

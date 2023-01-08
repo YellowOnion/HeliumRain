@@ -445,6 +445,7 @@ inline static bool CompanyTotalCombatValueComparator(const UFlareCompany& ip1, c
 	return ip1.GetCompanyValue().ArmyTotalCombatPoints < ip2.GetCompanyValue().ArmyTotalCombatPoints;
 }
 
+//PrimarySimulate()
 void UFlareWorld::Simulate()
 {
 	double StartTs = FPlatformTime::Seconds();
@@ -626,61 +627,63 @@ void UFlareWorld::Simulate()
 
 		if (MaxCombatPointCompany == PlayerCompany)
 		{
+			//Chance every day to initiate a global war against the player
 			switch (GameDifficulty)
 			{
 			case -1: // Easy
 				Chance = 0.00f;
-				MinimumDays = 150;
+				MinimumDays = 360;
 				break;
 			case 0: // Normal
-				Chance = 0.00f;
-				MinimumDays = 120;
+				Chance = 0.01f;
+				MinimumDays = 300;
 				break;
 			case 1: // Hard
 				Chance = 0.01f;
-				MinimumDays = 90;
+				MinimumDays = 240;
 				break;
 			case 2: // Very Hard
 				Chance = 0.02f;
-				MinimumDays = 60;
+				MinimumDays = 180;
 				break;
 			case 3: // Expert
 				Chance = 0.05f;
-				MinimumDays = 45;
+				MinimumDays = 120;
 				break;
 			case 4: // Unfair
 				Chance = 0.10f;
-				MinimumDays = 30;
+				MinimumDays = 60;
 				break;
 			}
 		}
 		else
 		{
+			//Chance every day to initiate a global war against an AI player
 			switch (GameDifficulty)
 			{
 			case -1: // Easy
-				Chance = 1.00f;
-				MinimumDays = 120;
+				Chance = 0.50f;
+				MinimumDays = 60;
 				break;
 			case 0: // Normal
-				Chance = 1.00f;
-				MinimumDays = 90;
+				Chance = 0.25f;
+				MinimumDays = 120;
 				break;
 			case 1: // Hard
-				Chance = 0.80f;
-				MinimumDays = 60;
+				Chance = 0.125f;
+				MinimumDays = 180;
 				break;
 			case 2: // Very Hard
-				Chance = 0.60f;
-				MinimumDays = 60;
+				Chance = 0.0625f;
+				MinimumDays = 240;
 				break;
 			case 3: // Expert
-				Chance = 0.40f;
-				MinimumDays = 45;
+				Chance = 0.03125f;
+				MinimumDays = 300;
 				break;
 			case 4: // Unfair
-				Chance = 0.10f;
-				MinimumDays = 30;
+				Chance = 0.015625f;
+				MinimumDays = 360;
 				break;
 			}
 		}
@@ -750,7 +753,7 @@ void UFlareWorld::Simulate()
 	{
 		int32 Index = FMath::RandRange(0, CompaniesToSimulateAI.Num() - 1);
 		CompaniesToSimulateAI[Index]->SimulateAI(GlobalWar, TotalReservedResources);
-		CompaniesToSimulateAI.RemoveAt(Index);
+		CompaniesToSimulateAI.RemoveAtSwap(Index);
 	}
 
 	for (UFlareCompany* Company : GetCompanies())

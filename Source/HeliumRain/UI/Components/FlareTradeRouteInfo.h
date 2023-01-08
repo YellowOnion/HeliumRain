@@ -37,7 +37,6 @@ public:
 	/** Clear the trade route list */
 	void Clear();
 
-
 	/** Info text */
 	FText GetDetailText(UFlareTradeRoute* TradeRoute) const;
 
@@ -73,13 +72,6 @@ public:
 	void OnTogglePauseTradeRoute(UFlareTradeRoute* TradeRoute);
 
 
-	/** Info text */
-	FText GetFleetDetailText(UFlareFleet* Fleet) const;
-
-	/** Inspect fleet */
-	void OnInspectFleetClicked(UFlareFleet* Fleet);
-
-
 protected:
 
 	/*----------------------------------------------------
@@ -91,7 +83,4 @@ protected:
 	
 	// Menu data
 	TSharedPtr<SVerticalBox>                 TradeRouteList;
-	TSharedPtr<SVerticalBox>                 AutomatedFleetList;
-
-
 };

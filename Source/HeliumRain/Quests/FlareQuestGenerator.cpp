@@ -345,8 +345,6 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 
 	while (CompaniesToProcess.Num() > 0)
 	{
-		UFlareQuestGenerated* Quest = NULL;
-
 		// Get a company
 		int CompanyIndex = FMath::RandRange(0, CompaniesToProcess.Num() - 1);
 		UFlareCompany* Company = CompaniesToProcess[CompanyIndex];
@@ -357,7 +355,31 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		}
 
 		//Below basic operating costs, no contracts offered
-		if (!Company->GetAI()->IsAboveMinimumMoney() && Company->GetMoney() >= (TotalCompaniesMoney * REQUIRED_TOTAL_COMPANY_MONEY))
+		int32 GameDifficulty = -1;
+		int32 RequiredMoneyMulti = 1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			RequiredMoneyMulti = 0;
+			break;
+		case 0: // Normal
+			break;
+		case 1: // Hard
+			RequiredMoneyMulti = 2;
+			break;
+		case 2: // Very Hard
+			RequiredMoneyMulti = 4;
+			break;
+		case 3: // Expert
+			RequiredMoneyMulti = 8;
+			break;
+		case 4: // Unfair
+			RequiredMoneyMulti = 16;
+			break;
+		}
+
+		if (!Company->GetAI()->IsAboveMinimumMoney() || Company->GetMoney() < (TotalCompaniesMoney * (REQUIRED_TOTAL_COMPANY_MONEY * RequiredMoneyMulti)))
 		{
 			continue;
 		}
@@ -371,6 +393,7 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		// Check friendlyness
 		if (Company->GetWarState(PlayerCompany) != EFlareHostility::Hostile)
 		{
+			UFlareQuestGenerated* Quest = NULL;
 			// Generate a VIP quest
 			if (FMath::FRand() < 0.15)
 			{
@@ -571,6 +594,37 @@ void UFlareQuestGenerator::GenerateMeteoriteQuest(UFlareSimulatedSpacecraft* Tar
 	}
 
 	if(TargetStation->GetCompany()->GetPlayerHostility() == EFlareHostility::Hostile)
+	{
+		return;
+	}
+
+	//Below basic operating costs, no contracts offered
+	int32 GameDifficulty = -1;
+	int32 RequiredMoneyMulti = 1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+	switch (GameDifficulty)
+	{
+	case -1: // Easy
+		RequiredMoneyMulti = 0;
+		break;
+	case 0: // Normal
+		break;
+	case 1: // Hard
+		RequiredMoneyMulti = 2;
+		break;
+	case 2: // Very Hard
+		RequiredMoneyMulti = 3;
+		break;
+	case 3: // Expert
+		RequiredMoneyMulti = 5;
+		break;
+	case 4: // Unfair
+		RequiredMoneyMulti = 8;
+		break;
+	}
+
+	int64 TotalCompaniesMoney = Game->GetGameWorld()->GetTotalCompaniesMoney();
+	if (!TargetStation->GetCompany()->GetAI()->IsAboveMinimumMoney() || TargetStation->GetCompany()->GetMoney() < (TotalCompaniesMoney * (REQUIRED_TOTAL_COMPANY_MONEY * RequiredMoneyMulti)))
 	{
 		return;
 	}

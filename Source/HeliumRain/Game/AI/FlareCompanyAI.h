@@ -70,8 +70,8 @@ public:
 	/** Save the company AI to a save file */
 	virtual FFlareCompanyAISave* Save();
 
-	/** Real-time tick */
-	virtual void Tick();
+	/** Used to give commands for the active sector */
+	virtual void SimulateActiveAI();
 
 	/** Simulate a day */
 	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);

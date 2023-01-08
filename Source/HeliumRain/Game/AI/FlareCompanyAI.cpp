@@ -158,7 +158,7 @@ FFlareCompanyAISave* UFlareCompanyAI::Save()
 	return &AIData;
 }
 
-void UFlareCompanyAI::Tick()
+void UFlareCompanyAI::SimulateActiveAI()
 {
 	if (Game && Company != Game->GetPC()->GetCompany())
 	{

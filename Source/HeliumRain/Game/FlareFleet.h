@@ -165,6 +165,7 @@ public:
 	int32 GetRepairDuration() const;
 
 	int32 GetRefillDuration() const;
+	FText GetTravelConfirmText();
 
 protected:
 
@@ -179,11 +180,14 @@ protected:
 	UFlareTradeRoute*                      CurrentTradeRoute;
 	uint32								   FleetCount;
 	TArray<AFlareBomb*>					   IncomingBombs;
+	int32								   UnableToTravelShips;
 
 public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	int32 GetUnableToTravelShips() const;
 
 	void TrackIncomingBomb(AFlareBomb* Bomb);
 	void UnTrackIncomingBomb(AFlareBomb* Bomb);
@@ -274,5 +278,4 @@ public:
 	int32 GetTransportCapacity();
 
 	int32 GetFleetResourceQuantity(FFlareResourceDescription* Resource);
-
 };

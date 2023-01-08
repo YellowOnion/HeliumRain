@@ -20,7 +20,6 @@ public:
 	void Initialize(class UFlareWeapon* Weapon, const FFlareSpacecraftComponentDescription* Description, FVector ShootDirection, FVector ParentVelocity, bool Tracer);
 
 	virtual void Tick(float DeltaSeconds) override;
-//	virtual void TickShell(float DeltaSeconds);
 	virtual void LifeSpanExpired() override;
 
 	virtual void SetPause(bool Pause);

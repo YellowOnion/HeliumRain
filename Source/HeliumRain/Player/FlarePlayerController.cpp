@@ -2017,6 +2017,17 @@ void AFlarePlayerController::SimulateConfirmed()
 	}
 }
 
+void AFlarePlayerController::OnSpacecraftDestroyed()
+{
+	if (IsInMenu())
+	{
+		if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+		{
+			MenuManager->GetOrbitMenu()->RefreshTrackedButtons();
+		}
+	}
+}
+
 #if !UE_BUILD_SHIPPING
 void AFlarePlayerController::TogglePerformance()
 {

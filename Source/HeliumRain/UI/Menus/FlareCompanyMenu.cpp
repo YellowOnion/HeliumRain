@@ -85,6 +85,15 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 					SAssignNew(TradeRouteInfo, SFlareTradeRouteInfo)
 					.MenuManager(MenuManager)
 				]
+
+				// Auto Fleet info
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SAssignNew(AutomatedFleetsInfo, SFlareAutomatedFleetsInfo)
+					.MenuManager(MenuManager)
+				]
+
 			]
 
 			// Property block
@@ -615,6 +624,7 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 	CompanyInfo->SetCompany(Company);
 	CompanyName->SetText(Company->GetCompanyName());
 	TradeRouteInfo->Update();
+	AutomatedFleetsInfo->Update();
 
 	// Date
 	int64 CurrentGameDate = MenuManager->GetGame()->GetGameWorld()->GetDate();
@@ -692,9 +702,10 @@ void SFlareCompanyMenu::Exit()
 	ShipList->Reset();
 	ShipList->SetVisibility(EVisibility::Collapsed);
 
-	EmblemPicker->ClearItems();
 //	DifficultyPicker->ClearItems();
+	EmblemPicker->ClearItems();
 	TradeRouteInfo->Clear();
+	AutomatedFleetsInfo->Clear();
 	CompanyLog->ClearChildren();
 	CompanyAccounting->ClearChildren();
 

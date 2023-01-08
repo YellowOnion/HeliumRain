@@ -45,7 +45,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Hit"), STAT_FlareSpacecraft_Hit, STATGR
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Aim"), STAT_FlareSpacecraft_Aim, STATGROUP_Flare);
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraft"
-#define DELETION_DELAY 3.f
+#define DELETION_DELAYCRAFT 3.f
 
 /*----------------------------------------------------
 	Constructor
@@ -998,7 +998,7 @@ void AFlareSpacecraft::SafeDestroy()
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
 
-		SetLifeSpan(DELETION_DELAY);
+		SetLifeSpan(DELETION_DELAYCRAFT);
 		IsExploding = false;
 
 		StopFire();

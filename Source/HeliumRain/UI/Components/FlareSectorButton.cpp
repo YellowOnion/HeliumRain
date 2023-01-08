@@ -39,7 +39,6 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 	NeutralStations = -1;
 	EnemyShips = -1;
 	EnemyStations = -1;
-	CachedFleets = false;
 
 	ChildSlot
 	.VAlign(VAlign_Top)
@@ -108,6 +107,7 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxOne, SHorizontalBox)
+//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 
 			+ SVerticalBox::Slot()
@@ -134,6 +134,7 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxTwo, SHorizontalBox)
+//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -147,12 +148,13 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxThree, SHorizontalBox)
+//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 			]
 
 		]
 	];
-	ClearCaches();
+	RefreshButton();
 }
 TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 {
@@ -191,222 +193,154 @@ TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 	return CurrentBox;
 }
 
-void SFlareSectorButton::ClearCaches()
+void SFlareSectorButton::RefreshButton()
 {
-	CachedFleets = false;
-	OwnedShips = -1;
-	OwnedStations = -1;
-	NeutralShips = -1;
-	NeutralStations = -1;
-	EnemyStations = -1;
-	EnemyShips = -1;
-	//	FLOGV("Clear caches recieved in %s", *Sector->GetSectorName().ToString());
-}
-
-void SFlareSectorButton::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
-{
-	// Tick parent
-	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-
-	// Get display mode
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
 
+	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
 	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
 	{
 		DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
 	}
-/*
-		bool FFWDACT = MenuManager->GetOrbitMenu()->GetFastForwardActive();
-		if(FFWDACT)
+
+	FleetBoxOne->ClearChildren();
+	FleetBoxTwo->ClearChildren();
+	FleetBoxThree->ClearChildren();
+
+	if (DisplayMode == EFlareOrbitalMode::Fleets)
+	{
+		int32 FleetNumber = 0;
+		CurrentBox = FleetBoxOne;
+		CurrentCount = 0;
+		TotalCount = 0;
+
+		// Get local fleets
+		for (UFlareFleet* Fleet : Sector->GetSectorFleets())
 		{
-			int32 TimeSince = MenuManager->GetOrbitMenu()->GetTimeSinceFFWD();
-			if (TimeSince <= 0)
+			if (Fleet->GetFleetCompany()->IsPlayerCompany())
 			{
-				ClearCaches();
+				FLinearColor FleetColor = Fleet->GetFleetColor();
+				const FSlateBrush* FleetIcon = (Fleet->GetCombatPoints(false) > 0) ?
+					FFlareStyleSet::GetIcon("Fleet_Small_Military") : FFlareStyleSet::GetIcon("Fleet_Small");
+
+				CurrentCount++;
+				TotalCount++;
+				FleetNumber++;
+
+				CurrentBox = GetCurrentBox();
+				CurrentBox->AddSlot()
+					.AutoWidth()
+					[
+						SNew(SVerticalBox)
+
+						+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Center)
+
+					[
+						SNew(SImage)
+						.Image(FleetIcon)
+					.ColorAndOpacity(FleetColor)
+					]
+					];
+			}
+		}
+
+		// Get incoming fleets
+		for (UFlareTravel* Travel : MenuManager->GetGame()->GetGameWorld()->GetTravels())
+		{
+			if (Travel->GetFleet()->GetFleetCompany()->IsPlayerCompany() && Sector == Travel->GetDestinationSector())
+			{
+				FLinearColor FleetColor = Travel->GetFleet()->GetFleetColor();
+				FText DateText = UFlareGameTools::FormatDate(Travel->GetRemainingTravelDuration(), 1);
+				FleetColor.A = 0.5f;
+
+				CurrentCount++;
+				TotalCount++;
+
+				CurrentBox = GetCurrentBox();
+				CurrentBox->AddSlot()
+					.AutoWidth()
+					[
+						SNew(SVerticalBox)
+
+						+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Center)
+					[
+						SNew(SImage)
+						.Image(FFlareStyleSet::GetIcon("Fleet_Small"))
+					.ColorAndOpacity(FleetColor)
+					]
+
+				+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(DateText)
+					.TextStyle(&Theme.SmallFont)
+					]
+				];
+			}
+		}
+		SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
+	}
+	else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
+	{
+		EnemyShips = 0;
+		OwnedShips = 0;
+		NeutralShips = 0;
+
+		TArray<UFlareSimulatedSpacecraft*> TotalShips = Sector->GetSectorShips();
+		int32 TotalSectorShips = TotalShips.Num();
+
+		for (int32 CountIndex = 0; CountIndex < TotalSectorShips; CountIndex++)
+		{
+			UFlareSimulatedSpacecraft* Ship = TotalShips[CountIndex];
+
+			if (Ship->GetCompany() == PlayerCompany)
+			{
+				++OwnedShips;
+				continue;
+			}
+			else if (Ship->IsHostile(PlayerCompany))
+			{
+				++EnemyShips;
+				continue;
+			}
+			else
+			{
+				++NeutralShips;
+				continue;
 			}
 		}
 	}
-*/
-	// Draw fleet info
-
-	if (Sector)
+	else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
 	{
-		bool ActiveSector = false;
-		if (MenuManager->GetGame()->GetActiveSector())
+		EnemyStations = 0;
+		OwnedStations = 0;
+		NeutralStations = 0;
+		TArray<UFlareSimulatedSpacecraft*> TotalStations = Sector->GetSectorStations();
+		int32 TotalSectorStations = TotalStations.Num();
+
+		for (int32 CountIndex = 0; CountIndex < TotalSectorStations; CountIndex++)
 		{
-			//TODO better way of getting active server comparison?
-			if (Sector->GetIdentifier() == MenuManager->GetGame()->GetActiveSector()->GetSimulatedSector()->GetIdentifier())
+			UFlareSimulatedSpacecraft* Station = TotalStations[CountIndex];
+			if (Station->GetCompany() == PlayerCompany)
 			{
-				ActiveSector = true;
+				++OwnedStations;
+				continue;
 			}
-		}
-
-		if (DisplayMode != EFlareOrbitalMode::Fleets)
-		{
-			FleetBoxOne->ClearChildren();
-			FleetBoxTwo->ClearChildren();
-			FleetBoxThree->ClearChildren();
-			CachedFleets = false;
-		}
-
-		if (DisplayMode == EFlareOrbitalMode::Fleets)
-		{
-			if(!CachedFleets || ActiveSector)
+			else if (Station->IsHostile(PlayerCompany))
 			{
-				FleetBoxOne->ClearChildren();
-				FleetBoxTwo->ClearChildren();
-				FleetBoxThree->ClearChildren();
-
-				int32 FleetNumber = 0;
-				CurrentBox = FleetBoxOne;
-				CachedFleets = true;
-				CurrentCount = 0;
-				TotalCount = 0;
-
-				// Get local fleets
-				for (UFlareFleet* Fleet : Sector->GetSectorFleets())
-				{
-					if (Fleet->GetFleetCompany()->IsPlayerCompany())
-					{
-						FLinearColor FleetColor = Fleet->GetFleetColor();
-						const FSlateBrush* FleetIcon = (Fleet->GetCombatPoints(false) > 0) ?
-							FFlareStyleSet::GetIcon("Fleet_Small_Military") : FFlareStyleSet::GetIcon("Fleet_Small");
-
-						CurrentCount++;
-						TotalCount++;
-						FleetNumber++;
-
-						CurrentBox = GetCurrentBox();
-						CurrentBox->AddSlot()
-							.AutoWidth()
-							[
-								SNew(SVerticalBox)
-
-								+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-
-							[
-								SNew(SImage)
-								.Image(FleetIcon)
-							.ColorAndOpacity(FleetColor)
-							]
-						];
-					}
-				}
-
-				// Get incoming fleets
-				for (UFlareTravel* Travel : MenuManager->GetGame()->GetGameWorld()->GetTravels())
-				{
-					if (Travel->GetFleet()->GetFleetCompany()->IsPlayerCompany() && Sector == Travel->GetDestinationSector())
-					{
-						FLinearColor FleetColor = Travel->GetFleet()->GetFleetColor();
-						FText DateText = UFlareGameTools::FormatDate(Travel->GetRemainingTravelDuration(), 1);
-						FleetColor.A = 0.5f;
-
-						CurrentCount++;
-						TotalCount++;
-
-						CurrentBox = GetCurrentBox();
-						CurrentBox->AddSlot()
-							.AutoWidth()
-							[
-								SNew(SVerticalBox)
-
-								+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-							[
-								SNew(SImage)
-								.Image(FFlareStyleSet::GetIcon("Fleet_Small"))
-							.ColorAndOpacity(FleetColor)
-							]
-
-						+ SVerticalBox::Slot()
-							.AutoHeight()
-							[
-								SNew(STextBlock)
-								.Text(DateText)
-							.TextStyle(&Theme.SmallFont)
-							]
-						];
-					}
-				}
+				++EnemyStations;
+				continue;
 			}
-
-			SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
-		}
-		else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
-		{
-//			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
-//			if (Warcount > 0)
-			//TODO better way of getting active server comparison?
-			if (EnemyShips == -1 || OwnedShips == -1 || NeutralShips == -1 || ActiveSector)
+			else
 			{
-				EnemyShips = 0;
-				OwnedShips = 0;
-				NeutralShips = 0;
-
-				TArray<UFlareSimulatedSpacecraft*> TotalShips = Sector->GetSectorShips();
-				int32 TotalSectorShips = TotalShips.Num();
-
-				for (int32 CountIndex = 0; CountIndex < TotalSectorShips; CountIndex++)
-				{
-					UFlareSimulatedSpacecraft* Ship = TotalShips[CountIndex];
-
-					if (Ship->GetCompany() == PlayerCompany)
-					{
-						++OwnedShips;
-						continue;
-					}
-					else if (Ship->IsHostile(PlayerCompany))
-					{
-						++EnemyShips;
-						continue;
-					}
-					else
-					{
-						++NeutralShips;
-						continue;
-					}
-				}
-			}
-		}
-
-		else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
-		{
-//			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
-//			if (Warcount > 0)
-			//TODO better way of getting active server comparison?
-			if (EnemyStations == -1 || OwnedStations == -1 || NeutralStations == -1 || ActiveSector)
-			{
-				EnemyStations = 0;
-				OwnedStations = 0;
-				NeutralStations = 0;
-				TArray<UFlareSimulatedSpacecraft*> TotalStations = Sector->GetSectorStations();
-				int32 TotalSectorStations = TotalStations.Num();
-
-				for (int32 CountIndex = 0; CountIndex < TotalSectorStations; CountIndex++)
-				{
-					UFlareSimulatedSpacecraft* Station = TotalStations[CountIndex];
-					if (Station->GetCompany() == PlayerCompany)
-					{
-						++OwnedStations;
-						continue;
-					}
-					else if (Station->IsHostile(PlayerCompany))
-					{
-						++EnemyStations;
-						continue;
-					}
-					else
-					{
-						++NeutralStations;
-						continue;
-					}
-				}
+				++NeutralStations;
+				continue;
 			}
 		}
 	}
@@ -485,6 +419,23 @@ bool SFlareSectorButton::ShouldDisplayFleets() const
 	}
 }
 
+UFlareSimulatedSector* SFlareSectorButton::GetSector()
+{
+	return Sector;
+}
+
+EVisibility SFlareSectorButton::GetFleetBoxVisibility() const
+{
+	if (ShouldDisplayFleets())
+	{
+		return EVisibility::Visible;
+	}
+	else
+	{
+		return EVisibility::Collapsed;
+	}
+}
+
 EVisibility SFlareSectorButton::GetBottomTextVisibility() const
 {
 	if (ShouldDisplayFleets())
@@ -512,6 +463,7 @@ FText SFlareSectorButton::GetSectorText() const
 	// Get display mode
 
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+	FText SectorText;
 
 	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
 	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
@@ -522,13 +474,7 @@ FText SFlareSectorButton::GetSectorText() const
 	// If the sector is known, display it
 	if (Sector && PlayerCompany->HasVisitedSector(Sector))
 	{
-		FText SectorText;
-
-		if (DisplayMode == EFlareOrbitalMode::Fleets)
-		{
-		}
-
-		else if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
+		if (DisplayMode == EFlareOrbitalMode::Stations && Sector->GetSectorStations().Num() > 0)
 		{
 			int32 Warcount = PlayerCompany->GetWarCount(PlayerCompany);
 			int32 TotalSectorStations = Sector->GetSectorStations().Num();

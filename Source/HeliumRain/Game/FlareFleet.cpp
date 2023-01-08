@@ -766,4 +766,121 @@ int32 UFlareFleet::GetFleetResourceQuantity(FFlareResourceDescription* Resource)
 }
 
 
+int32 UFlareFleet::GetUnableToTravelShips() const
+{
+	return UnableToTravelShips;
+}
+
+FText UFlareFleet::GetTravelConfirmText()
+{
+	bool Escape = GetCurrentSector()->GetSectorBattleState(GetFleetCompany()).HasDanger
+		&& (this != Game->GetPC()->GetPlayerFleet() || GetShipCount() > 1);
+	bool Abandon = GetImmobilizedShipCount() != 0;
+
+	FText SingleShip = LOCTEXT("ShipIsSingle", "ship is");
+	FText MultipleShips = LOCTEXT("ShipArePlural", "ships are");
+
+	int32 TradingShips = 0;
+	int32 InterceptedShips = 0;
+	int32 StrandedShips = 0;
+	UnableToTravelShips = 0;
+
+	for (UFlareSimulatedSpacecraft* Ship : GetShips())
+	{
+		if (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted())
+		{
+			UnableToTravelShips++;
+		}
+
+		if (Ship->IsTrading())
+		{
+			TradingShips++;
+		}
+
+		if (Ship->GetDamageSystem()->IsStranded())
+		{
+			StrandedShips++;
+		}
+
+		if (Ship->IsIntercepted())
+		{
+			InterceptedShips++;
+		}
+	}
+
+	FText TooDamagedTravelText;
+	FText TradingTravelText;
+	FText InterceptedTravelText;
+
+	bool useOr = false;
+
+	if (TradingShips > 0)
+	{
+		TradingTravelText = LOCTEXT("TradingTravelText", "trading");
+		useOr = true;
+	}
+
+	if (InterceptedShips > 0)
+	{
+		if (useOr)
+		{
+			InterceptedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrInterceptedTravelText", "or intercepted"));
+		}
+		else
+		{
+			InterceptedTravelText = LOCTEXT("InterceptedTravelText", "intercepted");
+		}
+		useOr = true;
+	}
+
+	if (StrandedShips > 0)
+	{
+		if (useOr)
+		{
+			TooDamagedTravelText = UFlareGameTools::AddLeadingSpace(LOCTEXT("OrTooDamagedToTravel", "or too damaged to travel"));
+		}
+		else
+		{
+			TooDamagedTravelText = LOCTEXT("TooDamagedToTravel", "too damaged to travel");
+		}
+	}
+
+	FText ReasonNotTravelText = FText::Format(LOCTEXT("ReasonNotTravelText", "{0}{1}{2} and will be left behind"),
+		TradingTravelText,
+		InterceptedTravelText,
+		TooDamagedTravelText);
+
+	// We can escape
+	if (Escape)
+	{
+		FText EscapeWarningText = LOCTEXT("ConfirmTravelEscapeWarningText", "Ships can be intercepted while escaping, are you sure ?");
+
+		if (Abandon)
+		{
+			return FText::Format(LOCTEXT("ConfirmTravelEscapeFormat", "{0} {1} {2} {3}."),
+				EscapeWarningText,
+				FText::AsNumber(GetImmobilizedShipCount()),
+				(GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
+				ReasonNotTravelText);
+		}
+		else
+		{
+			return EscapeWarningText;
+		}
+	}
+
+	// We have to abandon
+	else
+	{
+		return FText::Format(LOCTEXT("ConfirmTravelAbandonFormat", "{0} {1} {2}."),
+			FText::AsNumber(GetImmobilizedShipCount()),
+			(GetImmobilizedShipCount() > 1) ? MultipleShips : SingleShip,
+			ReasonNotTravelText);
+	}
+	return FText();
+}
+
+
+
+
 #undef LOCTEXT_NAMESPACE

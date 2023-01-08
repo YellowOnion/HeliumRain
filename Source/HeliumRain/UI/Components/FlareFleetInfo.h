@@ -27,6 +27,7 @@ class SFlareFleetInfo : public SCompoundWidget
 		, _Fleet(NULL)
 		, _OwnerWidget(NULL)
 		, _Minimized(false)
+		, _UseSmallFont(NULL)
 	{}
 
 	SLATE_ARGUMENT(AFlarePlayerController*, Player)
@@ -34,6 +35,8 @@ class SFlareFleetInfo : public SCompoundWidget
 		SLATE_ARGUMENT(SWidget*, OwnerWidget)
 
 		SLATE_ARGUMENT(bool, Minimized)
+		SLATE_ARGUMENT(bool, UseSmallFont)
+		SLATE_ARGUMENT(FString, OriginatingMenu)
 
 		SLATE_END_ARGS()
 
@@ -175,7 +178,11 @@ protected:
 
 	// Game data
 	AFlarePlayerController*           PC;
+	FString							  OriginatingMenu;
+
 	bool                              Minimized;
+	bool							  UseSmallFont;
+
 	bool							  IsStranded;
 	bool							  IsUncontrollable;
 	bool							  IsDisarmed;

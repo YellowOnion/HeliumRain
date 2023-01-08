@@ -7,10 +7,8 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Input/SButton.h"
 
-
 class UFlareCompany;
 class UFlareSimulatedSector;
-
 
 class SFlareSectorButton : public SCompoundWidget
 {
@@ -40,9 +38,7 @@ public:
 	void Construct(const FArguments& InArgs);
 
 	TSharedPtr<SHorizontalBox> GetCurrentBox();
-
-	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
-
+	UFlareSimulatedSector* GetSector();
 
 protected:
 
@@ -61,6 +57,7 @@ protected:
 
 	/** Get the visibility of text */
 	EVisibility GetBottomTextVisibility() const;
+	EVisibility GetFleetBoxVisibility() const;
 
 	/** Get the text to display */
 	FText GetSectorTitle() const;
@@ -83,7 +80,6 @@ protected:
 	/** Mouse clicked */
 	FReply OnButtonClicked();
 
-
 protected:
 
 	/*----------------------------------------------------
@@ -101,7 +97,6 @@ protected:
 	TSharedPtr<SHorizontalBox>     FleetBoxOne;
 	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
 	TSharedPtr<SHorizontalBox>     FleetBoxThree;
-	bool							CachedFleets;
 	int32							NeutralShips;
 	int32							NeutralStations;
 	int32							OwnedShips;
@@ -112,5 +107,5 @@ protected:
 	int32							TotalCount;
 
 public:
-	void	ClearCaches();
+	void	RefreshButton();
 };

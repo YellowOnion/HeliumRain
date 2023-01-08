@@ -14,7 +14,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine.h"
 
-#define DELETION_DELAY 1.f
+#define DELETION_DELAYSHELL 1.f
 #define MAXIMUM_DETONATIONS_PER_TICK 10
 
 /*----------------------------------------------------
@@ -975,7 +975,7 @@ void AFlareShell::SafeDestroy()
 		if (!IsDetonating)
 		{
 			this->SetActorTickEnabled(false);
-			SetLifeSpan(DELETION_DELAY);
+			SetLifeSpan(DELETION_DELAYSHELL);
 		}
 	}
 }

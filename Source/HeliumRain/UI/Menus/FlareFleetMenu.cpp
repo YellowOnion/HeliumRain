@@ -427,12 +427,6 @@ void SFlareFleetMenu::UpdateFleetList(UFlareFleet* SelectedFleet)
 		}
 	}
 	FleetList->RefreshList();
-/*
-	if (SelectedFleet != nullptr)
-	{
-		FleetList->SelectFleet(SelectedFleet);
-	}
-*/
 }
 
 void SFlareFleetMenu::UpdateShipList(UFlareFleet* Fleet)

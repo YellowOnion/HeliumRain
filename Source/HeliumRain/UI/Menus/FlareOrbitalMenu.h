@@ -6,6 +6,9 @@
 #include "../Components/FlareButton.h"
 #include "../Components/FlareSectorButton.h"
 #include "../Components/FlareTradeRouteInfo.h"
+#include "../Components/FlareAutomatedFleetsInfo.h"
+#include "../Components/FlareOrbitalFleetInfo.h"
+#include "../Components/FlareTravelEventsInfo.h"
 
 class AFlareMenuManager;
 
@@ -59,6 +62,8 @@ public:
 	/** A notification was received, stop */
 	void RequestStopFastForward();
 
+	void RequestOrbitalFleetsUpdate();
+
 	/** Get the display mode */
 	EFlareOrbitalMode::Type GetDisplayMode() const;
 
@@ -73,7 +78,10 @@ public:
 	/** Set Shipyard Open var */
 	void SetShipyardOpen(bool ShipyardOpen);
 
-	void ClearSectorButtonCaches();
+	void RefreshTrackedButtons();
+
+	/** Used to update specific Sector Buttons relevant to the two passed through variables*/
+	void FleetsBegunTravel(UFlareSimulatedSector* TravelingFrom, UFlareSimulatedSector* TravelingTo, UFlareTravel* OldTravel);
 
 protected:
 
@@ -126,6 +134,9 @@ protected:
 	/** Open a sector */
 	void OnOpenSector(TSharedPtr<int32> Index);
 	
+	void OnStartSelectedFleetTravelConfirmed();
+	void OnStartSelectedFleetTravelCanceled();
+
 	/** Check if we can fast forward */
 	void OnFastForwardClicked();
 
@@ -137,7 +148,6 @@ protected:
 
 	/** Cancel fast forward */
 	void OnFastForwardCanceled();
-
 
 protected:
 
@@ -154,10 +164,12 @@ protected:
 	// Fast forward
 	bool                                        FastForwardActive;
 	bool                                        FastForwardStopRequested;
+	bool                                        OrbitalFleetsUpdateRequested;
 	float                                       FastForwardPeriod;
 	float                                       TimeSinceFastForward;
 
 	TEnumAsByte<EFlareOrbitalMode::Type>        DisplayMode;
+	TEnumAsByte<EFlareOrbitalMode::Type>        PreviousDisplayMode;
 
 	// Components
 	TSharedPtr<SFlarePlanetaryBox>              NemaBox;
@@ -167,7 +179,18 @@ protected:
 	TSharedPtr<SFlarePlanetaryBox>              AdenaBox;
 	TSharedPtr<SFlareButton>                    FastForwardAuto;
 	TSharedPtr<SFlareTradeRouteInfo>            TradeRouteInfo;
+	TSharedPtr<SFlareAutomatedFleetsInfo>       AutomatedFleetsInfo;
+	TSharedPtr<SFlareOrbitalFleetInfo>          OrbitalFleetsInfo;
 
 	TSharedPtr<SFlareSectorButton>              CurrentSectorButton;
+	TSharedPtr<SFlareButton>					ShowEventsButton;
+	TSharedPtr<SFlareButton>					ShowTradeButton;
+	TSharedPtr<SFlareButton>					ShowFleetButton;
 	TArray<TSharedPtr<SFlareSectorButton>>		SectorButtons;
+
+	UFlareSimulatedSector*						PreviouslySelectedSector;
+
+	EVisibility IsEventsVisible() const;
+	EVisibility IsTradeVisible() const;
+	EVisibility IsAutomatedFleetsVisible() const;
 };

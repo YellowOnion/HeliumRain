@@ -408,6 +408,8 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
 		PC->GetGame()->GetActiveSector()->AddDestroyedSpacecraft(Spacecraft);
 	}
 
+	PC->OnSpacecraftDestroyed();
+
 	UFlareCompany* PlayerCompany = PC->GetCompany();
 	UFlareSimulatedSpacecraft* PlayerShip = Spacecraft->GetGame()->GetPC()->GetPlayerShip();
 

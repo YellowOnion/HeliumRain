@@ -455,14 +455,6 @@ void AFlareGame::Tick(float DeltaSeconds)
 	{
 		SkirmishManager->Update(DeltaSeconds);
 	}
-
-	if (GetActiveSector() != NULL && ActivatingSector == NULL)
-	{
-		for (int CompanyIndex = 0; CompanyIndex < GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
-		{
-			GetGameWorld()->GetCompanies()[CompanyIndex]->TickAI();
-		}
-	}
 }
 
 /*----------------------------------------------------
