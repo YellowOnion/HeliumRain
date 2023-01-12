@@ -717,6 +717,49 @@ void UFlareTradeRoute::DeleteOperation(FFlareTradeRouteSectorOperationSave* Oper
 	}
 }
 
+bool UFlareTradeRoute::CanMoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation)
+{
+	for (int32 SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
+	{
+		FFlareTradeRouteSectorSave* Sector = &TradeRouteData.Sectors[SectorIndex];
+
+		for (int32 OperationIndex = 0; OperationIndex < Sector->Operations.Num(); OperationIndex++)
+		{
+			if (&Sector->Operations[OperationIndex] == Operation)
+			{
+				if (OperationIndex == 0)
+				{
+					//Already on top
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+
+}
+
+bool UFlareTradeRoute::CanMoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation)
+{
+	for (int32 SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
+	{
+		FFlareTradeRouteSectorSave* Sector = &TradeRouteData.Sectors[SectorIndex];
+
+		for (int32 OperationIndex = 0; OperationIndex < Sector->Operations.Num(); OperationIndex++)
+		{
+			if (&Sector->Operations[OperationIndex] == Operation)
+			{
+				if (OperationIndex == Sector->Operations.Num() - 1)
+				{
+					//Already on bottom
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
 FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation)
 {
 	for (int32 SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)

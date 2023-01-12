@@ -319,6 +319,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	FText DroneMaxRight;
 	FText AngularMaxVelocity;
 	FText AngularMaxVelocityRight;
+	FText LinearMaxVelocity;
+	FText LinearMaxVelocityRight;
 
 	FText InternalComponents;
 	FText InternalComponentsRight;
@@ -656,6 +658,13 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			FText::AsNumber(Desc->AngularMaxVelocity));
 	}
 
+	if (Desc->LinearMaxVelocity > 0)
+	{
+		LinearMaxVelocity = LOCTEXT("LinearMaxVelocity", "Maximum Linear Velocity:\n");
+		LinearMaxVelocityRight = FText::Format(LOCTEXT("LinearMaxVelocityValue", "{0}\n"),
+			FText::AsNumber(Desc->LinearMaxVelocity));
+	}
+
 	if (Desc->DroneMaximum > 0)
 	{
 		DroneMax = LOCTEXT("DroneMaximum", "Maximum Drones:\n");
@@ -663,22 +672,23 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			FText::AsNumber(Desc->DroneMaximum));
 	}
 
-	//	FString FlagsString;
-	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}"),
+	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}"),
 		Mass,
 		HeatCapacity,
 		Engines,
 		RCSCount,
 		AngularMaxVelocity,
+		LinearMaxVelocity,
 		DroneMax,
 		InternalComponents);
 
-	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}"),
+	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}"),
 		MassRight,
 		HeatCapacityRight,
 		EnginesRight,
 		RCSCountRight,
 		AngularMaxVelocityRight,
+		LinearMaxVelocityRight,
 		DroneMaxRight,
 		InternalComponentsRight);
 }
@@ -689,7 +699,6 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 	if (TargetShipyard || TargetSkirmish)
 	{
 		// Station
-//		if (Desc->OrbitalEngineCount == 0)
 		if (Desc->IsStation())
 		{
 			return FText::Format(LOCTEXT("FactoryStationFormat", "(Station, {0} factories)"),

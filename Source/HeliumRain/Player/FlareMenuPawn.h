@@ -23,6 +23,8 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	bool GetIsEnabled() const;
+	void SetIsEnabled(bool NewIsEnabled);
 
 	/*----------------------------------------------------
 		Resource loading
@@ -138,6 +140,8 @@ protected:
 	FVector                    CurrentPartOffsetA;
 	FVector                    CurrentPartOffsetB;
 	FVector                    CurrentShipOffset;
+
+	bool					   IsEnabled;
 
 	// Slide data
 	bool                       SlideFromAToB;

@@ -652,6 +652,7 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 
 		// Menu
 		PC->GetMenuPawn()->SetCameraOffset(FVector2D(200, -30));
+
 		if (PC->GetPlayerShip())
 		{
 			PC->GetMenuPawn()->ShowShip(PC->GetPlayerShip());
@@ -699,6 +700,11 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 void SFlareCompanyMenu::Exit()
 {
 	SetEnabled(false);
+	AFlarePlayerController* PC = MenuManager->GetPC();
+	if (PC)
+	{
+		PC->GetMenuPawn()->SetIsEnabled(false);
+	}
 	ShipList->Reset();
 	ShipList->SetVisibility(EVisibility::Collapsed);
 

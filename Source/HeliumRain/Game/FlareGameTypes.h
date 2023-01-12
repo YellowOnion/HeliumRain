@@ -167,8 +167,10 @@ struct FFlareTechnologyDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool PlayerOnly;
 
-	UPROPERTY(EditAnywhere, Category = Content)
-	bool AIOnly;
+	UPROPERTY(EditAnywhere, Category = Content) bool AIOnly;
+
+	/** Used to disable vanilla research, RequiredTechnologies array will still be read. Disabled technology can be used to disable ships/components too*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
 
 	UPROPERTY(EditAnywhere, Category = Content) float RepairBonus;
 	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticPenaltyBonus;
@@ -181,6 +183,9 @@ struct FFlareTechnologyDescription
 	/** Companies that can unlock this research. Company ShortName, or PLAYER*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> ResearchableCompany;
 
+	/** An array of the names of which this Technology unlocks. If multiple technologies unlock the same item both of those technologies are required.
+		Can unlock Stations,Ships and Components */
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> UnlockItems;
 };
 
 /** Scannable description */

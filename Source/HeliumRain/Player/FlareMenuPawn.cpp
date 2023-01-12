@@ -72,8 +72,26 @@ void AFlareMenuPawn::BeginPlay()
 	ResetContent(true);
 }
 
+bool AFlareMenuPawn::GetIsEnabled() const
+{
+	return IsEnabled;
+}
+void AFlareMenuPawn::SetIsEnabled(bool NewIsEnabled)
+{
+	IsEnabled = NewIsEnabled;
+	this->SetActorTickEnabled(NewIsEnabled);
+}
+
 void AFlareMenuPawn::Tick(float DeltaSeconds)
 {
+/*
+// TODO ??? Not sure why CurrentSpacecraft probably either becomes null or can't call UpdateCameraPositions
+	if (CurrentSpacecraft)
+	{
+		CurrentSpacecraft->UpdateCameraPositions(DeltaSeconds);
+	}
+*/
+
 	Super::Tick(DeltaSeconds);
 	SlideInOutCurrentTime += DeltaSeconds;
 
@@ -91,7 +109,6 @@ void AFlareMenuPawn::Tick(float DeltaSeconds)
 	{
 		ShipContainer->SetWorldLocation(GetActorLocation() + CurrentShipOffset + SlideInDelta);
 	}
-
 	// Camera
 
 
@@ -138,7 +155,6 @@ void AFlareMenuPawn::Tick(float DeltaSeconds)
 		ExternalCameraPitch = ExternalCameraPitchClamped;
 	}
 
-
 	SetCameraPitch(ExternalCameraPitch);
 	FRotator DeltaRot = FRotator::MakeFromEuler(FVector(0, 0, ExternalCameraYaw - LastExternalCameraYaw));
 
@@ -180,20 +196,35 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	// Spawn and setup the ship
 	FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, false);
-	CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
-	CurrentSpacecraft->AttachToComponent(ShipContainer, AttachRules, NAME_None);
+	if (CurrentSpacecraft)
+	{
+		if (CurrentSpacecraft->GetDescription()->SpacecraftTemplate != Spacecraft->GetDescription()->SpacecraftTemplate)
+		{
+			CurrentSpacecraft->Destroy();
+			CurrentSpacecraft = NULL;
+		}
+		else
+		{
+			CurrentSpacecraft->SetActorHiddenInGame(false);
+		}
+	}
 
-	// FOV scale
-	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	float MinFOV = GetPC()->GetMinVerticalFOV();
-	float FOVScalingRatio = ((MyGameSettings->VerticalFOV - MinFOV) / (GetPC()->GetMaxVerticalFOV() - MinFOV)) / 3;
+	if(!CurrentSpacecraft)
+	{
+		CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
+		CurrentSpacecraft->AttachToComponent(ShipContainer, AttachRules, NAME_None);
+		// FOV scale
+		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+		float MinFOV = GetPC()->GetMinVerticalFOV();
+		float FOVScalingRatio = ((MyGameSettings->VerticalFOV - MinFOV) / (GetPC()->GetMaxVerticalFOV() - MinFOV)) / 3;
 
-	// Setup rotation and scale
-	CurrentSpacecraft->SetActorScale3D(FVector(1, 1, 1));
-	float Scale = (1 + FOVScalingRatio) * (ShipDisplaySize / CurrentSpacecraft->GetMeshScale());
-	FLOGV("AFlareMenuPawn::ShowShip : DS=%f, MS=%f, S=%f", ShipDisplaySize, CurrentSpacecraft->GetMeshScale(), Scale);
-	CurrentSpacecraft->SetActorScale3D(Scale * FVector(1, 1, 1));
-	ShipContainer->SetRelativeRotation(FRotator(0, InitialYaw, 0));
+		// Setup rotation and scale
+		CurrentSpacecraft->SetActorScale3D(FVector(1, 1, 1));
+		float Scale = (1 + FOVScalingRatio) * (ShipDisplaySize / CurrentSpacecraft->GetMeshScale());
+		FLOGV("AFlareMenuPawn::ShowShip : DS=%f, MS=%f, S=%f", ShipDisplaySize, CurrentSpacecraft->GetMeshScale(), Scale);
+		CurrentSpacecraft->SetActorScale3D(Scale * FVector(1, 1, 1));
+		ShipContainer->SetRelativeRotation(FRotator(0, InitialYaw, 0));
+	}
 
 	// Center
 	FVector Origin, Extent;
@@ -209,6 +240,7 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	// UI
 	CurrentSpacecraft->Load(Spacecraft);
+	SetIsEnabled(true);
 }
 
 void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDesc)
@@ -252,6 +284,7 @@ void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDe
 	PartContainer->SetRelativeRotation(OldRot);
 	SlideInOutOffset = SlideInOutUpOffset;
 	SlideInOutCurrentTime = 0.0f;
+	SetIsEnabled(true);
 }
 
 
@@ -264,8 +297,7 @@ void AFlareMenuPawn::ResetContent(bool Unsafe)
 	// Delete ship if existing
 	if (CurrentSpacecraft && !Unsafe)
 	{
-		CurrentSpacecraft->Destroy();
-		CurrentSpacecraft = NULL;
+		CurrentSpacecraft->SetActorHiddenInGame(true);
 	}
 
 	// Hide parts

@@ -1437,15 +1437,15 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 {
 	if (IsValid(TargetSpacecraft))
 	{
-		bool TradeMenu = 0;
+		bool TradeMenu = false;
 
 		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
 		{
-			TradeMenu = 1;
+			TradeMenu = true;
 		}
 
-		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
-		if (IsValid(TargetCompany) && PC && TargetCompany == PC->GetCompany() && !TradeMenu)
+		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany(); // && TargetCompany == PC->GetCompany()
+		if (IsValid(TargetCompany) && PC && !TradeMenu)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{
@@ -1700,16 +1700,17 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 	if (IsValid(TargetSpacecraft))
 	{
 		// Get the object's distance
-		bool TradeMenu = 0;
+		bool TradeMenu = false;
 
 		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
 		{
-			TradeMenu = 1;
+			TradeMenu = true;
 		}
 
 		// Our company
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
-		if (TargetCompany && PC && TargetCompany == PC->GetCompany() && !TradeMenu)
+//		&& TargetCompany == PC->GetCompany()
+		if (TargetCompany && PC && !TradeMenu)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{
@@ -1739,7 +1740,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 							float Distance = (ActiveShip->GetActorLocation() - TargetSpacecraftPawn->GetActorLocation()).Size();
 							DistanceText = FText::Format(LOCTEXT("PlayerDistanceFormat", "{0} - "), AFlareHUD::FormatDistance(Distance / 100));
 
-							if (PC->GetCompany() == TransactionDestinationDock->GetCompany())
+							if (TargetSpacecraft->GetCompany() == TransactionDestinationDock->GetCompany())
 							{
 								TradeStatus = FText(LOCTEXT("TradeInfoTransfer", "trade"));
 							}

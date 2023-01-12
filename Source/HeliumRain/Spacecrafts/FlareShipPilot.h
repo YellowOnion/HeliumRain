@@ -32,6 +32,8 @@ public:
 
 	void ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget);
 
+	bool GetInitiatedCombat();
+
 protected:
 	virtual void ClearTarget();
 	/*----------------------------------------------------
@@ -114,6 +116,7 @@ public:
 
 	virtual void SetupNewTarget();
 	virtual void FindBestHostileTarget(EFlareCombatTactic::Type Tactic);
+	virtual void SelectNewHostileTarget(PilotHelper::PilotTarget TargetCandidate);
 
 	void AlignToTargetVelocityWithThrust(float DeltaSeconds);
 

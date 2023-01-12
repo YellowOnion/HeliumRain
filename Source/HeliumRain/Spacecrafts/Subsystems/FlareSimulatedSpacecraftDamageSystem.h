@@ -56,9 +56,6 @@ public:
 		System Interface
 	----------------------------------------------------*/
 
-	/** Update this system */
-	void TickSystem();
-
 	/** Is this ship alive and well ? */
 	virtual bool IsAlive() const;
 

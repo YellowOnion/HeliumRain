@@ -349,16 +349,16 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 			}
 			else
 			{
-				PilotTarget = LeaderShip->GetPilot()->GetPilotTarget();
-				if (PilotTarget.IsValid())
+				PilotHelper::PilotTarget LeaderTargetCandidate = LeaderShip->GetPilot()->GetPilotTarget();
+				if (LeaderTargetCandidate.IsValid())
 				{
-					if (PilotTarget.SpacecraftTarget)
+					if (LeaderTargetCandidate.SpacecraftTarget)
 					{
-						if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+						if (LeaderTargetCandidate.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
 						{
-							if (Ship->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()))
+							if (Ship->IsHostile(LeaderTargetCandidate.SpacecraftTarget->GetCompany()))
 							{
-								Ship->SetCurrentTarget(LeaderShip->GetCurrentTarget());
+								SelectNewHostileTarget(LeaderTargetCandidate);
 							}
 							else
 							{
@@ -402,7 +402,7 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 
 				if (!PilotTargetShipComponent)
 				{
-					if (LeaderShip == Ship)
+					if (LeaderShip == Ship || LeaderShip == Ship->GetGame()->GetPC()->GetShipPawn())
 					{ 
 						PilotTargetShipComponent = PilotHelper::GetBestTargetComponent(PilotTarget.SpacecraftTarget);
 					}
@@ -411,11 +411,6 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 						PilotTargetShipComponent = LeaderShip->GetPilot()->GetPilotTargetShipComponent();
 					}
 					TimeUntilNextComponentSwitch = ComponentSwitchReactionTime;
-				}
-
-				if (!PilotTargetShipComponent)
-				{
-					ClearTarget();
 				}
 			}
 			else
@@ -526,7 +521,6 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 			else if (CurrentWaitTime < 0.1)
 			{
 				Ship->GetNavigationSystem()->Undock();
-
 				// Swap target station
 				PilotLastTargetStation = PilotTargetStation;
 				PilotTargetStation = NULL;
@@ -1472,24 +1466,13 @@ void UFlareShipPilot::GetNewLeaderShip()
 	if (Ship->GetCompany() == Ship->GetGame()->GetPC()->GetCompany())
 	{
 		LeaderShip = Ship->GetGame()->GetPC()->GetShipPawn();
-		if (LeaderShip)
+		if (LeaderShip && LeaderShip->GetParent()->GetDamageSystem()->IsAlive())
 		{
 			SelectedNewLeader(OldLeaderShip);
 			return;
 		}
 	}
-/*
-	if (SelectedWeaponGroupIndex >= 0)
-	{
-		EFlareWeaponGroupType::Type WeaponType = Ship->GetWeaponsSystem()->GetWeaponGroup(SelectedWeaponGroupIndex)->Type;
-		if (WeaponType == EFlareWeaponGroupType::WG_BOMB || WeaponType == EFlareWeaponGroupType::WG_MISSILE)
-		{
-			LeaderShip = Ship;
-			SelectedNewLeader(OldLeaderShip);
-			return;
-		}
-	}
-*/
+
 	TArray<AFlareSpacecraft*> Spacecrafts = Ship->GetGame()->GetActiveSector()->GetCompanySpacecrafts(Ship->GetCompany());
 	AFlareSpacecraft* NewLeaderShip = LeaderShip;
 
@@ -1737,8 +1720,8 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 
 		if (ComponentDescription->Type == EFlarePartType::Weapon)
 		{
-			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) /  ComponentDescription->WeaponCharacteristics.AmmoCapacity;
-			if(AmmoRatio < MinAmmoRatio)
+			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) / ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+			if (AmmoRatio < MinAmmoRatio)
 			{
 				MinAmmoRatio = AmmoRatio;
 			}
@@ -1746,12 +1729,12 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 	}
 	//FLOGV("%s MinAmmoRatio=%f", *Ship->GetImmatriculation().ToString(), MinAmmoRatio);
 
-	if(MinAmmoRatio <0.9)
+	if (MinAmmoRatio < 0.9)
 	{
 		TargetPreferences.IsUncontrollableSmallMilitary = 0.0;
 	}
 
-	if(MinAmmoRatio < 0.5)
+	if (MinAmmoRatio < 0.5)
 	{
 		TargetPreferences.IsNotMilitary = 0.0;
 	}
@@ -1783,7 +1766,11 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 	}
 
 	TargetCandidate = PilotHelper::GetBestTarget(Ship, TargetPreferences);
+	SelectNewHostileTarget(TargetCandidate);
+}
 
+void UFlareShipPilot::SelectNewHostileTarget(PilotHelper::PilotTarget TargetCandidate)
+{
 	if (TargetCandidate.IsValid())
 	{
 		bool NewTarget = false;
@@ -1829,6 +1816,11 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 		PilotTarget.Clear();
 		SelectedWeaponGroupIndex = -1;
 	}
+}
+
+bool UFlareShipPilot::GetInitiatedCombat()
+{
+	return InitiatedCombat;
 }
 
 void UFlareShipPilot::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget)

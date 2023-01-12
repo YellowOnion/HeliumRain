@@ -765,6 +765,11 @@ void SectorHelper::GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArr
 void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSectorHelper_RepairFleets);
+	if (Sector->IsInDangerousBattle(Company))
+	{
+		return;
+	}
+
 	int32 CurrentNeededFleetSupply;
 	int32 TotalNeededFleetSupply;
 	int32 OwnedFS;
@@ -789,7 +794,7 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	// Note not available fleet supply as consumed
 	Sector->OnFleetSupplyConsumed(FMath::Max(0, TotalNeededFleetSupply - AvailableFS));
 
-	if(Sector->IsInDangerousBattle(Company) || AffordableFS == 0 || TotalNeededFleetSupply == 0)
+	if(AffordableFS == 0 || TotalNeededFleetSupply == 0)
 	{
 		// No repair possible
 		//FLOGV("No repair possible for %s in %s", *Company->GetCompanyName().ToString(), *Sector->GetSectorName().ToString())

@@ -3,6 +3,7 @@
 #include "../Flare.h"
 #include "../Game/FlareCompany.h"
 #include "Engine/DataAsset.h"
+#include "FlareCompanyCataLogEntry.h"
 #include "FlareCompanyCatalog.generated.h"
 
 
@@ -15,7 +16,7 @@ public:
 
 	/*----------------------------------------------------
 		Public data
-	----------------------------------------------------*/
+	-----------------------------5-----------------------*/
 	
 	const void GetCompanyList(TArray<FFlareCompanyDescription*>& OutData);
 
@@ -23,4 +24,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<FFlareCompanyDescription> Companies;
 
+	UPROPERTY(EditAnywhere, Category = Content)
+	TArray<UFlareCompanyCatalogEntry*> CompanyCatalog;
 };

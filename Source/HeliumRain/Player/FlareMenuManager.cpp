@@ -632,6 +632,7 @@ void AFlareMenuManager::ResetMenu()
 	if (PC)
 	{
 		PC->GetMenuPawn()->ResetContent();
+		PC->GetMenuPawn()->SetIsEnabled(false);
 	}
 
 	if (SkipNextFade)
@@ -1402,6 +1403,16 @@ FString AFlareMenuManager::GetKeyNameFromActionName(FName ActionName)
 	}
 
 	return LOCTEXT("NoKey", "").ToString();
+}
+
+void AFlareMenuManager::SetModStrings(TArray<FString> ModStrings)
+{
+	ActiveModStrings = ModStrings;
+}
+
+TArray<FString> AFlareMenuManager::GetModStrings() const
+{
+	return ActiveModStrings;
 }
 
 bool AFlareMenuManager::IsUIOpen() const

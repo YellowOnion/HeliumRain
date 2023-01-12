@@ -409,8 +409,14 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 	{
 		FFlareSpacecraftDescription* Desc = SpacecraftSelector->GetSelectedItems()[0]->SpacecraftDescriptionPtr;
 		UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
+
 		ConfirmText->SetText(FText());
 		ConfirmButton->SetText(LOCTEXT("Confirm", "Confirm"));
+
+//      simple debug
+//		ConfirmButton->SetText(FText::FromName(Desc->Identifier));
+//		ConfirmButton->SetText(FText::FromString(FString::SanitizeFloat(Desc->Mass)));
+
 		ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfo", "Confirm the choice and start production"));
 
 		ConfirmedState = true;

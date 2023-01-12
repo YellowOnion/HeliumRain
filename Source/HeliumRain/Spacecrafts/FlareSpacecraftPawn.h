@@ -52,6 +52,8 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void TickSpacecraft(float DeltaSeconds);
+	virtual void UpdateCameraPositions(float DeltaSeconds);
 
 	/*----------------------------------------------------
 		Camera control
@@ -116,7 +118,6 @@ public:
 
 	/** Get the ship size */
 	float GetMeshScale() const;
-
 
 protected:
 

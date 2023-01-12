@@ -636,9 +636,8 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 		   ((WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage && HitSpacecraft->GetDescription()->Size == EFlarePartSize::S)
 		 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && HitSpacecraft->GetDescription()->Size == EFlarePartSize::L)))
 		{
-			SetActorLocation(HitLocation);
 			FLOGV("Attach actor rotation %s", *GetActorRotation().ToString());
-			SetActorRotation(LastTickRotation);
+			SetActorLocationAndRotation(HitLocation, LastTickRotation);
 			AttachBomb(HitSpacecraft);
 		}
 	}

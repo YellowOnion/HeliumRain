@@ -38,6 +38,7 @@ public:
 
 	/** Stop firing */
 	void PlayerStopFire();
+	void SetWantFire(bool NewValue);
 
 	void ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget);
 	void ClearTarget();

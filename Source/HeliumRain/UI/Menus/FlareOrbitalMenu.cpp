@@ -455,11 +455,32 @@ void SFlareOrbitalMenu::UpdateMap()
 {
 	TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = Game->GetOrbitalBodies()->OrbitalBodies;
 
-	UpdateMapForBody(NemaBox,  &OrbitalBodies[0]);
-	UpdateMapForBody(AnkaBox,  &OrbitalBodies[1]);
-	UpdateMapForBody(AstaBox,  &OrbitalBodies[2]);
-	UpdateMapForBody(HelaBox,  &OrbitalBodies[3]);
-	UpdateMapForBody(AdenaBox, &OrbitalBodies[4]);
+	TArray<FString> BrokenSectors;
+	if (MenuManager->GetModStrings().Num())
+	{
+		for (FString MenuModStrings : MenuManager->GetModStrings())
+		{
+			if (MenuModStrings == "HarmonicResonance")
+			{
+				for (UFlareSimulatedSector* Sector : MenuManager->GetGame()->GetGameWorld()->GetSectors())
+				{
+					//if the mod harmonicresonance with the sector named pioneer is detected, do the workaround
+					if (Sector->GetName() == "pioneer")
+					{
+						//valhalla
+						BrokenSectors.Add("pioneer");
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	UpdateMapForBody(NemaBox, &OrbitalBodies[0], BrokenSectors);
+	UpdateMapForBody(AnkaBox, &OrbitalBodies[1], BrokenSectors);
+	UpdateMapForBody(AstaBox, &OrbitalBodies[2], BrokenSectors);
+	UpdateMapForBody(HelaBox, &OrbitalBodies[3], BrokenSectors);
+	UpdateMapForBody(AdenaBox, &OrbitalBodies[4], BrokenSectors);
 }
 
 struct FSortByAltitudeAndPhase
@@ -483,7 +504,7 @@ struct FSortByAltitudeAndPhase
 	}
 };
 
-void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body)
+void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body, TArray<FString> BrokenSectors)
 {
 	// Setup the planetary map
 	Map->SetPlanetImage(&Body->CelestialBodyPicture);
@@ -492,13 +513,28 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 
 	// Find highest altitude
 	int32 MaxAltitude = 0;
+	bool UseBrokenSectorsWorkAround = false;
+
 	for (UFlareSimulatedSector* Sector : MenuManager->GetGame()->GetGameWorld()->GetSectors())
 	{
 		if (Sector->GetOrbitParameters()->Altitude > MaxAltitude
 		 && Sector->GetOrbitParameters()->CelestialBodyIdentifier == Body->CelestialBodyIdentifier)
 		{
+			for (FString PossibleBroken : BrokenSectors)
+			{
+				if (PossibleBroken == Sector->GetName())
+				{
+					UseBrokenSectorsWorkAround = true;
+					break;
+				}
+			}
 			MaxAltitude = Sector->GetOrbitParameters()->Altitude;
 		}
+	}
+
+	if (UseBrokenSectorsWorkAround)
+	{
+		MaxAltitude = 100000;
 	}
 
 	// Add the name
@@ -526,10 +562,17 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 	{
 		UFlareSimulatedSector* Sector = KnownSectors[SectorIndex];
 		TSharedPtr<int32> IndexPtr(new int32(MenuManager->GetPC()->GetCompany()->GetKnownSectors().Find(Sector)));
+		double Altitude = Sector->GetOrbitParameters()->Altitude;
+		double Phase = Sector->GetOrbitParameters()->Phase;
+
+		if (UseBrokenSectorsWorkAround)
+		{
+			Altitude = 100000;
+		}
 
 		Map->AddSlot()
-		.Altitude(Sector->GetOrbitParameters()->Altitude)
-		.Phase(Sector->GetOrbitParameters()->Phase)
+		.Altitude(Altitude)
+		.Phase(Phase)
 		[
 			SAssignNew(CurrentSectorButton, SFlareSectorButton)
 			.Sector(Sector)

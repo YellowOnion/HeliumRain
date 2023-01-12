@@ -593,7 +593,6 @@ void SFlareFleetMenu::OnToggleHideTravel()
 }
 
 
-
 FText SFlareFleetMenu::GetRepairText() const
 {
 	if (!FleetToEdit)
@@ -883,7 +882,7 @@ EVisibility SFlareFleetMenu::GetEditVisibility() const
 bool SFlareFleetMenu::IsAddDisabled() const
 {
 	FText Unused;
-	if (!FleetToAdd || !FleetToEdit || FleetToAdd == FleetToEdit || !FleetToEdit->CanMerge(FleetToAdd, Unused))
+	if (!FleetToAdd || !FleetToEdit || FleetToAdd == FleetToEdit || (FleetToEdit && !FleetToEdit->CanMerge(FleetToAdd, Unused)))
 	{
 		return true;
 	}
@@ -917,8 +916,15 @@ bool SFlareFleetMenu::IsRemoveDisabled() const
 {
 	if (ShipToRemove == NULL
 		|| ShipToRemove == MenuManager->GetPC()->GetPlayerShip()
-		|| FleetToEdit == NULL
-		|| FleetToEdit->GetShips().Num() <= 1)
+		|| FleetToEdit == NULL)
+	{
+		return true;
+	}
+	else if (ShipToRemove && FleetToAdd && FleetToAdd->CanAddShip(ShipToRemove))
+	{
+		return false;
+	}
+	else if (FleetToEdit->GetShips().Num() <= 1)
 	{
 		return true;
 	}
@@ -936,7 +942,7 @@ FText SFlareFleetMenu::GetRemoveHintText() const
 		{
 			return LOCTEXT("CantRemovePlayerShipFromFleetInfo", "Can't remove the ship you are currenly flying");
 		}
-		else if (FleetToEdit->GetShips().Num() > 1)
+		else if (FleetToEdit->GetShips().Num() > 1 || (FleetToAdd && FleetToAdd->CanAddShip(ShipToRemove)))
 		{
 			return LOCTEXT("RemoveFromFleetInfo", "Remove the selected ship from the fleet");
 		}
@@ -1005,6 +1011,21 @@ void SFlareFleetMenu::OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> Space
 	if (Spacecraft)
 	{
 		ShipToRemove = Spacecraft;
+		if (FleetToEdit)
+		{
+			if (FleetToAdd && FleetToAdd->CanAddShip(ShipToRemove))
+			{
+				RemoveShipButton->SetText(LOCTEXT("RemoveFromFleetAdd", "Remove ship & add"));
+			}
+			else
+			{
+				RemoveShipButton->SetText(LOCTEXT("RemoveFromFleet", "Remove ship"));
+			}
+		}
+		else
+		{
+			RemoveShipButton->SetText(LOCTEXT("RemoveFromFleet", "Remove ship"));
+		}
 		FLOGV("SFlareFleetMenu::OnSpacecraftSelected : ship to remove '%s'", *Spacecraft->GetImmatriculation().ToString());
 	}
 }
@@ -1092,11 +1113,20 @@ void SFlareFleetMenu::OnRemoveFromFleet()
 	FCHECK(ShipToRemove);
 
 	FLOGV("SFlareFleetMenu::OnRemoveFromFleet : removing '%s'", *ShipToRemove->GetImmatriculation().ToString());
+	bool FinishedEdit = false;
 
 	if (FleetToAdd && FleetToAdd->CanAddShip(ShipToRemove))
 	{
+		int32 ShipQuantity = ShipToRemove->GetCurrentFleet()->GetShips().Num();
 		FleetToEdit->RemoveShip(ShipToRemove,false,false);
 		FleetToAdd->AddShip(ShipToRemove);
+
+		if (ShipQuantity <= 1)
+		{
+			FinishedEdit = true;
+			SetEnabled(false);
+			OnEditFinished();
+		}
 	}
 	else
 	{
@@ -1105,8 +1135,13 @@ void SFlareFleetMenu::OnRemoveFromFleet()
 		FleetToAdd = NULL;
 	}
 
-	UpdateShipList(FleetToEdit);
-	ShipToRemove = NULL;
+		//	ShipList
+
+	if (!FinishedEdit)
+	{
+		UpdateShipList(FleetToEdit);
+		ShipToRemove = NULL;
+	}
 }
 
 void SFlareFleetMenu::OnRenameFleet()

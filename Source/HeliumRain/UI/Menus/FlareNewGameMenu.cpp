@@ -514,6 +514,11 @@ void SFlareNewGameMenu::Enter()
 void SFlareNewGameMenu::Exit()
 {
 	SetEnabled(false);
+	AFlarePlayerController* PC = MenuManager->GetPC();
+	if (PC)
+	{
+		PC->GetMenuPawn()->SetIsEnabled(false);
+	}
 	SetVisibility(EVisibility::Collapsed);
 	EmblemPicker->ClearItems();
 //	DifficultySelector->ClearItems();

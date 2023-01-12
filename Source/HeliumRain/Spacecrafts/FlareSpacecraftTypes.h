@@ -699,6 +699,16 @@ struct FFlareSpacecraftDescription
 	/** If this is a drone it is not buildable via shipyards and has a different method*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
 
+	/** This ship is disabled */
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
+
+	/** This ship is disabled but it will override the stats of an older version that was found with this ones. Useful if rebalancing ships that your mod doesn't have the models etc for*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
+
+	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
+
+
 	/** All required unlocked technologies to build station or ship.*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
 
@@ -798,6 +808,8 @@ struct FFlareSpacecraftDescription
 	/** Number of station connectors */
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 StationConnectorCount;
+
+
 
 	int32 GetCapacity() const;
 

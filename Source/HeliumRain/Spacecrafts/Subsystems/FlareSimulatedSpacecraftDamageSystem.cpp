@@ -70,10 +70,6 @@ void UFlareSimulatedSpacecraftDamageSystem::Initialize(UFlareSimulatedSpacecraft
 	System API
 ----------------------------------------------------*/
 
-void UFlareSimulatedSpacecraftDamageSystem::TickSystem()
-{
-}
-
 void UFlareSimulatedSpacecraftDamageSystem::SetDead()
 {
 	IsDeadOverride = true;

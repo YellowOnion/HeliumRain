@@ -51,17 +51,26 @@ void AFlareSpacecraftPawn::BeginPlay()
 
 void AFlareSpacecraftPawn::Tick(float DeltaSeconds)
 {
-	Super::Tick(DeltaSeconds);
+	UpdateCameraPositions(DeltaSeconds);
+}
+
+void AFlareSpacecraftPawn::TickSpacecraft(float DeltaSeconds)
+{
+	UpdateCameraPositions(DeltaSeconds);
+}
+
+void AFlareSpacecraftPawn::UpdateCameraPositions(float DeltaSeconds)
+{
 	PreviousCameraName = CurrentCameraName;
 	
 	// Apply interpolated values
+
 	if (CameraMode == EFlareCameraMode::InternalFixed)
 	{
 		CurrentCameraName = NAME_None;
 		CameraContainerPitch->SetRelativeRotation(FRotator(CameraOffsetPitch, 0, 0).GetNormalized());
 		CameraContainerYaw->SetRelativeRotation(FRotator(0, CameraOffsetYaw, 0).GetNormalized());
-		Camera->SetRelativeLocation(CameraLocalPosition - FVector(CameraOffsetDistance, 0, 0));
-		Camera->SetRelativeRotation(FRotator::ZeroRotator);
+		Camera->SetRelativeLocationAndRotation(CameraLocalPosition - FVector(CameraOffsetDistance, 0, 0), FRotator::ZeroRotator);
 	}
 	else if (CameraMode == EFlareCameraMode::InternalRotating)
 	{

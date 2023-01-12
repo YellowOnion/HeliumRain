@@ -42,24 +42,100 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		UFlareSpacecraftComponentsCatalogEntry* SpacecraftComponent = Cast<UFlareSpacecraftComponentsCatalogEntry>(AssetList[Index].GetAsset());
 		FCHECK(SpacecraftComponent);
 
+		UFlareSpacecraftComponentsCatalogEntry* OldEntry = NULL;
+
 		if (SpacecraftComponent->Data.Type == EFlarePartType::OrbitalEngine)
 		{
+			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : EngineCatalog)
+			{
+				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				{
+					OldEntry = EntrySub;
+					break;
+				}
+			}
+
+			if (OldEntry)
+			{
+				EngineCatalog.Remove(OldEntry);
+			}
+
 			EngineCatalog.Add(SpacecraftComponent);
 		}
+
 		else if (SpacecraftComponent->Data.Type == EFlarePartType::RCS)
 		{
+			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : RCSCatalog)
+			{
+				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				{
+					OldEntry = EntrySub;
+					break;
+				}
+			}
+
+			if (OldEntry)
+			{
+				RCSCatalog.Remove(OldEntry);
+			}
+
 			RCSCatalog.Add(SpacecraftComponent);
 		}
+
 		else if (SpacecraftComponent->Data.Type == EFlarePartType::Weapon)
 		{
+			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : WeaponCatalog)
+			{
+				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				{
+					OldEntry = EntrySub;
+					break;
+				}
+			}
+
+			if (OldEntry)
+			{
+				WeaponCatalog.Remove(OldEntry);
+			}
+
 			WeaponCatalog.Add(SpacecraftComponent);
 		}
+
 		else if (SpacecraftComponent->Data.Type == EFlarePartType::InternalComponent)
 		{
+			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : InternalComponentsCatalog)
+			{
+				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				{
+					OldEntry = EntrySub;
+					break;
+				}
+			}
+
+			if (OldEntry)
+			{
+				InternalComponentsCatalog.Remove(OldEntry);
+			}
+
 			InternalComponentsCatalog.Add(SpacecraftComponent);
 		}
+
 		else if (SpacecraftComponent->Data.Type == EFlarePartType::Meta)
 		{
+			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : MetaCatalog)
+			{
+				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				{
+					OldEntry = EntrySub;
+					break;
+				}
+			}
+
+			if (OldEntry)
+			{
+				MetaCatalog.Remove(OldEntry);
+			}
+
 			MetaCatalog.Add(SpacecraftComponent);
 		}
 	}

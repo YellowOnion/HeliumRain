@@ -261,18 +261,22 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 
 	switch (EconomyIndex)
 	{
-	case 1: // Developing
-		Companymoneymultiplier = 1.20;
-		Populationmultiplier = 1.15;
-	case 2: // Prospering
-		Companymoneymultiplier = 1.40;
-		Populationmultiplier = 1.30;
-	case 3: // Maturing
-		Companymoneymultiplier = 1.60;
-		Populationmultiplier = 1.45;
-	case 4:  // Accomplished
-		Companymoneymultiplier = 2.00;
-		Populationmultiplier = 1.60;
+		case 1: // Developing
+			Companymoneymultiplier = 1.20;
+			Populationmultiplier = 1.15;
+			break;
+		case 2: // Prospering
+			Companymoneymultiplier = 1.40;
+			Populationmultiplier = 1.30;
+			break;
+		case 3: // Maturing
+			Companymoneymultiplier = 1.60;
+			Populationmultiplier = 1.45;
+			break;
+		case 4:  // Accomplished
+			Companymoneymultiplier = 2.00;
+			Populationmultiplier = 1.60;
+			break;
 	}
 
 	switch (PlayerData->DifficultyId)
@@ -292,14 +296,12 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 			Playermoneymultiplier = 0.50;
 			break;
 		case 3: // Expert
-			Companymoneymultiplier += 0.20;
+			Companymoneymultiplier += 0.25;
 			Playermoneymultiplier = 0.25;
-			StationLevelBonus += 1;
 			break;
 		case 4: // Unfair
-			Companymoneymultiplier += 0.30;
+			Companymoneymultiplier += 0.40;
 			Playermoneymultiplier = 0.10;
-			StationLevelBonus += 2;
 			break;
 	}
 
@@ -326,11 +328,12 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	{
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
 		int64 StartingMoney = Company->GetDescription()->StartingMoney;
-		int32 StartingResearchPoints = Company->GetDescription()->StartingMoney;
+		int32 StartingResearchPoints = Company->GetDescription()->StartingResearchPoints;
 		
 		TArray<FName> StartingSectorKnowledge = Company->GetDescription()->StartingSectorKnowledge;
 		TArray<FName> StartingTechnology = Company->GetDescription()->StartingTechnology;
 		TArray<FFlareCompanyStartingShips> StartingShips = Company->GetDescription()->StartingShips;
+
 		if (StartingMoney)
 		{
 			Company->GiveMoney(StartingMoney * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
@@ -393,7 +396,8 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateShips(ShipOrca, MiningSyndicate, FirstLight, 35);
 
 	//	CreateStations("station-shipyard", PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	PlayerCompany->GiveMoney(99999999, FFlareTransactionLogEntry::LogInitialMoney());
+	PlayerCompany->GiveResearch(999999999);
+	PlayerCompany->GiveMoney(99999999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 	{
 		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
@@ -401,6 +405,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	//for testing
 */
 	// Give technology
+
 	IonLane->UnlockTechnology("stations", false, true);
 	IonLane->UnlockTechnology("chemicals", false, true);
 

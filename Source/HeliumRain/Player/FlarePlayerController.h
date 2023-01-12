@@ -308,6 +308,8 @@ public:
 	/** Force the pilot mode */
 	void EnablePilot();
 
+	bool GetIsPiloted();
+
 	/** Force the pilot mode */
 	void DisengagePilot();
 

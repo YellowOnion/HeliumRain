@@ -32,10 +32,6 @@ UFlareSpacecraftDockingSystem::UFlareSpacecraftDockingSystem(const class FObject
 	Gameplay events
 ----------------------------------------------------*/
 
-void UFlareSpacecraftDockingSystem::TickSystem(float DeltaSeconds)
-{
-}
-
 void UFlareSpacecraftDockingSystem::Initialize(AFlareSpacecraft* OwnerSpacecraft, FFlareSpacecraftSave* OwnerData)
 {
 	Spacecraft = OwnerSpacecraft;

@@ -1448,6 +1448,11 @@ void SFlareSettingsMenu::Enter()
 
 void SFlareSettingsMenu::Exit()
 {
+	AFlarePlayerController* PC = MenuManager->GetPC();
+	if (PC)
+	{
+		PC->GetMenuPawn()->SetIsEnabled(false);
+	}
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
 }

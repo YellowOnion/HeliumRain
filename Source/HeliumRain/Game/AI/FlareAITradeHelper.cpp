@@ -693,11 +693,6 @@ SectorDeal AITradeHelper::FindBestDealForShip(UFlareSimulatedSpacecraft* Ship, T
 	// Sell only option
 	for (int32 SectorAIndex = 0; SectorAIndex < Company->GetVisitedSectors().Num(); SectorAIndex++)
 	{
-
-	}
-
-	for (int32 SectorAIndex = 0; SectorAIndex < Company->GetVisitedSectors().Num(); SectorAIndex++)
-	{
 		SCOPE_CYCLE_COUNTER(STAT_AITradeHelper_FindBestDealForShip_Sectors);
 		UFlareSimulatedSector* SectorA = Company->GetVisitedSectors()[SectorAIndex];
 

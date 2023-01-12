@@ -72,9 +72,12 @@ public:
 
 	/** Used to give commands for the active sector */
 	virtual void SimulateActiveAI();
+	virtual void SimulateActiveTradeShip(AFlareSpacecraft* Ship);
 
 	/** Simulate a day */
 	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
+
+	void CreateWorldResourceVariations();
 
 	/** Try to purchase research */
 	virtual void PurchaseResearch();
@@ -182,6 +185,9 @@ public:
 
 	bool ComputeAvailableConstructionResourceAvailability(int32 MinimumQuantity) const;
 
+	void NewSectorLoaded();
+	void SetActiveAIDesireRepairs(bool NewValue);
+
 protected:
 
 	/*----------------------------------------------------
@@ -267,6 +273,8 @@ protected:
 	int32									MinimumMoney;
 
 	bool									CheckedBuildingShips;
+
+	bool									ActiveAIDesireRepairs;
 
 public:
 

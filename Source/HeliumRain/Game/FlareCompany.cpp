@@ -504,9 +504,20 @@ void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
 	}
 }
 
+void UFlareCompany::NewSectorLoaded()
+{
+	if (CompanyAI)
+	{
+		CompanyAI->NewSectorLoaded();
+	}
+}
+
 void UFlareCompany::SimulateActiveAI()
 {
-	CompanyAI->SimulateActiveAI();
+	if (CompanyAI)
+	{
+		CompanyAI->SimulateActiveAI();
+	}
 }
 
 void UFlareCompany::ClearTemporaryCaches()
@@ -771,6 +782,7 @@ UFlareFleet* UFlareCompany::CreateFleet(FText FleetName, UFlareSimulatedSector* 
 	FleetData.Identifier = FName(*(GetIdentifier().ToString() + "-" + FString::FromInt(CompanyData.FleetImmatriculationIndex++)));
 	FleetData.Name = FleetName;
 	FleetData.AutoTrade = false;
+	FleetData.HideTravelList = false;
 	FleetData.AutoTradeStatsDays = 0;
 	FleetData.AutoTradeStatsLoadResources = 0;
 	FleetData.AutoTradeStatsUnloadResources = 0;
@@ -1913,14 +1925,19 @@ bool UFlareCompany::IsTechnologyAvailable(FName Identifier, FText& Reason, bool 
 	else if (Technology->RequiredTechnologies.Num() > 0)
 	{
 		bool AllTechsUnlocked = true;
-		TArray<FName> RequiredTechnologiesEntries;
+		TArray<FText> RequiredTechnologiesEntries;
 		for (int32 i = 0; i < Technology->RequiredTechnologies.Num(); i++)
 		{
 			FName CurrentTechnology = Technology->RequiredTechnologies[i];
 			if (!IsTechnologyUnlocked(CurrentTechnology))
 			{
+				FFlareTechnologyDescription* Technology = GetGame()->GetTechnologyCatalog()->Get(CurrentTechnology);
+				if (!Technology)
+				{
+					continue;
+				}
 				AllTechsUnlocked = false;
-				RequiredTechnologiesEntries.Add(CurrentTechnology);
+				RequiredTechnologiesEntries.Add(Technology->Name);
 			}
 		}
 
@@ -1929,7 +1946,7 @@ bool UFlareCompany::IsTechnologyAvailable(FName Identifier, FText& Reason, bool 
 			FString RequiredTechsString;
 			for (int32 i = 0; i < RequiredTechnologiesEntries.Num(); i++)
 			{
-				FName CurrentTechnology = RequiredTechnologiesEntries[i];
+				FText CurrentTechnology = RequiredTechnologiesEntries[i];
 				if (RequiredTechsString.Len())
 				{
 					RequiredTechsString += ", ";
@@ -1967,17 +1984,13 @@ bool UFlareCompany::IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* 
 
 	if (Description->RequiredTechnologies.Num() > 0)
 	{
-		bool AllTechsUnlocked = true;
-		for (int32 i = 0; i < Description->RequiredTechnologies.Num(); i++)
+		for (FName CurrentTechnology : Description->RequiredTechnologies)
 		{
-			FName CurrentTechnology = Description->RequiredTechnologies[i];
 			if (!IsTechnologyUnlocked(CurrentTechnology))
 			{
-				AllTechsUnlocked = false;
-				break;
+				return false;
 			}
 		}
-		return AllTechsUnlocked;
 	}
 	return true;
 }
@@ -2170,8 +2183,7 @@ int32 UFlareCompany::GetTechnologyLevel() const
 	// 1 technologies -> Level 2
 	// 2 technologies -> Level 3
 	// 3 technologies -> Level 4
-
-	return FMath::Clamp(1 + UnlockedTechnologies.Num(), 1, 5);
+	return FMath::Clamp(1 + UnlockedTechnologies.Num(), 1, GetGame()->GetTechnologyCatalog()->GetMaxTechLevel());
 }
 
 int32 UFlareCompany::GetResearchAmount() const

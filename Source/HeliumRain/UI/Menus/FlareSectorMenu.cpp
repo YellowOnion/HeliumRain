@@ -447,29 +447,25 @@ void SFlareSectorMenu::UpdateFleetList()
 		UFlareFleet* Fleet = PC->GetCompany()->GetCompanyFleets()[FleetIndex];
 		if (Fleet && Fleet->GetShips().Num())
 		{
-			if (!Fleet->IsAutoTrading() && !Fleet->IsHiddenTravel())
+			UFlareSimulatedSector* CurrentSector = Fleet->GetCurrentSector();
+			if (Fleet == PC->GetPlayerFleet() || TargetSector != CurrentSector)
 			{
-				UFlareSimulatedSector* CurrentSector = Fleet->GetCurrentSector();
-				if (Fleet == PC->GetPlayerFleet() || TargetSector != CurrentSector)
+				if (Fleet != PC->GetPlayerFleet())
 				{
+					if (Fleet->IsTraveling() && !Fleet->GetCurrentTravel()->CanChangeDestination())
+					{
+						continue;
+					}
 					if (Fleet->GetCurrentTradeRoute() && !Fleet->GetCurrentTradeRoute()->IsPaused())
 					{
 						continue;
 					}
+				}
 
-					if (Fleet != PC->GetPlayerFleet() && Fleet->IsTraveling())
-					{
-						if (!Fleet->GetCurrentTravel()->CanChangeDestination())
-						{
-							continue;
-						}
-					}
-
-					FleetList.Add(Fleet);
-					if (Fleet->Save()->Identifier == LastSelectedFleetName)
-					{
-						SelectedFleet = Fleet;
-					}
+				FleetList.Add(Fleet);
+				if (Fleet->Save()->Identifier == LastSelectedFleetName)
+				{
+					SelectedFleet = Fleet;
 				}
 			}
 		}
@@ -592,17 +588,6 @@ void SFlareSectorMenu::UpdateShipLists()//(UFlareFleet* TargetOwnedFleet, UFlare
 				}
 			}
 		}
-/*
-		if (TargetOwnedFleet != nullptr)
-		{
-			OwnedShipList->SelectFleet(TargetOwnedFleet);
-		}
-
-		if (TargetOtherFleet != nullptr)
-		{
-			OtherShipList->SelectFleet(TargetOtherFleet);
-		}
-*/
 	}
 	// List setup
 	OwnedShipList->RefreshList();

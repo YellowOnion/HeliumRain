@@ -139,13 +139,9 @@ void AFlareSpacecraft::BeginPlay()
 	CurrentTarget.Clear();
 }
 
-void AFlareSpacecraft::Tick(float DeltaSeconds)
+void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 {
 	TimeToStopCached = false;
-	if (!this || this == nullptr || IsActorBeingDestroyed() || IsPendingKill() || IsSafeDestroyingRunning)
-	{
-		return;
-	}
 
 	// Wait for readiness to call some stuff on load
 	if (!LoadedAndReady)
@@ -185,7 +181,6 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_FlareSpacecraft_Systems);
 			StateManager->Tick(DeltaSeconds);
-			DockingSystem->TickSystem(DeltaSeconds);
 			if(!IsStation())
 			{
 				NavigationSystem->TickSystem(DeltaSeconds);
@@ -301,7 +296,6 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 			for (int SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
 			{
 				// Calculation data
-				FVector CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
 				AFlareSpacecraft* Spacecraft = GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
 				
 				// Required conditions for docking
@@ -313,6 +307,7 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 				 && GetWeaponsSystem()->GetActiveWeaponGroupIndex() < 0)
 				{
 					// Select closest dock
+					FVector CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
 					FFlareDockingInfo BestDockingPort;
 					for (int32 DockingPortIndex = 0; DockingPortIndex < Spacecraft->GetDockingSystem()->GetDockCount(); DockingPortIndex++)
 					{
@@ -373,6 +368,8 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 			}
 
 			TimeSinceSelection += DeltaSeconds;
+			// The FlareSpacecraftPawn do the camera effective update in its Tick so call it after camera order update
+			// UpdateCameraPositions(DeltaSeconds);
 		}
 
 		// Make ship bounce lost ships if they are outside 1.5 * limit
@@ -387,9 +384,11 @@ void AFlareSpacecraft::Tick(float DeltaSeconds)
 		float SmoothedVelocityChangeSpeed = FMath::Clamp(DeltaSeconds * 8, 0.f, 1.f);
 		SmoothedVelocity = SmoothedVelocity * (1 - SmoothedVelocityChangeSpeed) + GetLinearVelocity() * SmoothedVelocityChangeSpeed;
 	}
+}
 
-	// The FlareSpacecraftPawn do the camera effective update in its Tick so call it after camera order update
-	Super::Tick(DeltaSeconds);
+void AFlareSpacecraft::UpdateSpacecraftPawn(float DeltaSeconds)
+{
+	Super::TickSpacecraft(DeltaSeconds);
 }
 
 void AFlareSpacecraft::SetCurrentTarget(PilotHelper::PilotTarget const& Target)
@@ -1648,8 +1647,7 @@ void AFlareSpacecraft::SetAsteroidData(FFlareAsteroidSave* Data)
 
 	// Apply
 	ApplyAsteroidData();
-	SetActorLocation(Data->Location);
-	SetActorRotation(Data->Rotation);
+	SetActorLocationAndRotation(Data->Location, Data->Rotation);
 }
 
 void AFlareSpacecraft::TryAttachParentComplex()
@@ -2076,29 +2074,34 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 				UpgradeStatus,
 				TransactionNewPartDesc->Name);
 
-			PC->Notify(
-				LOCTEXT("RemoteUpgradeSuccessTitle", "Remote Upgrade Info"),
-				Formatted,
-				"upgrade-success",
-				EFlareNotification::NT_Info);
+			if (GetParent()->GetCompany() == PC->GetCompany())
+			{
+				PC->Notify(
+					LOCTEXT("RemoteUpgradeSuccessTitle", "Remote Upgrade Info"),
+					Formatted,
+					"upgrade-success",
+					EFlareNotification::NT_Info);
+			}
 		}
 		else
 		{
 			FText Formatted = FText::Format(LOCTEXT("LocalUpgradeFailInfo", "Failed to upgrade {0}"),
 			TransactionNewPartDesc->Name);
 
-			PC->Notify(
-				LOCTEXT("RemoteUpgradeFail", "Remote Upgrade Info"),
-				Formatted,
-				"upgrade-fail",
-				EFlareNotification::NT_Info);
+			if (GetParent()->GetCompany() == PC->GetCompany())
+			{
+				PC->Notify(
+					LOCTEXT("RemoteUpgradeFail", "Remote Upgrade Info"),
+					Formatted,
+					"upgrade-fail",
+					EFlareNotification::NT_Info);
+			}
 		}
 	}
 
 	else if (TransactionResource&&TransactionQuantity&&SourceSpacecraft&&DestinationSpacecraft)
 		// this ship was told to do a manual insector trade
 	{
-
 		UFlareSimulatedSpacecraft* ShipSimmed = GetParent();
 		UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
 
@@ -2109,50 +2112,54 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 			TransactionQuantity,
 			NULL, NULL, TransactionDonation);
 
-		FText TradeStatus = FText();
-
-		if (PC->GetCompany() == StationSimmed->GetCompany())
+		if (GetParent()->GetCompany() == PC->GetCompany())
 		{
-			TradeStatus = FText(LOCTEXT("TradeInfoTransfer", "Traded"));
-		}
 
-		else if (DestinationSpacecraft == StationSimmed)
-		{
-			if (TransactionDonation)
+			FText TradeStatus = FText();
+
+			if (PC->GetCompany() == StationSimmed->GetCompany())
 			{
-				TradeStatus = FText(LOCTEXT("TradeInfoSell", "Donated"));
+				TradeStatus = FText(LOCTEXT("TradeInfoTransfer", "Traded"));
+			}
+
+			else if (DestinationSpacecraft == StationSimmed)
+			{
+				if (TransactionDonation)
+				{
+					TradeStatus = FText(LOCTEXT("TradeInfoSell", "Donated"));
+				}
+				else
+				{
+					TradeStatus = FText(LOCTEXT("TradeInfoSell", "Sold"));
+				}
 			}
 			else
 			{
-				TradeStatus = FText(LOCTEXT("TradeInfoSell", "Sold"));
+				TradeStatus = FText(LOCTEXT("TradeInfoSell", "Bought"));
 			}
-		}
-		else
-		{
-			TradeStatus = FText(LOCTEXT("TradeInfoSell", "Bought"));
-		}
 
-		FText FirstHalf;
+			FText FirstHalf;
 
-		if (!FlewByPlayer)
-		{
-			FirstHalf = FText::Format(LOCTEXT("LocalTradeFormat", "{0} is now docked at {1}\n"),
-				UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
-				UFlareGameTools::DisplaySpacecraftName(StationSimmed)
+			if (!FlewByPlayer)
+			{
+				FirstHalf = FText::Format(LOCTEXT("LocalTradeFormat", "{0} is now docked at {1}\n"),
+					UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
+					UFlareGameTools::DisplaySpacecraftName(StationSimmed)
 				);
+			}
+
+			FText Formatted = FText::Format(LOCTEXT("LocalTradeSuccess", "{0}{1} {2} {3}"),
+				FirstHalf,
+				TradeStatus,
+				FText::AsNumber(Quantity),
+				TransactionResource->Name);
+
+			PC->Notify(
+				LOCTEXT("RemoteTradeSuccess", "Remote Trade Info"),
+				Formatted,
+				"trade-success",
+				EFlareNotification::NT_Info);
 		}
-
-		FText Formatted = FText::Format(LOCTEXT("LocalTradeSuccess", "{0}{1} {2} {3}"),
-		FirstHalf,
-		TradeStatus,
-		FText::AsNumber(Quantity),
-		TransactionResource->Name);
-
-		PC->Notify(
-			LOCTEXT("RemoteTradeSuccess", "Remote Trade Info"),
-			Formatted,
-			"trade-success",
-			EFlareNotification::NT_Info);
 
 		AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
 		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)

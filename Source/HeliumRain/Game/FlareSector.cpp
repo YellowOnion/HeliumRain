@@ -39,12 +39,14 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	CompanySpacecraftsPerCompanyCache.Empty();
 
 	// Load asteroids
+	SectorAsteroids.Reserve(ParentSector->GetData()->AsteroidData.Num());
 	for (int i = 0 ; i < ParentSector->GetData()->AsteroidData.Num(); i++)
 	{
 		LoadAsteroid(ParentSector->GetData()->AsteroidData[i]);
 	}
 
 	// Load meteorite
+	SectorMeteorites.Reserve(ParentSector->GetData()->MeteoriteData.Num());
 	for (FFlareMeteoriteSave& Meteorite : ParentSector->GetData()->MeteoriteData)
 	{
 		if (Meteorite.DaysBeforeImpact == 0 && Meteorite.Damage < Meteorite.BrokenDamage)
@@ -54,6 +56,9 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	}
 
 	// Load safe location spacecrafts
+	SectorSpacecrafts.Reserve(ParentSector->GetSectorSpacecrafts().Num());
+	SectorSpacecraftsCache.Reserve(ParentSector->GetSectorSpacecrafts().Num());
+
 	for (int i = 0 ; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
@@ -76,6 +81,7 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	}
 
 	// Load bombs
+	SectorBombs.Reserve(ParentSector->GetData()->BombData.Num());
 	for (int i = 0; i < ParentSector->GetData()->BombData.Num(); i++)
 	{
 		LoadBomb(ParentSector->GetData()->BombData[i]);
@@ -83,10 +89,40 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 
 	IsDestroyingSector = false;
 
-
-	for (int CompanyIndex = 0; CompanyIndex < ParentSector->GetGame()->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	for (UFlareCompany* Company : UniqueCompanies)
 	{
-		ParentSector->GetGame()->GetGameWorld()->GetCompanies()[CompanyIndex]->SimulateActiveAI();
+		Company->NewSectorLoaded();
+	}
+	SimulateLocalCompanyAI();
+}
+
+void UFlareSector::Tick(float DeltaSeconds)
+{
+	if (IsDestroyingSector)
+	{
+		return;
+	}
+	for (AFlareSpacecraft* Ship : SectorSpacecrafts)
+	{
+		if (!Ship || Ship == nullptr || Ship->IsSafeDestroying())
+		{
+			continue;
+		}
+		Ship->TickSpacecraft(DeltaSeconds);
+	}
+}
+
+void UFlareSector::SimulateLocalCompanyAI()
+{
+	if (!IsDestroyingSector && !GetGame()->IsSkirmish())
+	{
+		for (UFlareCompany* Company : UniqueCompanies)
+		{
+			if (Company)
+			{
+				Company->SimulateActiveAI();
+			}
+		}
 	}
 }
 
@@ -215,7 +251,6 @@ void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
 	IsDestroyingSector = true;
-//	ShellTick = 0;
 	AFlareSpacecraft* PlayerShip = nullptr;
 
 	if (ParentSector != nullptr)
@@ -260,6 +295,7 @@ void UFlareSector::DestroySector()
 		}
 	}
 
+	UniqueCompanies.Empty();
 	SectorSpacecrafts.Empty();
 	SectorShips.Empty();
 	SectorStations.Empty();
@@ -349,9 +385,10 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 			SectorShips.Add(Spacecraft);
 		}
 
+		UniqueCompanies.AddUnique(Spacecraft->GetCompany());
 		SectorSpacecrafts.Add(Spacecraft);
 		SectorSpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
-	
+		FRotator Rotation;
 		switch (ParentSpacecraft->GetData().SpawnMode)
 		{
 			// Already known to be correct
@@ -370,8 +407,8 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 			}
 			case EFlareSpawnMode::Spawn:
 			{
-
-				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location);
+				Rotation = ParentSpacecraft->GetData().Rotation;
+				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
 //				{
 					//FVector NewLocation = Spacecraft->GetActorLocation();
 					//FLOGV("UFlareSector::LoadSpacecraft : Placing '%s' at (%f,%f,%f)",
@@ -448,9 +485,8 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 				FVector Location = GetSectorCenter() + SpawnDirection * SpawnDistance;
 
 				FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
-				Spacecraft->SetActorRotation(CenterDirection.Rotation());
-
-				PlaceSpacecraft(Spacecraft, Location);
+				Rotation = CenterDirection.Rotation();
+				PlaceSpacecraft(Spacecraft, Location, Rotation);
 
 				float SpawnVelocity = 0;
 
@@ -470,13 +506,13 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 				FVector SpawnDirection = ParentSpacecraft->GetData().Location.GetUnsafeNormal();
 				FVector Location = SpawnDirection * SpawnDistance;
 				FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
+				Rotation = CenterDirection.Rotation();
 
 				//FLOGV("UFlareSector::LoadSpacecraft : Exit '%s' at (%f, %f, %f)",
 				//	*ParentSpacecraft->GetImmatriculation().ToString(),
 				//	Location.X, Location.Y, Location.Z);
 
-				PlaceSpacecraft(Spacecraft, Location);
-				Spacecraft->SetActorRotation(CenterDirection.Rotation());
+				PlaceSpacecraft(Spacecraft, Location, Rotation);
 
 				RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
 				RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
@@ -488,7 +524,8 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 				if (ParentSpacecraft->GetShipMaster())
 				{
 					FVector Location = ParentSpacecraft->GetShipMaster()->GetData().Location;
-					PlaceSpacecraft(Spacecraft, Location, 250, false, Spacecraft->GetMeshScale(), false);
+					Rotation = ParentSpacecraft->GetData().Rotation;
+					PlaceSpacecraft(Spacecraft, Location, Rotation, 250, false, Spacecraft->GetMeshScale(), false);
 					float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetData().LinearVelocity.Size() * 0.6;
 					FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
 					RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
@@ -496,7 +533,8 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 				}
 				else
 				{
-					PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location);
+					Rotation = ParentSpacecraft->GetData().Rotation;
+					PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
 				}
 				break;
 			}
@@ -724,7 +762,7 @@ AActor* UFlareSector::GetNearestBody(FVector Location, float* NearestDistance, b
 	return NearestCandidateActor;
 }
 
-void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, float RandomLocationRadiusIncrement, bool RandomLocRadiusBoost, float InitialLocationRadius, bool MultiplyLocationOrAdd)
+void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement, bool RandomLocRadiusBoost, float InitialLocationRadius, bool MultiplyLocationOrAdd)
 {
 	float RandomLocationRadius = InitialLocationRadius;
 	float EffectiveDistance = -1;
@@ -792,8 +830,7 @@ void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Locatio
 		}
 	}
 #endif
-
-	Spacecraft->SetActorLocation(Location);
+	Spacecraft->SetActorLocationAndRotation(Location,Rotation);
 }
 
 /*----------------------------------------------------
@@ -821,6 +858,11 @@ TArray<AFlareSpacecraft*> UFlareSector::GetCompanyShips(UFlareCompany* Company)
 		CompanyShipsPerCompanyCache.Add(Company, CompanyShips);
 	}
 	return CompanyShips;
+}
+
+bool UFlareSector::GetIsDestroyingSector()
+{
+	return IsDestroyingSector;
 }
 
 TArray<AFlareSpacecraft*> UFlareSector::GetCompanySpacecrafts(UFlareCompany* Company)

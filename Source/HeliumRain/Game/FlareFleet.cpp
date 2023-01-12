@@ -205,7 +205,6 @@ int32 UFlareFleet::GetTransportCapacity()
 uint32 UFlareFleet::GetShipCount() const
 {
 	return FleetCount;
-//	return FleetShips.Num();
 }
 
 uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const

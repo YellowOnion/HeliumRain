@@ -219,6 +219,9 @@ public:
 
 	FFlareTradeRouteSectorOperationSave* MoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation);
 
+	bool CanMoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation);
+	bool CanMoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation);
+
 	/** Remove all fleet from the trade route and delete it. */
 	virtual void Dissolve();
 

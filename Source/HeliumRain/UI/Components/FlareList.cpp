@@ -194,16 +194,16 @@ void SFlareList::AddFleet(UFlareFleet* Fleet)
 	SetButtonNamesFleet();
 }
 
-void SFlareList::SelectFleet(UFlareFleet* Fleet)
 //TODO: figure out how to get this to find the widget properly, so the list can do a full refresh but then reselect the passed through fleet after the refresh
+void SFlareList::SelectFleet(UFlareFleet* Fleet)
 {
 	for (auto Object : FilteredObjectList)
 	{
+		
 		if (Object->FleetPtr && Object->FleetPtr == Fleet)
 		{
 			OnTargetSelected(Object, ESelectInfo::Direct);
 			HasFleets = true;
-			SetButtonNamesFleet();
 			break;
 		}
 	}
@@ -402,7 +402,7 @@ void SFlareList::RefreshList(bool DisableSort)
 								continue;
 							}
 
-							if (Object->SpacecraftPtr->GetActiveCargoBay()->WantBuy(Cargo.Resource, TargetLeftSpacecraft->GetCompany()))
+							if (Object->SpacecraftPtr->GetActiveCargoBay()->WantBuy(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) && Object->SpacecraftPtr->GetActiveCargoBay()->GetFreeSpaceForResource(Cargo.Resource, TargetLeftSpacecraft->GetCompany()) > 0)
 							{
 								FoundCargo = true;
 								FilteredObjectList.Add(Object);

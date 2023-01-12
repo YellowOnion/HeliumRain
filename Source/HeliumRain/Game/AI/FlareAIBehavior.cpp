@@ -1004,7 +1004,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			ResearchOrder.Add(CurrentResearch);
 		}
 	}
-	else
+	else if(!ResearchOrder.Num())
 	{
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");

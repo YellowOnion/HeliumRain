@@ -412,7 +412,7 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 							[
 								SNew(SHorizontalBox)
 
-								// Move up
+								// Trade with hubs
 								+ SHorizontalBox::Slot()
 								.AutoWidth()
 								.Padding(Theme.SmallContentPadding)
@@ -577,6 +577,7 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 								[
 									SNew(SFlareButton)
 									.OnClicked(this, &SFlareTradeRouteMenu::OnOperationUpClicked)
+									.IsDisabled(this, &SFlareTradeRouteMenu::IsOperationUpDisabled)
 									.Text(LOCTEXT("MoveUpOperation", "Move up"))
 									.Icon(FFlareStyleSet::GetIcon("MoveUp"))
 								]
@@ -588,6 +589,7 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 								[
 									SNew(SFlareButton)
 									.OnClicked(this, &SFlareTradeRouteMenu::OnOperationDownClicked)
+									.IsDisabled(this, &SFlareTradeRouteMenu::IsOperationDownDisabled)
 									.Text(LOCTEXT("MoveDownOperation", "Move down"))
 									.Icon(FFlareStyleSet::GetIcon("MoveDown"))
 								]
@@ -1540,6 +1542,30 @@ FText SFlareTradeRouteMenu::OnGetCurrentSectorComboLine() const
 {
 	UFlareSimulatedSector* Item = SectorSelector->GetSelectedItem();
 	return Item ? Item->GetSectorName() : LOCTEXT("SelectSector", "Select a sector");
+}
+
+bool SFlareTradeRouteMenu::IsOperationUpDisabled() const
+{
+	if (SelectedOperation && TargetTradeRoute)
+	{
+		if (!TargetTradeRoute->CanMoveOperationUp(SelectedOperation))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+bool SFlareTradeRouteMenu::IsOperationDownDisabled() const
+{
+	if (SelectedOperation && TargetTradeRoute)
+	{
+		if (!TargetTradeRoute->CanMoveOperationDown(SelectedOperation))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool SFlareTradeRouteMenu::IsAddSectorDisabled() const

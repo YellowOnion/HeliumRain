@@ -93,7 +93,7 @@ protected:
 	void UpdateMap();
 
 	/** Update the map for a specific celestial body */
-	void UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body);
+	void UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body, TArray<FString> BrokenSectors);
 		
 
 	/*----------------------------------------------------

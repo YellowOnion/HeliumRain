@@ -126,8 +126,8 @@ void AFlareShell::Tick(float DeltaSeconds)
 */
 	FVector ActorLocation = GetActorLocation();
 	FVector NextActorLocation = ActorLocation + ShellVelocity * DeltaSeconds;
-	SetActorLocation(NextActorLocation, false);
-	SetActorRotation(ShellVelocity.Rotation());
+	SetActorLocationAndRotation(NextActorLocation, ShellVelocity.Rotation(), false);
+
 	// 1 at 100m or less
 	float Scale = 1;
 	float BaseDistance = 10000.f;

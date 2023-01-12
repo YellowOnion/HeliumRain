@@ -142,7 +142,6 @@ public:
 	/** Skirmish is done */
 	void PrepareSkirmishEnd();
 
-
 protected:
 
 	/*----------------------------------------------------
@@ -390,6 +389,8 @@ public:
 	/** Get the menu manager */
 	static AFlareMenuManager* GetSingleton();
 
+	void SetModStrings(TArray<FString> ModStrings);
+	TArray<FString> GetModStrings() const;
 
 protected:
 
@@ -449,6 +450,5 @@ protected:
 	TSharedPtr<SFlareGameOverMenu>          GameOverMenu;
 	TSharedPtr<SFlareSkirmishSetupMenu>     SkirmishSetupMenu;
 	TSharedPtr<SFlareSkirmishScoreMenu>     SkirmishScoreMenu;
-	
-
+	TArray<FString>							ActiveModStrings;
 };

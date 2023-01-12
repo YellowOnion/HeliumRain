@@ -29,6 +29,8 @@ public:
 	/** Save the sector to a save file */
 	virtual void Save();
 
+	virtual void Tick(float DeltaSeconds);
+
 	/** Destroy the sector */
 	virtual void DestroySector();
 
@@ -63,9 +65,11 @@ public:
 
 	AActor* GetNearestBody(FVector Location, float* NearestDistance, bool IncludeSize = true, AActor* ActorToIgnore = NULL);
 
-	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, float RandomLocationRadiusIncrement = 100000, bool RandomLocRadiusBoost = true, float InitialLocationRadius = 100000, bool MultiplyLocationOrAdd = true);
+	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement = 100000, bool RandomLocRadiusBoost = true, float InitialLocationRadius = 100000, bool MultiplyLocationOrAdd = true);
 
 	void AddReinforcingShip(UFlareSimulatedSpacecraft* Ship);
+
+	void SimulateLocalCompanyAI();
 
 protected:
 
@@ -102,6 +106,7 @@ protected:
 	float                          SectorRadius;
 //	float						   ShellTick;
 
+	TArray<UFlareCompany*> UniqueCompanies;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
 	TMap<FName, AFlareSpacecraft*> SectorSpacecraftsCache;
@@ -153,6 +158,8 @@ public:
 	{
 		return SectorSpacecrafts;
 	}
+
+	bool GetIsDestroyingSector();
 
 	/*inline FFlarePeopleSave* GetPeople(){
 		return &SectorData.PeopleData;

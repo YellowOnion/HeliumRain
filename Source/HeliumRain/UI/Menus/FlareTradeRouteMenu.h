@@ -88,6 +88,9 @@ protected:
 	
 	FText OnGetCurrentSectorComboLine() const;
 	
+	bool IsOperationDownDisabled() const;
+	bool IsOperationUpDisabled() const;
+
 	/** Can add sector */
 	bool IsAddSectorDisabled() const;
 

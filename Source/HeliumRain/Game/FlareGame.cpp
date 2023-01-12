@@ -105,8 +105,69 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	ResourceCatalog = NewObject<UFlareResourceCatalog>(this, UFlareResourceCatalog::StaticClass(), TEXT("FlareResourceCatalog"));
 	TechnologyCatalog = NewObject<UFlareTechnologyCatalog>(this, UFlareTechnologyCatalog::StaticClass(), TEXT("FlareTechnologyCatalog"));
 	ScannableCatalog = NewObject<UFlareScannableCatalog>(this, UFlareScannableCatalog::StaticClass(), TEXT("FlareScannableCatalog"));
-}
 
+	TArray<UFlareTechnologyCatalogEntry*> DisableTechnologies;
+	for (UFlareTechnologyCatalogEntry* Technology : TechnologyCatalog->TechnologyCatalog)
+	{
+		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
+
+		if (TechnologyData->IsDisabled)
+		{
+			DisableTechnologies.Add(Technology);
+		}
+		else
+		{
+			if (TechnologyData->Level > TechnologyCatalog->MaximumTechnologyLevel)
+			{
+				TechnologyCatalog->MaximumTechnologyLevel = TechnologyData->Level;
+			}
+		}
+
+		if (TechnologyData->UnlockItems.Num())
+		{
+			for (FName UnlockName : TechnologyData->UnlockItems)
+			{
+				FFlareSpacecraftDescription* StationShipDescription = SpacecraftCatalog->Get(UnlockName);
+				FFlareSpacecraftComponentDescription* ShipPart = ShipPartsCatalog->Get(UnlockName);
+				if (StationShipDescription)
+				{
+					
+					StationShipDescription->RequiredTechnologies.Add(TechnologyData->Identifier);
+				}
+				if (ShipPart)
+				{
+					ShipPart->Name = FText::FromName(ShipPart->Identifier);
+					ShipPart->RequiredTechnologies.Add(TechnologyData->Identifier);
+				}
+			}
+		}
+	}
+
+	for (UFlareTechnologyCatalogEntry* TechnologyEntry : DisableTechnologies)
+	{
+		TechnologyCatalog->TechnologyCatalog.Remove(TechnologyEntry);
+	}
+/*
+//	TArray<FFlareSpacecraftDescription*> SpacecraftDebug;
+//	SpacecraftCatalog->GetSpacecraftList(SpacecraftDebug);
+//	for (FFlareSpacecraftDescription* ShipSub : SpacecraftDebug)
+//	{
+//		ShipSub->Name = FText::FromName(ShipSub->Identifier);
+//	}
+
+	TArray<FFlareSpacecraftComponentDescription*> ComponentsDebug;
+	ShipPartsCatalog->GetEngineList(ComponentsDebug, EFlarePartSize::S, NULL, NULL);
+	ShipPartsCatalog->GetEngineList(ComponentsDebug, EFlarePartSize::L, NULL, NULL);
+	ShipPartsCatalog->GetRCSList(ComponentsDebug, EFlarePartSize::S, NULL, NULL);
+	ShipPartsCatalog->GetRCSList(ComponentsDebug, EFlarePartSize::L, NULL, NULL);
+	ShipPartsCatalog->GetWeaponList(ComponentsDebug, EFlarePartSize::S, NULL, NULL);
+	ShipPartsCatalog->GetWeaponList(ComponentsDebug, EFlarePartSize::L, NULL, NULL);
+	for (FFlareSpacecraftComponentDescription* ComponentSub : ComponentsDebug)
+	{
+		ComponentSub->Name = FText::FromName(ComponentSub->Identifier);
+	}
+*/
+}
 
 /*----------------------------------------------------
 	Gameplay
@@ -165,6 +226,8 @@ void AFlareGame::StartPlay()
 		FCHECK(Sector);
 		SectorList.Add(Sector);
 	}
+
+	GetWorldTimerManager().SetTimer(SlowTick, this, &AFlareGame::SlowerTickFunction, 60.f, true, 60.f);
 }
 
 void AFlareGame::PostLogin(APlayerController* Player)
@@ -182,6 +245,7 @@ void AFlareGame::Logout(AController* Player)
 	DeactivateSector();
 	SaveGame(PC, false);
 	PC->PrepareForExit();
+	GetWorldTimerManager().ClearTimer(SlowTick);
 
 	// Exit
 	FFlareLogWriter::Shutdown();
@@ -445,7 +509,7 @@ void AFlareGame::ScrapStation(UFlareSimulatedSpacecraft* StationToScrap)
 void AFlareGame::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	
+
 	if (QuestManager)
 	{
 		QuestManager->OnTick(DeltaSeconds);
@@ -454,6 +518,19 @@ void AFlareGame::Tick(float DeltaSeconds)
 	if(SkirmishManager)
 	{
 		SkirmishManager->Update(DeltaSeconds);
+	}
+
+	if (ActiveSector)
+	{
+		ActiveSector->Tick(DeltaSeconds);
+	}
+}
+
+void AFlareGame::SlowerTickFunction()
+{
+	if (ActiveSector)
+	{
+		ActiveSector->SimulateLocalCompanyAI();
 	}
 }
 
@@ -1625,8 +1702,21 @@ void AFlareGame::InitSpacecraftNameDatabase()
 
 const FFlareCompanyDescription*  AFlareGame::GetCompanyDescription(int32 Index) const
 {
+	if (CompanyCatalog)
+	{
+		if (CompanyCatalog->CompanyCatalog.Num())
+		{
+			UFlareCompanyCatalogEntry* CompCatalog = CompanyCatalog->CompanyCatalog[Index];
+			return &CompCatalog->Data;
+		}
+		else
+		{
+			return &CompanyCatalog->Companies[Index];
+		}
+	}
+
 	return (CompanyCatalog ? &CompanyCatalog->Companies[Index] : NULL);
-}FFlarePlayerSave* Player;
+}
 
 const FFlareCompanyDescription* AFlareGame::GetPlayerCompanyDescription() const
 {
@@ -1636,7 +1726,18 @@ const FFlareCompanyDescription* AFlareGame::GetPlayerCompanyDescription() const
 
 const int32 AFlareGame::GetCompanyCatalogCount() const
 {
-	return (CompanyCatalog ? CompanyCatalog->Companies.Num() : 0);
+	if (CompanyCatalog)
+	{
+		if (CompanyCatalog->CompanyCatalog.Num())
+		{
+			return CompanyCatalog->CompanyCatalog.Num();
+		}
+		else
+		{
+			return CompanyCatalog->Companies.Num();
+		}
+	}
+	return 0;
 }
 
 FText AFlareGame::GetBuildDate() const

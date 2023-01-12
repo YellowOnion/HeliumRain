@@ -54,49 +54,14 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareDamageSystem_Tick);
 
-	Parent->TickSystem();
-
 	// Apply heat variation : add producted heat then substract radiated heat.
-/*
-	// Get the to heat production and heat sink surface
-	float HeatProduction = 0.f;
-	float HeatSinkSurface = 0.f;
-
-	for (int32 i = 0; i < Components.Num(); i++)
-	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[i]);
-		HeatProduction += Component->GetHeatProduction();
-		HeatSinkSurface += Component->GetHeatSinkSurface();
-	}
-
-	// Add a part of sun radiation to ship heat production
-	// Sun flow is 3.094KW/m^2 and keep only 10 % and modulate 90% by sun occlusion
-	HeatProduction += HeatSinkSurface * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
-*/
 	if (HeatChange)
 	{
 		TotalHeatAfterSun = (TotalHeatProduction) + TotalHeatSink * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
 		HeatChange = false;
-/*
-		if (Spacecraft->IsPlayerControlled())
-		{
-			float HeatProduction = 0.f;
-			float HeatSinkSurface = 0.f;
-
-			for (int32 i = 0; i < Components.Num(); i++)
-			{
-				UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[i]);
-				HeatProduction += Component->GetHeatProduction();
-				HeatSinkSurface += Component->GetHeatSinkSurface();
-			}
-			float HeatProductionOldSun = (HeatProduction)+HeatSinkSurface * 3.094 * 0.1 * (1 - 0.9 * Spacecraft->GetGame()->GetPlanetarium()->GetSunOcclusion());
-			FLOGV("Total heat changed. production: %f (%f) sink: %f (%f) sun: %f (%f)", TotalHeatProduction, HeatProduction, TotalHeatSink, HeatSinkSurface, TotalHeatAfterSun, HeatProductionOldSun);
-		} 
-*/
 	}
 
 // Heat up
-//	Data->Heat += HeatProduction * DeltaSeconds;
 	Data->Heat += TotalHeatAfterSun * DeltaSeconds;
 
 // Radiate: Stefan-Boltzmann constant=5.670373e-8
@@ -104,7 +69,6 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	float HeatRadiation = 0.f;
 	if (Temperature > 0)
 	{
-//		HeatRadiation = HeatSinkSurface * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
 		HeatRadiation = TotalHeatSink * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
 	}
 	// Don't radiate too much energy : negative temperature is not possible
@@ -114,145 +78,11 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	if (Data->PowerOutageDelay > 0)
 	{
 		Data->PowerOutageDelay -=  DeltaSeconds;
-		if (Data->PowerOutageDelay <=0)
+		if (Data->PowerOutageDelay <= 0)
 		{
 			Data->PowerOutageDelay = 0;
 			UpdatePower(); // To update light
 		}
-	}
-
-	bool MakeUncontrolableDestroyed = false;
-
-	// Update uncontrollable status
-	if (WasControllable)
-	{
-		if (Parent->IsUncontrollable())
-		{
-			//		SetDead();//for testing stability with lots of ship removal
-			AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
-			MakeUncontrolableDestroyed = true;
-
-			// Player kill
-			if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
-			{
-				if (Parent->IsAlive())
-				{
-					PC->Notify(LOCTEXT("TargetShipUncontrollable", "Enemy disabled"),
-						FText::Format(LOCTEXT("TargetShipUncontrollableFormat", "You rendered a ship uncontrollable ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
-						FName("ship-uncontrollable"),
-						EFlareNotification::NT_Info);
-				}
-			}
-
-			// Company kill
-			else if (PC && LastDamageCause.Company && PC->GetCompany() == LastDamageCause.Company)
-			{
-				if (Parent->IsAlive())
-				{
-					PC->Notify(LOCTEXT("TargetShipUncontrollableCompany", "Enemy disabled"),
-						FText::Format(LOCTEXT("TargetShipUncontrollableCompanyFormat", "Your {0}-class ship rendered a ship uncontrollable ({1}-class)"),
-							LastDamageCause.Spacecraft->GetDescription()->Name,
-							Spacecraft->GetParent()->GetDescription()->Name),
-						FName("ship-uncontrollable"),
-						EFlareNotification::NT_Info);
-				}
-			}
-
-			WasControllable = false;
-			OnControlLost();
-		}
-	}
-
-	// Update alive status
-	if (WasAlive)
-	{
-		if (!Parent->IsAlive())
-		{
-			MakeUncontrolableDestroyed = true;
-
-			// Player kill
-			if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
-			{
-				PC->Notify(LOCTEXT("TargetShipKilled", "Enemy destroyed"),
-					FText::Format(LOCTEXT("TargetShipKilledFormat", "You destroyed a ship ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
-					FName("ship-killed"),
-					EFlareNotification::NT_Info);
-			}
-
-			// Company kill
-			else if (PC && LastDamageCause.Spacecraft && PC->GetCompany() == LastDamageCause.Company)
-			{
-				if (Spacecraft->IsStation())
-				{
-					PC->Notify(LOCTEXT("TargetStationKilledCompany", "Enemy destroyed"),
-						FText::Format(LOCTEXT("TargetStationKilledCompanyFormat", "Your {0}-class ship destroyed a station ({1}-class)"),
-							LastDamageCause.Spacecraft->GetDescription()->Name,
-							Spacecraft->GetParent()->GetDescription()->Name),
-						FName("station-killed"),
-						EFlareNotification::NT_Info);
-				}
-				else
-				{
-					PC->Notify(LOCTEXT("TargetShipKilledCompany", "Enemy destroyed"),
-						FText::Format(LOCTEXT("TargetShipKilledCompanyFormat", "Your {0}-class ship destroyed a ship ({1}-class)"),
-							LastDamageCause.Spacecraft->GetDescription()->Name,
-							Spacecraft->GetParent()->GetDescription()->Name),
-						FName("ship-killed"),
-						EFlareNotification::NT_Info);
-				}
-			}
-
-			WasAlive = false;
-			OnSpacecraftDestroyed();
-		}
-	}
-
-	if(MakeUncontrolableDestroyed)
-	{
-		// Player kill
-		if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn() && Spacecraft->IsPlayerHostile())
-		{
-			if (LastDamageCause.DamageType == EFlareDamage::DAM_Collision)
-			{
-				PC->SetAchievementProgression("ACHIEVEMENT_COLLISION", 1);
-			}
-
-			if (Spacecraft->GetCompany() != PC->GetCompany() && !Spacecraft->IsStation())
-			{
-				if (Spacecraft->GetDescription()->CargoBayCount > 0)
-				{
-					// Cargo
-					PC->SetAchievementProgression("ACHIEVEMENT_KILL_CARGO", 1);
-				}
-				else
-				{
-					// Military
-					if (Spacecraft->GetSize() == EFlarePartSize::S)
-					{
-						PC->SetAchievementProgression("ACHIEVEMENT_KILL_FIGHTER", 1);
-
-						if(LastDamageCause.ManualTurret)
-						{
-							PC->SetAchievementProgression("ACHIEVEMENT_TURRET", 1);
-						}
-					}
-					else
-					{
-						PC->SetAchievementProgression("ACHIEVEMENT_KILL_CAPITAL", 1);
-					}
-				}
-			}
-		}
-
-		if(Spacecraft->IsMilitary() && Spacecraft->IsPlayerHostile() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany()).BattleWon)
-		{
-			PC->SetAchievementProgression("ACHIEVEMENT_BATTLE", 1);
-		}
-	}
-
-	if (Spacecraft->GetParent()->GetCurrentFleet() == PC->GetPlayerFleet())
-	{
-		CheckRecovery();
 	}
 
 	TimeSinceLastExternalDamage += DeltaSeconds;
@@ -272,7 +102,6 @@ void UFlareSpacecraftDamageSystem::Start()
 {
 	// Reload components
 	Components = Spacecraft->GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	Parent->TickSystem();
 
 	// Init alive status
 	WasControllable = !Parent->IsUncontrollable();
@@ -898,6 +727,8 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 	}
 #endif
 */
+	bool DestroyedSomething = false;
+	bool HurtSomething = false;
 	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
 	{
 		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
@@ -915,13 +746,27 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		// Hit this component
 		if (IntersectDistance > 0 || IsStationCockpit)
 		{
+			HurtSomething = true;
 			//FLOGV("Component %s. ComponentSize=%f, Distance=%f, IntersectDistance=%f", *(Component->GetReadableName()), ComponentSize, Distance, IntersectDistance);
 			float Efficiency = FMath::Clamp(IntersectDistance / Radius , 0.0f, 1.0f);
 			if(IsStationCockpit)
 			{
 				Efficiency = 1;
 			}
+
 			float InflictedDamageRatio = Component->ApplyDamage(Energy * Efficiency, DamageType, DamageSource);
+			if (Component->GetDamageRatio() == 0)
+			{
+				DestroyedSomething = true;
+			}
+		}
+	}
+
+	if (HurtSomething)
+	{
+		if (PC->GetCompany() != Spacecraft->GetCompany())
+		{
+			Spacecraft->GetCompany()->GetAI()->SetActiveAIDesireRepairs(true);
 		}
 	}
 
@@ -944,6 +789,141 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		default:
 			// Don't reset timer
 			break;
+	}
+
+	if (DestroyedSomething)
+	{
+		bool MakeUncontrolableDestroyed = false;
+		if (WasControllable)
+		{
+			if (Parent->IsUncontrollable())
+			{
+				AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
+				MakeUncontrolableDestroyed = true;
+
+				// Player kill
+				if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
+				{
+					if (Parent->IsAlive())
+					{
+						PC->Notify(LOCTEXT("TargetShipUncontrollable", "Enemy disabled"),
+							FText::Format(LOCTEXT("TargetShipUncontrollableFormat", "You rendered a ship uncontrollable ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
+							FName("ship-uncontrollable"),
+							EFlareNotification::NT_Info);
+					}
+				}
+
+				// Company kill
+				else if (PC && LastDamageCause.Company && PC->GetCompany() == LastDamageCause.Company)
+				{
+					if (Parent->IsAlive())
+					{
+						PC->Notify(LOCTEXT("TargetShipUncontrollableCompany", "Enemy disabled"),
+							FText::Format(LOCTEXT("TargetShipUncontrollableCompanyFormat", "Your {0}-class ship rendered a ship uncontrollable ({1}-class)"),
+								LastDamageCause.Spacecraft->GetDescription()->Name,
+								Spacecraft->GetParent()->GetDescription()->Name),
+							FName("ship-uncontrollable"),
+							EFlareNotification::NT_Info);
+					}
+				}
+
+				WasControllable = false;
+				OnControlLost();
+			}
+		}
+
+		// Update alive status
+		if (WasAlive)
+		{
+			if (!Parent->IsAlive())
+			{
+				MakeUncontrolableDestroyed = true;
+
+				// Player kill
+				if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
+				{
+					PC->Notify(LOCTEXT("TargetShipKilled", "Enemy destroyed"),
+						FText::Format(LOCTEXT("TargetShipKilledFormat", "You destroyed a ship ({0}-class)"), Spacecraft->GetParent()->GetDescription()->Name),
+						FName("ship-killed"),
+						EFlareNotification::NT_Info);
+				}
+
+				// Company kill
+				else if (PC && LastDamageCause.Spacecraft && PC->GetCompany() == LastDamageCause.Company)
+				{
+					if (Spacecraft->IsStation())
+					{
+						PC->Notify(LOCTEXT("TargetStationKilledCompany", "Enemy destroyed"),
+							FText::Format(LOCTEXT("TargetStationKilledCompanyFormat", "Your {0}-class ship destroyed a station ({1}-class)"),
+								LastDamageCause.Spacecraft->GetDescription()->Name,
+								Spacecraft->GetParent()->GetDescription()->Name),
+							FName("station-killed"),
+							EFlareNotification::NT_Info);
+					}
+					else
+					{
+						PC->Notify(LOCTEXT("TargetShipKilledCompany", "Enemy destroyed"),
+							FText::Format(LOCTEXT("TargetShipKilledCompanyFormat", "Your {0}-class ship destroyed a ship ({1}-class)"),
+								LastDamageCause.Spacecraft->GetDescription()->Name,
+								Spacecraft->GetParent()->GetDescription()->Name),
+							FName("ship-killed"),
+							EFlareNotification::NT_Info);
+					}
+				}
+
+				WasAlive = false;
+				OnSpacecraftDestroyed();
+			}
+		}
+
+		if (MakeUncontrolableDestroyed)
+		{
+			// Player kill
+			if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn() && Spacecraft->IsPlayerHostile())
+			{
+				if (LastDamageCause.DamageType == EFlareDamage::DAM_Collision)
+				{
+					PC->SetAchievementProgression("ACHIEVEMENT_COLLISION", 1);
+				}
+
+				if (Spacecraft->GetCompany() != PC->GetCompany() && !Spacecraft->IsStation())
+				{
+					if (Spacecraft->GetDescription()->CargoBayCount > 0)
+					{
+						// Cargo
+						PC->SetAchievementProgression("ACHIEVEMENT_KILL_CARGO", 1);
+					}
+					else
+					{
+						// Military
+						if (Spacecraft->GetSize() == EFlarePartSize::S)
+						{
+							PC->SetAchievementProgression("ACHIEVEMENT_KILL_FIGHTER", 1);
+
+							if (LastDamageCause.ManualTurret)
+							{
+								PC->SetAchievementProgression("ACHIEVEMENT_TURRET", 1);
+							}
+						}
+						else
+						{
+							PC->SetAchievementProgression("ACHIEVEMENT_KILL_CAPITAL", 1);
+						}
+					}
+				}
+			}
+
+			if (Spacecraft->IsMilitary() && Spacecraft->IsPlayerHostile() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany()).BattleWon)
+			{
+				PC->SetAchievementProgression("ACHIEVEMENT_BATTLE", 1);
+			}
+
+			// Update uncontrollable status
+			if (Spacecraft->GetParent()->GetCurrentFleet() == PC->GetPlayerFleet())
+			{
+				CheckRecovery();
+			}
+		}
 	}
 }
 

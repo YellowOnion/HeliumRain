@@ -18,7 +18,7 @@ public:
 	/** Tehcnologies */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<UFlareTechnologyCatalogEntry*> TechnologyCatalog;
-	
+	int MaximumTechnologyLevel;
 
 public:
 
@@ -26,8 +26,7 @@ public:
 		Public methods
 	----------------------------------------------------*/
 	
-	/** Get a ship from identifier */
+	/** Get a technology from identifier */
 	FFlareTechnologyDescription* Get(FName Identifier) const;
-
-
+	int GetMaxTechLevel() const;
 };

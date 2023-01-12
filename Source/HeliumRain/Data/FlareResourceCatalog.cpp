@@ -22,16 +22,39 @@ UFlareResourceCatalog::UFlareResourceCatalog(const class FObjectInitializer& PCI
 		//FLOGV("UFlareResourceCatalog::UFlareResourceCatalog : Found '%s'", *AssetList[Index].GetFullName());
 		UFlareResourceCatalogEntry* Resource = Cast<UFlareResourceCatalogEntry>(AssetList[Index].GetAsset());
 		FCHECK(Resource);
-		
+
+		UFlareResourceCatalogEntry* OldEntry = NULL;
+		for (UFlareResourceCatalogEntry* ResourceSub : Resources)
+		{
+			if (ResourceSub->Data.Identifier == Resource->Data.Identifier)
+			{
+				OldEntry = ResourceSub;
+				break;
+			}
+		}
+
+		if (OldEntry)
+		{
+			Resources.Remove(OldEntry);
+		}
+
 		Resources.Add(Resource);
 
 		if (Resource->Data.IsConsumerResource)
 		{
+			if (OldEntry)
+			{
+				ConsumerResources.Remove(OldEntry);
+			}
 			ConsumerResources.Add(Resource);
 		}
 
 		if (Resource->Data.IsMaintenanceResource)
 		{
+			if (OldEntry)
+			{
+				MaintenanceResources.Remove(OldEntry);
+			}
 			MaintenanceResources.Add(Resource);
 		}
 	}

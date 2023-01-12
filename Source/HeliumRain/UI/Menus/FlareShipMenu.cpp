@@ -709,6 +709,11 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 					AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 				}
 			}
+			else
+			{
+				ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
+				AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
+			}
 
 			// Renaming
 			bool CanRename = !TargetSpacecraft->IsStation() && !CanEdit;
@@ -1459,7 +1464,7 @@ void SFlareShipMenu::UpdateShipyardList()
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	ShipyardList->ClearChildren();
 
-	if (TargetSpacecraft)
+	if (TargetSpacecraft && TargetSpacecraft->IsShipyard())
 	{
 		// Currently building
 		int32 Index = 0;

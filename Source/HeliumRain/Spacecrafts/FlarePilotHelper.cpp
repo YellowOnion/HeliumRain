@@ -787,10 +787,10 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 
 		if (Component->GetDescription() && !Component->IsBroken() )
 		{
-
 			UFlareRCS* RCS = Cast<UFlareRCS>(Component);
 			if (RCS)
 			{
+				ComponentSelection.Reserve(ComponentSelection.Num() + RCSWeight);
 				for (int32 i = 0; i < RCSWeight; i++)
 				{
 					ComponentSelection.Add(Component);
@@ -800,6 +800,7 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 			UFlareOrbitalEngine* OrbitalEngine = Cast<UFlareOrbitalEngine>(Component);
 			if (OrbitalEngine)
 			{
+				ComponentSelection.Reserve(ComponentSelection.Num() + PodWeight);
 				for (int32 i = 0; i < PodWeight; i++)
 				{
 					ComponentSelection.Add(Component);
@@ -809,6 +810,7 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 			UFlareWeapon* Weapon = Cast<UFlareWeapon>(Component);
 			if (Weapon)
 			{
+				ComponentSelection.Reserve(ComponentSelection.Num() + WeaponWeight);
 				for (int32 i = 0; i < WeaponWeight; i++)
 				{
 					ComponentSelection.Add(Component);
@@ -817,6 +819,7 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 
 			if (Component->GetDescription()->Type == EFlarePartType::InternalComponent)
 			{
+				ComponentSelection.Reserve(ComponentSelection.Num() + InternalWeight);
 				for (int32 i = 0; i < InternalWeight; i++)
 				{
 					ComponentSelection.Add(Component);

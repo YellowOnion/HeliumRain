@@ -86,6 +86,9 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	UFUNCTION()
+	void SlowerTickFunction();
+
 	virtual void Scrap(FName ShipImmatriculation, FName TargetStationImmatriculation);
 
 	virtual void ScrapStation(UFlareSimulatedSpacecraft* Station);
@@ -192,7 +195,9 @@ protected:
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
-		
+	
+	FTimerHandle							   SlowTick;
+
 	/** Planetary system */
 	UPROPERTY()
 	AFlarePlanetarium*                         Planetarium;

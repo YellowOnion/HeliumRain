@@ -22,7 +22,26 @@ UFlareTechnologyCatalog::UFlareTechnologyCatalog(const class FObjectInitializer&
 		//FLOGV("UFlareTechnologyCatalog::UFlareTechnologyCatalog : Found '%s'", *AssetList[Index].GetFullName());
 		UFlareTechnologyCatalogEntry* Technology = Cast<UFlareTechnologyCatalogEntry>(AssetList[Index].GetAsset());
 		FCHECK(Technology);
-		TechnologyCatalog.Add(Technology);
+
+		UFlareTechnologyCatalogEntry* OldEntry = NULL;
+		for (UFlareTechnologyCatalogEntry* TechnologySub : TechnologyCatalog)
+		{
+			if (TechnologySub->Data.Identifier == Technology->Data.Identifier)
+			{
+				OldEntry = TechnologySub;
+				break;
+			}
+		}
+
+		if (OldEntry)
+		{
+			TechnologyCatalog.Remove(OldEntry);
+		}
+
+		if (!Technology->Data.IsDisabled)
+		{
+			TechnologyCatalog.Add(Technology);
+		}
 	}
 }
 
@@ -47,3 +66,7 @@ FFlareTechnologyDescription* UFlareTechnologyCatalog::Get(FName Identifier) cons
 	return NULL;
 }
 
+int UFlareTechnologyCatalog::GetMaxTechLevel() const
+{
+	return MaximumTechnologyLevel;
+}

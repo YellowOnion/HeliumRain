@@ -1,8 +1,10 @@
 #pragma once
 
 #include "FlareSpacecraftCatalogEntry.h"
+#include "FlareTechnologyCatalog.h"
 #include "../Spacecrafts/FlareSpacecraft.h"
 #include "FlareSpacecraftCatalog.generated.h"
+
 
 
 UCLASS()
@@ -32,6 +34,5 @@ public:
 	
 	/** Get a ship from identifier */
 	FFlareSpacecraftDescription* Get(FName Identifier) const;
-
-
+	const void GetSpacecraftList(TArray<FFlareSpacecraftDescription*>& OutData);
 };

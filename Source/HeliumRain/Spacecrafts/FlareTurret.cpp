@@ -153,7 +153,22 @@ void UFlareTurret::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 
 	if (Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 	{
-		Pilot->TickPilot(DeltaTime);
+		if (Spacecraft->GetStateManager()->GetIsPiloted())
+		{
+			if (Spacecraft->GetPilot()->GetInitiatedCombat())
+			{
+				Pilot->TickPilot(DeltaTime);
+			}
+			else
+			{
+				Pilot->SetWantFire(false);
+			}
+		}
+		else
+		{
+			Pilot->TickPilot(DeltaTime);
+		}
+		
 		if (Pilot->IsWantFire())
 		{
 			StartFire();

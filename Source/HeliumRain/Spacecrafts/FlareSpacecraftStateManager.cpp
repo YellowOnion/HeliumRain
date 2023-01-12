@@ -410,6 +410,11 @@ void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)
 	}
 }
 
+bool UFlareSpacecraftStateManager::GetIsPiloted()
+{
+	return IsPiloted;
+}
+
 void UFlareSpacecraftStateManager::EnablePilot(bool PilotEnabled)
 {
 	IsPiloted = PilotEnabled;
@@ -434,13 +439,16 @@ void UFlareSpacecraftStateManager::SetExternalCamera(bool NewState)
 	{
 		ResetExternalCamera();
 		Spacecraft->SetCameraLocalPosition(FVector::ZeroVector);
+		UpdateCamera(0);
+		Spacecraft->UpdateCameraPositions(0);
 	}
 	else
 	{
 		FVector CameraOffset = Spacecraft->WorldToLocal(Spacecraft->Airframe->GetSocketLocation(FName("Camera")) - Spacecraft->GetActorLocation());
-
 		Spacecraft->SetCameraDistance(0);
 		Spacecraft->SetCameraLocalPosition(CameraOffset);
+		UpdateCamera(0);
+		Spacecraft->UpdateCameraPositions(0);
 	}
 
 	// Notify cockpit

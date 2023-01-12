@@ -52,8 +52,6 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
-	virtual void TickSystem(float DeltaSeconds);
-
 	/** Initialize this system */
 	virtual void Initialize(AFlareSpacecraft* OwnerSpacecraft, FFlareSpacecraftSave* OwnerData);
 

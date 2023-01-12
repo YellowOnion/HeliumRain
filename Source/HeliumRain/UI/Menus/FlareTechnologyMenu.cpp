@@ -278,6 +278,7 @@ void SFlareTechnologyMenu::Enter()
 		{
 			continue;
 		}
+
 		Technologies.Add(&Technology->Data);
 	}
 

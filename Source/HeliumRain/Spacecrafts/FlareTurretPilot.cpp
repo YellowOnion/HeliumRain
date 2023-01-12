@@ -548,6 +548,10 @@ bool UFlareTurretPilot::IsTargetDangerous(PilotHelper::PilotTarget const& Target
 	return false;
 }
 
+void UFlareTurretPilot::SetWantFire(bool NewValue)
+{
+	WantFire = NewValue;
+}
 
 /*----------------------------------------------------
 	Pilot Output

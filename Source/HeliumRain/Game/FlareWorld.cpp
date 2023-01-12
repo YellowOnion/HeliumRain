@@ -37,7 +37,7 @@ void UFlareWorld::Load(const FFlareWorldSave& Data)
 {
 	FLOG("UFlareWorld::Load");
 	Game = Cast<AFlareGame>(GetOuter());
-    WorldData = Data;
+	WorldData = Data;
 
 	// Init planetarium
 	Planetarium = NewObject<UFlareSimulatedPlanetarium>(this, UFlareSimulatedPlanetarium::StaticClass());
