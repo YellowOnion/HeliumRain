@@ -51,6 +51,10 @@ public:
 
 	AFlareSpacecraft* LoadSpacecraft(UFlareSimulatedSpacecraft* ParentSpacecraft);
 
+	void SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentSpacecraft, AFlareSpacecraft* Spacecraft);
+
+	void FinishLoadSpacecraft(AFlareSpacecraft* Spacecraft);
+
 	AFlareBomb* LoadBomb(const FFlareBombSave& BombData);
 
 	void RegisterBomb(AFlareBomb* Bomb);

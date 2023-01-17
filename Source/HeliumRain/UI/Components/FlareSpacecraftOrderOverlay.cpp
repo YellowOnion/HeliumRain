@@ -119,7 +119,7 @@ void SFlareSpacecraftOrderOverlay::Construct(const FArguments& InArgs)
 						[
 							SAssignNew(ConfirmButton, SFlareButton)
 							.Text(LOCTEXT("Confirm", "Confirm"))
-							.HelpText(LOCTEXT("ConfirmInfo", "Confirm the choice and start production"))
+							.HelpText(LOCTEXT("Con`firmInfo", "Confirm the choice and start production"))
 							.Icon(this, &SFlareSpacecraftOrderOverlay::GetConfirmIcon)
 							.OnClicked(this, &SFlareSpacecraftOrderOverlay::OnConfirmed)
 							.Visibility(this, &SFlareSpacecraftOrderOverlay::GetConfirmVisibility)

@@ -26,7 +26,7 @@ UFlareTechnologyCatalog::UFlareTechnologyCatalog(const class FObjectInitializer&
 		UFlareTechnologyCatalogEntry* OldEntry = NULL;
 		for (UFlareTechnologyCatalogEntry* TechnologySub : TechnologyCatalog)
 		{
-			if (TechnologySub->Data.Identifier == Technology->Data.Identifier)
+			if (TechnologySub->Data.Identifier == Technology->Data.Identifier && TechnologySub->Data.ModLoadPriority <= Technology->Data.ModLoadPriority)
 			{
 				OldEntry = TechnologySub;
 				break;

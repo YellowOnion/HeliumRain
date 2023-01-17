@@ -266,12 +266,12 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.AngularVelocity = FVector::ZeroVector;
 	switch (SpawnLocation)
 	{
-		case 0:
-			ShipData.SpawnMode = EFlareSpawnMode::Spawn;
-			break;
-		case 1:
-			ShipData.SpawnMode = EFlareSpawnMode::Safe;
-			break;
+	case 0:
+		ShipData.SpawnMode = EFlareSpawnMode::Spawn;
+		break;
+	case 1:
+		ShipData.SpawnMode = EFlareSpawnMode::Safe;
+		break;
 	}
 
 	Game->Immatriculate(Company, ShipDescription->Identifier, &ShipData, AttachComplexStationName != NAME_None);
@@ -309,6 +309,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	FName OrbitalEngineIdentifier;
 
 	// Size selector
+
 	if (ShipDescription->Size == EFlarePartSize::S)
 	{
 		RCSIdentifier = FName("rcs-coral");
@@ -322,6 +323,16 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	else
 	{
 		// TODO
+	}
+
+	if (ShipDescription->DefaultRCS != NAME_None)
+	{
+		RCSIdentifier = ShipDescription->DefaultRCS;
+	}
+
+	if (ShipDescription->DefaultEngine != NAME_None)
+	{
+		OrbitalEngineIdentifier = ShipDescription->DefaultEngine;
 	}
 
 	ShipData.Components.Reserve(ShipDescription->RCSCount
@@ -362,7 +373,22 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	for (int32 i = 0; i < ShipDescription->GunSlots.Num(); i++)
 	{
 		FFlareSpacecraftComponentSave ComponentData;
-		ComponentData.ComponentIdentifier = Game->GetDefaultWeaponIdentifier();
+		bool SetDefault = false;
+		if (ShipDescription->WeaponGroups.Num() < i)
+		{
+			FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->GunSlots[i].GroupIndex];
+			if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
+			{
+				ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
+				SetDefault = true;
+			}
+		}
+
+		if (!SetDefault)
+		{
+			ComponentData.ComponentIdentifier = Game->GetDefaultWeaponIdentifier();
+		}
+
 		ComponentData.ShipSlotIdentifier = ShipDescription->GunSlots[i].SlotIdentifier;
 		ComponentData.Damage = 0.f;
 		ComponentData.Weapon.FiredAmmo = 0;
@@ -377,7 +403,22 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	for (int32 i = 0; i < ShipDescription->TurretSlots.Num(); i++)
 	{
 		FFlareSpacecraftComponentSave ComponentData;
-		ComponentData.ComponentIdentifier = Game->GetDefaultTurretIdentifier();
+
+		bool SetDefault = false;
+		if (ShipDescription->WeaponGroups.Num() < i)
+		{
+			FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->TurretSlots[i].GroupIndex];
+			if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
+			{
+				ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
+				SetDefault = true;
+			}
+		}
+		if (!SetDefault)
+		{
+			ComponentData.ComponentIdentifier = Game->GetDefaultTurretIdentifier();
+		}
+
 		ComponentData.ShipSlotIdentifier = ShipDescription->TurretSlots[i].SlotIdentifier;
 		ComponentData.Turret.BarrelsAngle = 0;
 		ComponentData.Turret.TurretAngle = 0;

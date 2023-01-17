@@ -247,7 +247,7 @@ void SFlareTechnologyMenu::Enter()
 			}
 			else
 			{
-				if (A.ResearchCost > B.ResearchCost)
+				if (A.ResearchCost < B.ResearchCost)
 				{
 					return true;
 				}
@@ -266,6 +266,10 @@ void SFlareTechnologyMenu::Enter()
 	for (UFlareTechnologyCatalogEntry* Technology : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
 	{
 		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
+		if (TechnologyData->AIOnly)
+		{
+			continue;
+		}
 		if (TechnologyData->ResearchableCompany.Num() > 0)
 		{
 			//company array has something, check if faction is allowed to research this
@@ -273,10 +277,6 @@ void SFlareTechnologyMenu::Enter()
 			{
 				continue;
 			}
-		}
-		if (TechnologyData->AIOnly)
-		{
-			continue;
 		}
 
 		Technologies.Add(&Technology->Data);
@@ -317,7 +317,7 @@ void SFlareTechnologyMenu::Enter()
 
 		// Add entry to the row
 		CurrentLevelRow->AddSlot()
-			.HAlign(HAlign_Center)
+			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Center)
 			.Padding(Theme.ContentPadding)
 			[

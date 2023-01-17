@@ -1743,7 +1743,7 @@ bool UFlareSimulatedSpacecraft::ShipyardOrderShip(UFlareCompany* OrderCompany, F
 
 	if(GetCompany() != OrderCompany)
 	{
-		ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipIdentifier, GetCurrentSector(), true);
+		ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipIdentifier, GetCurrentSector(), true, false, true, OrderCompany,GetCompany());
 		if(!OrderCompany->TakeMoney(ShipPrice, false, FFlareTransactionLogEntry::LogOrderShip(this, ShipIdentifier)))
 		{
 			// Not enough money
@@ -1959,9 +1959,17 @@ void UFlareSimulatedSpacecraft::UpdateShipyardProduction()
 		bool MissingResource = false;
 		const FFlareProductionData& ProductionData = GetCycleDataForShipClass(Order.ShipClass);
 
+		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus("shipyard-fabrication-bonus");
+		float TotalResourceMargin = 1;
+		if (ShipyardfabricationBonus)
+		{
+			TotalResourceMargin = FMath::Min(0.10f, TotalResourceMargin - ShipyardfabricationBonus);
+		}
+
 		for (const FFlareFactoryResource& InputResource : ProductionData.InputResources)
 		{
-			if(InputResource.Quantity > GetActiveCargoBay()->GetResourceQuantity(&InputResource.Resource->Data, GetCompany()))
+			int32 AdjustedQuantity = InputResource.Quantity * TotalResourceMargin;
+			if(AdjustedQuantity > GetActiveCargoBay()->GetResourceQuantity(&InputResource.Resource->Data, GetCompany()))
 			{
 				// Missing resources, stop all
 				MissingResource = true;
@@ -2264,14 +2272,21 @@ FText UFlareSimulatedSpacecraft::GetShipCost(FName ShipIdentifier)
 	}
 
 	// Cycle cost in resources
+	float ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus("shipyard-fabrication-bonus");
+
 	for (int ResourceIndex = 0; ResourceIndex < ProductionData.InputResources.Num(); ResourceIndex++)
 	{
 		FText CommaText = ProductionCostText.IsEmpty() ? FText() : CommaTextReference;
 		const FFlareFactoryResource* FactoryResource = &ProductionData.InputResources[ResourceIndex];
 		FCHECK(FactoryResource);
+		int32 Quantity = FactoryResource->Quantity;
+		if (ShipyardfabricationBonus)
+		{
+			Quantity *= (1 - ShipyardfabricationBonus);
+		}
 
 		ProductionCostText = FText::Format(LOCTEXT("ShipProductionResourcesFormat", "{0}{1} {2} {3}"),
-			ProductionCostText, CommaText, FText::AsNumber(FactoryResource->Quantity), FactoryResource->Resource->Data.Acronym);
+		ProductionCostText, CommaText, FText::AsNumber(Quantity), FactoryResource->Resource->Data.Acronym);
 	}
 
 	return ProductionCostText;

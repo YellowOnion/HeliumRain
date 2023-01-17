@@ -284,12 +284,21 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			continue;
 		}
 
-		if (BreakOutOfLoop)
+		if (BreakOutOfLoop || ThisSectorVariation == nullptr || !ThisSectorVariation)
+		{
+			break;
+		}
+
+		if (ThisSectorVariation->ResourceVariations.Num() && !ThisSectorVariation->ResourceVariations.Contains(Resource))
 		{
 			break;
 		}
 
 		struct ResourceVariation const* ResourceVariation = &ThisSectorVariation->ResourceVariations[Resource];
+		if (!ResourceVariation || ResourceVariation == nullptr)
+		{
+			break;
+		}
 
 		int32 InitialQuantity = Ship->GetParent()->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
 		int32 FreeSpace = Ship->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
@@ -2972,31 +2981,69 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 
 	// iterate to find best weapon
 	{
-		FFlareSpacecraftComponentDescription* BestWeapon = NULL;
-		TArray< FFlareSpacecraftComponentDescription* > PartListData;
-		Catalog->GetWeaponList(PartListData, Ship->GetSize(), Ship->GetCompany(),Ship);
+		int32 WeaponGroupCount = Ship->GetDescription()->WeaponGroups.Num();
+		float CostSafetyMargin = Behavior->CostSafetyMarginMilitaryShip;
+		CompanyValue TotalValue = Company->GetCompanyValue();
 
-		for (FFlareSpacecraftComponentDescription* Part : PartListData)
+		if (AllowSalvager)
 		{
-			if (!Ship->GetCompany()->IsTechnologyUnlockedPart(Part))
-			{
-				continue;
-			}
+			WeaponGroupCount = 1;
+		}
 
-			if (Ship->GetCompany()->IsPartRestricted(Part, Ship))
-			{
-				continue;
-			}
+		bool FailedUpgrade = false;
+		int32 SuccesfulUpgrades = 0;
 
-			if (!Part->WeaponCharacteristics.IsWeapon)
-			{
-				continue;
-			}
+		for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
+		{
+			TArray< FFlareSpacecraftComponentDescription* > PartListData;
+			FFlareSpacecraftDescription* ConstDescription = const_cast<FFlareSpacecraftDescription*>(Ship->GetDescription());
+			FFlareSpacecraftSlotGroupDescription* SlotGroupDescription = &ConstDescription->WeaponGroups[WeaponGroupIndex];
 
-			if (AllowSalvager)
+			Catalog->GetWeaponList(PartListData, Ship->GetSize(), Ship->GetCompany(), Ship, SlotGroupDescription);
+			FFlareSpacecraftComponentDescription* BestWeapon = NULL;
+
+			for (FFlareSpacecraftComponentDescription* Part : PartListData)
 			{
-				if (Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage || Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage)
+				if (!Ship->GetCompany()->IsTechnologyUnlockedPart(Part))
 				{
+					continue;
+				}
+
+				if (Ship->GetCompany()->IsPartRestricted(Part, Ship))
+				{
+					continue;
+				}
+
+				if (!Part->WeaponCharacteristics.IsWeapon)
+				{
+					continue;
+				}
+
+				if (AllowSalvager)
+				{
+					if (Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage || Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage)
+					{
+						bool HasChance = FMath::FRand() < 0.7;
+						if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
+						{
+							BestWeapon = Part;
+						}
+					}
+				}
+
+				else if (WeaponTargetSize == EFlarePartSize::L && Part->WeaponCharacteristics.AntiLargeShipValue < 0.5)
+				{
+					continue;
+				}
+
+				else if (WeaponTargetSize == EFlarePartSize::S && Part->WeaponCharacteristics.AntiSmallShipValue < 0.5)
+				{
+					continue;
+				}
+
+				if (!AllowSalvager)
+				{
+					// Compatible target
 					bool HasChance = FMath::FRand() < 0.7;
 					if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
 					{
@@ -3005,68 +3052,23 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 				}
 			}
 
-			else if (WeaponTargetSize == EFlarePartSize::L && Part->WeaponCharacteristics.AntiLargeShipValue < 0.5)
-			{
-				continue;
-			}
-
-			else if (WeaponTargetSize == EFlarePartSize::S && Part->WeaponCharacteristics.AntiSmallShipValue < 0.5)
-			{
-				continue;
-			}
-
-			if (!AllowSalvager)
-			{
-				// Compatible target
-				bool HasChance = FMath::FRand() < 0.7;
-				if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
-				{
-					BestWeapon = Part;
-				}
-			}
-		}
-
-		if (BestWeapon)
-		{
-			int64 TransactionCostPer = 0;
-			int64 TransactionCost = 0;
-			int32 WeaponGroupCount = Ship->GetDescription()->WeaponGroups.Num();
-			if (AllowSalvager)
-			{
-				WeaponGroupCount = 1;
-			}
-
-			for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
+			if (BestWeapon)
 			{
 				FFlareSpacecraftComponentDescription* OldWeapon = Ship->GetCurrentPart(EFlarePartType::Weapon, WeaponGroupIndex);
-				TransactionCostPer = Ship->GetUpgradeCost(BestWeapon, OldWeapon);
-				TransactionCost += TransactionCostPer;
-			}
-
-			float CostSafetyMargin = Behavior->CostSafetyMarginMilitaryShip;
-			CompanyValue TotalValue = Company->GetCompanyValue();
-
-			if (((TransactionCost * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary)) > Ship->GetCompany()->GetMoney() && CanSpendBudget(EFlareBudget::Military, TransactionCost))
-			{
-				// Cannot afford
+				int64 TransactionCost = Ship->GetUpgradeCost(BestWeapon, OldWeapon);
+				if (((TransactionCost * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary)) > Ship->GetCompany()->GetMoney() && CanSpendBudget(EFlareBudget::Military, TransactionCost))
+				{
+					// Cannot afford
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-				FLOGV("failed to upgrade %s : cannot afford upgrade",
-					*Ship->GetImmatriculation().ToString());
+					FLOGV("failed to upgrade %s : cannot afford upgrade",
+						*Ship->GetImmatriculation().ToString());
 #endif
-				return false;
-			}
-#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-			FLOGV("%s upgrade its weapons to %s", *Ship->GetImmatriculation().ToString(), *BestWeapon->Identifier.ToString());
-#endif
-			bool FailedUpgrade = false;
-			int32 SuccesfulUpgrades = 0;
-
-			for (int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)
-			{
+					return false;
+				}
 				if (Ship->UpgradePart(BestWeapon, WeaponGroupIndex))
 				{
-					++ SuccesfulUpgrades;
-//					Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCost);
+					++SuccesfulUpgrades;
+					Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCost);
 				}
 				else
 				{
@@ -3074,20 +3076,19 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 					FLOGV("failed to upgrade %s : upgrade failed for unknown reseon",
 						*Ship->GetImmatriculation().ToString());
 #endif
-
-					// Something fail
 					FailedUpgrade = true;
 					break;
-//					return false;
 				}
 			}
+		}
 
-			Ship->GetCompany()->GetAI()->SpendBudget(EFlareBudget::Military, TransactionCostPer * SuccesfulUpgrades);
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+		FLOGV("%s upgrade its weapons to %s", *Ship->GetImmatriculation().ToString(), *BestWeapon->Identifier.ToString());
+#endif
 
-			if (FailedUpgrade)
-			{
-				return false;
-			}
+		if (FailedUpgrade)
+		{
+			return false;
 		}
 	}
 
@@ -3874,7 +3875,11 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 			if (Military)
 			{
 				float Ratio1 = Description->Mass / BestShipDescription->Mass;
-				float Ratio2 = Description->CombatPoints / BestShipDescription->CombatPoints;
+				float Ratio2 = Description->CombatPoints;
+				if (BestShipDescription->CombatPoints > 0)
+				{
+					Ratio2 /= BestShipDescription->CombatPoints;
+				}
 				Ratio1 = (Ratio1 + Ratio2) / 2;
 
 				//			Ratio1 = FMath::RandRange(0.00f, Ratio1);

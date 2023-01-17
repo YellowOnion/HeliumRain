@@ -398,6 +398,8 @@ public:
 	
 	bool IsSkirmish() const;
 
+	FFlareTechnologyDescription* GetTechnologyCatalogDescription(FName Identifier) const;
+
 	inline UFlareSpacecraftCatalog* GetSpacecraftCatalog() const
 	{
 		return SpacecraftCatalog;

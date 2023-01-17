@@ -1968,7 +1968,7 @@ int64 UFlareGameTools::GetYearFromDate(int64 Date)
 	return START_YEAR + (Date / DAYS_IN_YEAR);
 }
 
-int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSector* Sector, bool WithMargin, bool ConstructionPrice, bool LocalPrice, UFlareCompany* Company)
+int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSector* Sector, bool WithMargin, bool ConstructionPrice, bool LocalPrice, UFlareCompany* BuyingCompany, UFlareCompany* SellingCompany)
 {
 	FFlareSpacecraftDescription* Desc = Sector->GetGame()->GetSpacecraftCatalog()->Get(ShipClass);
 
@@ -1984,14 +1984,30 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 	// For stations, use the sectore penalty
 	if (Desc->IsStation())
 	{
-		if(ConstructionPrice && Company)
+		if(ConstructionPrice && BuyingCompany)
 		{
-			Cost += Sector->GetStationConstructionFee(Cost, Company);
+			Cost += Sector->GetStationConstructionFee(Cost, BuyingCompany);
 		}
 	}
 	else
 	{
 		Cost += Desc->CycleCost.ProductionCost *1.10f;
+	}
+
+	float ShipyardfabricationBonus = 0;
+	if (SellingCompany)
+	{
+		ShipyardfabricationBonus = SellingCompany->GetTechnologyBonus("shipyard-fabrication-bonus");
+		if (BuyingCompany && BuyingCompany != SellingCompany)
+		{
+			ShipyardfabricationBonus *= 0.50f;
+		}
+	}
+
+	float ProfitMargin = 1.10f;
+	if (ShipyardfabricationBonus)
+	{
+		ProfitMargin = FMath::Max(0.10f, ProfitMargin - ShipyardfabricationBonus);
 	}
 
 	// Add input resource cost
@@ -2008,7 +2024,7 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 			ResourcePrice = Resource->Resource->Data.MinPrice;
 		}
 
-		Cost += Resource->Quantity * (ResourcePrice *1.10f);
+		Cost += Resource->Quantity * (ResourcePrice * ProfitMargin);
 	}
 
 	// Substract output resource

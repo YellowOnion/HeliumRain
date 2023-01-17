@@ -796,7 +796,15 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 
 		if (TargetSpacecraft->IsShipyard())
 		{
-			AddMessage(LOCTEXT("ShipyardCapability", "You can order and upgrade ships at this station"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
+			if (TargetSpacecraft->IsStation())
+			{
+				AddMessage(LOCTEXT("ShipyardCapability", "You can order and upgrade ships at this station"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
+			}
+			else if(TargetSpacecraft->GetDescription()->IsDroneCarrier)
+			{
+				AddMessage(LOCTEXT("CarrierCapability", "You can order drones at this carrier"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
+			}
+
 			FText ProductionShips;
 			FText QueueShips;
 

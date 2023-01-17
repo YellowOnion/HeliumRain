@@ -124,7 +124,6 @@ void UFlareFactory::TryBeginProduction()
 	{
 		BeginProduction();
 	}
-
 }
 
 void UFlareFactory::UpdateDynamicState()
@@ -161,7 +160,6 @@ void UFlareFactory::StartShipBuilding(FFlareShipyardOrderSave& Order)
 		FactoryData.TargetShipClass = Order.ShipClass;
 		FactoryData.TargetShipCompany = Order.Company;
 		FactoryData.ProductedDuration = 0;
-
 		Parent->GetCompany()->GiveMoney(Order.AdvancePayment, FFlareTransactionLogEntry::LogShipOrderAdvance(GetParent(), Order.Company, Order.ShipClass));
 	}
 	Start();
@@ -223,6 +221,20 @@ void UFlareFactory::ClearOutputLimit(FFlareResourceDescription* Resource)
 	}
 }
 
+float UFlareFactory::GetResourceInputMultiplier()
+{
+	float TotalResourceMargin = 1;
+	if (IsShipyard())
+	{
+		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetParent()->GetCompany()->GetTechnologyBonus("shipyard-fabrication-bonus");
+		if (ShipyardfabricationBonus)
+		{
+			TotalResourceMargin = FMath::Max(0.10f, TotalResourceMargin - ShipyardfabricationBonus);
+		}
+	}
+	return TotalResourceMargin;
+}
+
 bool UFlareFactory::HasCostReserved()
 {
 	if (FactoryData.CostReserved < GetProductionCost())
@@ -230,9 +242,12 @@ bool UFlareFactory::HasCostReserved()
 		return false;
 	}
 
+	float TotalResourceMargin = GetResourceInputMultiplier();
+
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
+		int32 AdjustedQuantity = Resource->Quantity * TotalResourceMargin;
 
 		bool ResourceFound = false;
 
@@ -240,7 +255,7 @@ bool UFlareFactory::HasCostReserved()
 		{
 			if (FactoryData.ResourceReserved[ReservedResourceIndex].ResourceIdentifier ==  Resource->Resource->Data.Identifier)
 			{
-				if (FactoryData.ResourceReserved[ReservedResourceIndex].Quantity < Resource->Quantity)
+				if (FactoryData.ResourceReserved[ReservedResourceIndex].Quantity < AdjustedQuantity)
 				{
 					return false;
 				}
@@ -270,10 +285,13 @@ bool UFlareFactory::HasInputMoney()
 
 bool UFlareFactory::HasInputResources()
 {
+	float TotalResourceMargin = GetResourceInputMultiplier();
+
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
-		if (!Parent->GetActiveCargoBay()->HasResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
+		int32 AdjustedQuantity = Resource->Quantity * TotalResourceMargin;
+		if (!Parent->GetActiveCargoBay()->HasResources(&Resource->Resource->Data, AdjustedQuantity, Parent->GetCompany(),0,true))
 		{
 			return false;
 		}
@@ -361,6 +379,7 @@ void UFlareFactory::BeginProduction()
 		return;
 	}
 
+	float TotalResourceMargin = GetResourceInputMultiplier();
 	// Consume input resources
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
@@ -377,7 +396,7 @@ void UFlareFactory::BeginProduction()
 			}
 		}
 
-		uint32 ResourceToTake = Resource->Quantity;
+		uint32 ResourceToTake = Resource->Quantity * TotalResourceMargin;
 
 		if (AlreadyReservedCargo)
 		{
@@ -841,7 +860,6 @@ uint32 UFlareFactory::GetProductionCost(const FFlareProductionData* Data)
 	{
 		Multiplier += 0.25f;
 	}
-
 	if (!Parent->GetOwnerHasStationLicense())
 	{
 		Multiplier += 0.50f;
@@ -1015,15 +1033,18 @@ FText UFlareFactory::GetFactoryCycleCost(const FFlareProductionData* Data)
 		ProductionCostText = FText::Format(LOCTEXT("ProductionCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(CycleProductionCost)));
 	}
 
+	float TotalResourceMargin = GetResourceInputMultiplier();
+
 	// Cycle cost in resources
 	for (int ResourceIndex = 0; ResourceIndex < Data->InputResources.Num(); ResourceIndex++)
 	{
 		FText CommaText = ProductionCostText.IsEmpty() ? FText() : CommaTextReference;
 		const FFlareFactoryResource* FactoryResource = &Data->InputResources[ResourceIndex];
 		FCHECK(FactoryResource);
+		int32 AdjustedQuantity = FactoryResource->Quantity * TotalResourceMargin;
 
 		ProductionCostText = FText::Format(LOCTEXT("ProductionResourcesFormat", "{0}{1} {2} {3}"),
-			ProductionCostText, CommaText, FText::AsNumber(FactoryResource->Quantity), FactoryResource->Resource->Data.Acronym);
+			ProductionCostText, CommaText, FText::AsNumber(AdjustedQuantity), FactoryResource->Resource->Data.Acronym);
 	}
 
 	return ProductionCostText;

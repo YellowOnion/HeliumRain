@@ -45,7 +45,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Hit"), STAT_FlareSpacecraft_Hit, STATGR
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Aim"), STAT_FlareSpacecraft_Aim, STATGROUP_Flare);
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraft"
-#define DELETION_DELAYCRAFT 3.f
+#define DELETION_DELAYCRAFT 3
 
 /*----------------------------------------------------
 	Constructor
@@ -143,16 +143,7 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 {
 	TimeToStopCached = false;
 
-	// Wait for readiness to call some stuff on load
-	if (!LoadedAndReady)
-	{
-		if (Parent && StateManager && !IsPresentationMode())
-		{
-			LoadedAndReady = true;
-			Redock();
-		}
-	}
-
+/*
 	// Attach to parent actor, if any
 	if (GetData().AttachActorName != NAME_None && !AttachedToParentActor)
 	{
@@ -164,7 +155,7 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 	{
 		TryAttachParentComplex();
 	}
-
+*/
 	// Main tick
 	if (!IsPresentationMode() && StateManager && !Paused)
 	{
@@ -547,42 +538,6 @@ TArray<AFlareBomb*> AFlareSpacecraft::GetIncomingBombs()
 int32 AFlareSpacecraft::GetIncomingActiveBombQuantity()
 {
 	return GetIncomingBombs().Num();
-}
-
-void AFlareSpacecraft::TrackIncomingBomb(AFlareBomb* Bomb)
-{
-	if (!Bomb)
-	{
-		return;
-	}
-	IncomingBombs.AddUnique(Bomb);
-	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
-	if (CurrentFleet)
-	{
-		CurrentFleet->TrackIncomingBomb(Bomb);
-	}
-}
-
-void AFlareSpacecraft::UnTrackAllIncomingBombs()
-{
-	for (AFlareBomb* Bomb : GetIncomingBombs())
-	{
-		UnTrackIncomingBomb(Bomb);
-	}
-}
-
-void AFlareSpacecraft::UnTrackIncomingBomb(AFlareBomb* Bomb)
-{
-	if (!Bomb)
-	{
-		return;
-	}
-	IncomingBombs.RemoveSwap(Bomb);
-	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
-	if (CurrentFleet)
-	{
-		CurrentFleet->UnTrackIncomingBomb(Bomb);
-	}
 }
 
 void AFlareSpacecraft::SetUndockedAllShips(bool Set)
@@ -991,6 +946,7 @@ void AFlareSpacecraft::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
 	{
+		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		IsSafeDestroyingRunning = true;
 		this->SetActorTickEnabled(false);
 		Airframe->SetSimulatePhysics(false);
@@ -1019,13 +975,38 @@ void AFlareSpacecraft::SafeDestroy()
 				Parent->SetActiveSpacecraft(NULL);
 			}
 		}
+
 		UnTrackAllIncomingBombs();
 
 		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
 		{
 			UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+			Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Component->SafeDestroy();
+		}
+
+		//disable the collision of former dynamic components (primarily for the shipyard representation of a ship being built) just encase it still exists when entering a sector which would 
+		//cause it to collide with the new version of itself. this wouldn't be neccessary if the active spaceship was reused
+
+		TArray<UActorComponent*> DynamicComponents = GetComponentsByClass(UChildActorComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < DynamicComponents.Num(); ComponentIndex++)
+		{
+			UChildActorComponent* Component = Cast<UChildActorComponent>(DynamicComponents[ComponentIndex]);
+			if (Component && Component->GetChildActor())
+			{
+				Component->GetChildActor()->SetActorEnableCollision(false);
+				TArray<UActorComponent*> SubDynamicComponents = Component->GetChildActor()->GetComponentsByClass(UChildActorComponent::StaticClass());
+				for (int32 SubComponentIndex = 0; SubComponentIndex < SubDynamicComponents.Num(); SubComponentIndex++)
+				{
+					UChildActorComponent* SubDynamicComponent = Cast<UChildActorComponent>(SubDynamicComponents[SubComponentIndex]);
+
+					if (SubDynamicComponent->GetChildActor())
+					{
+						SubDynamicComponent->GetChildActor()->SetActorEnableCollision(false);
+					}
+				}
+			}
 		}
 	}
 }
@@ -1068,12 +1049,48 @@ void AFlareSpacecraft::Destroyed()
 	CurrentTarget.Clear();
 }
 
+void AFlareSpacecraft::TrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.AddUnique(Bomb);
+	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
+	if (CurrentFleet)
+	{
+		CurrentFleet->TrackIncomingBomb(Bomb);
+	}
+}
+
 void AFlareSpacecraft::SignalIncomingBombsDeadTarget()
 {
 	for (AFlareBomb* Bomb : GetIncomingBombs())
 	{
 		Bomb->CurrentTargetDied();
 		UnTrackIncomingBomb(Bomb);
+	}
+}
+
+void AFlareSpacecraft::UnTrackAllIncomingBombs()
+{
+	for (AFlareBomb* Bomb : GetIncomingBombs())
+	{
+		UnTrackIncomingBomb(Bomb);
+	}
+}
+
+void AFlareSpacecraft::UnTrackIncomingBomb(AFlareBomb* Bomb)
+{
+	if (!Bomb)
+	{
+		return;
+	}
+	IncomingBombs.RemoveSwap(Bomb);
+	UFlareFleet* CurrentFleet = GetParent()->GetCurrentFleet();
+	if (CurrentFleet)
+	{
+		CurrentFleet->UnTrackIncomingBomb(Bomb);
 	}
 }
 
@@ -1387,6 +1404,11 @@ bool AFlareSpacecraft::IsWaypointScanningFinished() const
 	return (IsScanningWaypoint && ScanningTimer >= ScanningTimerDuration);
 }
 
+bool AFlareSpacecraft::GetAttachedToParentActor()
+{
+	return AttachedToParentActor;
+}
+
 bool AFlareSpacecraft::GetManualDockingProgress(AFlareSpacecraft*& OutStation, FFlareDockingParameters& OutParameters, FText& OutInfo) const
 {
 	// No target
@@ -1581,6 +1603,23 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	}
 
 	CurrentTarget.Clear();
+}
+
+void AFlareSpacecraft::FinishLoadandReady()
+{
+	Redock();
+	// Attach to parent actor, if any
+	if (GetData().AttachActorName != NAME_None && !GetAttachedToParentActor())
+	{
+		TryAttachParentActor();
+	}
+
+	// Attach to parent complex station, if any
+	if (IsComplexElement() && !GetAttachedToParentActor())
+	{
+		TryAttachParentComplex();
+	}
+	LoadedAndReady = true;
 }
 
 void AFlareSpacecraft::Save()

@@ -448,6 +448,7 @@ inline static bool CompanyTotalCombatValueComparator(const UFlareCompany& ip1, c
 //PrimarySimulate()
 void UFlareWorld::Simulate()
 {
+	RunningPrimarySimulate = true;
 	double StartTs = FPlatformTime::Seconds();
 	UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
 
@@ -1084,6 +1085,8 @@ void UFlareWorld::Simulate()
 	 {
 		 GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_ALL_SHIPS", 1);
 	 }
+	 RunningPrimarySimulate = false;
+
 }
 
 void UFlareWorld::UpdateReserveShips()

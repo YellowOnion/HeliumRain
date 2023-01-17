@@ -426,6 +426,12 @@ struct FFlareSpacecraftSlotGroupDescription
 
 	/** Group name */
 	UPROPERTY(EditAnywhere, Category = Content) FText GroupName;
+
+	/** Names of weapons allowed for this weapon group */
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RestrictedWeapons;
+
+	/** Name of default weapon for this weapon group*/
+	FName DefaultWeapon;
 };
 
 /** Catalog binding between FFlareSpacecraftDescription and FFlareSpacecraftComponentDescription structure */
@@ -708,7 +714,6 @@ struct FFlareSpacecraftDescription
 	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
 	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 
-
 	/** All required unlocked technologies to build station or ship.*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
 
@@ -719,8 +724,20 @@ struct FFlareSpacecraftDescription
 	/** Number of RCS */
 	UPROPERTY(EditAnywhere, Category = Save) int32 RCSCount;
 
+	/** Specific RCS this ship can equip */
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RestrictedRCS;
+
+	/** Optionally set a default RCS */
+	UPROPERTY(EditAnywhere, Category = Content) FName DefaultRCS;
+	
 	/** Number of orbital engine */
 	UPROPERTY(EditAnywhere, Category = Save) int32 OrbitalEngineCount;
+
+	/** Specific Engines this ship can equip */
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RestrictedEngines;
+
+	/** Optionally set a default Engine */
+	UPROPERTY(EditAnywhere, Category = Content) FName DefaultEngine;
 
 	/** Enable this if you want a ship with engines to be considered a station */
 	UPROPERTY(EditAnywhere, Category = Save) bool IsAStation;

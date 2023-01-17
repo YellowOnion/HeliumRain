@@ -176,6 +176,7 @@ struct FFlareTechnologyDescription
 	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticPenaltyBonus;
 	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticBonus;
 	UPROPERTY(EditAnywhere, Category = Content) float TravelBonus;
+	UPROPERTY(EditAnywhere, Category = Content) float ShipyardFabBonus;
 
 	/** All required unlocked technologies to unlock this technology*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
@@ -186,6 +187,9 @@ struct FFlareTechnologyDescription
 	/** An array of the names of which this Technology unlocks. If multiple technologies unlock the same item both of those technologies are required.
 		Can unlock Stations,Ships and Components */
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> UnlockItems;
+
+	/** This adjusts the priority of this technology being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 };
 
 /** Scannable description */
@@ -711,6 +715,9 @@ struct FFlareCompanyDescription
 
 	UPROPERTY(EditAnywhere, Category = Content)
 	FFlareCompanyAIDescription AI_Behaviours;
+
+	/** This adjusts the priority of this faction being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 };
 
 /** Incoming event description */

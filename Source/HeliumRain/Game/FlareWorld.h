@@ -209,6 +209,7 @@ protected:
 
 	AFlareGame*                          Game;
 
+	bool RunningPrimarySimulate;
 	bool WorldMoneyReferenceInit;
 	TArray<UFlareCompany*> SortedCompanyValues;
 	TArray<UFlareCompany*> SortedCompanyCombatValues;
@@ -237,8 +238,7 @@ public:
 		return TotalCompaniesMoney;
 	}
 
-	
-	FFlareWorldSave* GetData()
+		FFlareWorldSave* GetData()
 	{
 		return &WorldData;
 	}
@@ -278,6 +278,12 @@ public:
 	inline int64 GetDate()
 	{
 		return WorldData.Date;
+	}
+
+	
+	inline bool GetPrimarySimulate()
+	{
+		return RunningPrimarySimulate;
 	}
 
 	UFlareCompany* FindCompany(FName Identifier) const;

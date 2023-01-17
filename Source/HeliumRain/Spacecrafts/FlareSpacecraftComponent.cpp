@@ -815,7 +815,6 @@ void UFlareSpacecraftComponent::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
 	{
-
 		PrimaryComponentTick.bCanEverTick = false;
 		IsSafeDestroyingRunning = true;
 		UnregisterComponent();

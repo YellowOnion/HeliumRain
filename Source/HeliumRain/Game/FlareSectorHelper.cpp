@@ -638,7 +638,16 @@ void SectorHelper::GetRepairFleetSupplyNeeds(UFlareSimulatedSector* Sector,  TAr
 
 			float DamageRatio = Spacecraft->GetDamageSystem()->GetDamageRatio(ComponentDescription, ComponentData);
 
-			float TechnologyBonus = Spacecraft->GetCompany()->IsTechnologyUnlocked("quick-repair") ? 1.5f: 1.f;
+			float TechnologyBonus = 1;
+			if (Spacecraft->GetCompany()->IsTechnologyUnlocked("quick-repair"))// ? 1.5f : 1.f;
+			{
+				FFlareTechnologyDescription* QuickRepairTech = Sector->GetGame()->GetTechnologyCatalogDescription("quick-repair");//Sector->GetGame()->GetTechnologyCatalog()->Get("quick-repair");
+				if (!QuickRepairTech->RepairBonus)
+				{
+					TechnologyBonus = 1.5f;
+				}
+			}
+
 			float TechnologyBonusSecondary = Spacecraft->GetCompany()->GetTechnologyBonus("repair-bonus");
 			TechnologyBonus += TechnologyBonusSecondary;
 

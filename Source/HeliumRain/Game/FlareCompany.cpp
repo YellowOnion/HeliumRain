@@ -49,6 +49,7 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	ResearchBonuses.Add("diplomatic-penaltybonus", 0.f);
 	ResearchBonuses.Add("diplomatic-bonus", 0.f);
 	ResearchBonuses.Add("travel-bonus", 0.f);
+	ResearchBonuses.Add("shipyard-fabrication-bonus", 0.f);
 
 	// Player description ID is -1
 	if (Data.CatalogIdentifier >= 0)
@@ -2072,11 +2073,7 @@ bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription*
 
 	if (Description->RestrictedShips.Num() > 0)
 	{
-		if (Description->RestrictedShips.Contains(Ship->GetDescription()->Identifier))
-		{
-			return false;
-		}
-		else
+		if (!Description->RestrictedShips.Contains(Ship->GetDescription()->Identifier))
 		{
 			return true;
 		}
@@ -2090,11 +2087,7 @@ bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription*
 
 	if (Description->RestrictedShips.Num() > 0)
 	{
-		if (Description->RestrictedShips.Contains(Ship))
-		{
-			return false;
-		}
-		else
+		if (!Description->RestrictedShips.Contains(Ship))
 		{
 			return true;
 		}
@@ -2477,6 +2470,7 @@ void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 		ResearchBonuses["diplomatic-penaltybonus"] += Technology->DiplomaticPenaltyBonus;
 		ResearchBonuses["diplomatic-bonus"] += Technology->DiplomaticBonus;
 		ResearchBonuses["travel-bonus"] += Technology->TravelBonus;
+		ResearchBonuses["shipyard-fabrication-bonus"] += Technology->ShipyardFabBonus;
 
 		if (!FromSave)
 		{

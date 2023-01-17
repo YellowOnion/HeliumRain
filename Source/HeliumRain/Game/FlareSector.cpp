@@ -87,13 +87,18 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 		LoadBomb(ParentSector->GetData()->BombData[i]);
 	}
 
+	for (int i = 0; i < SectorSpacecrafts.Num(); i++)
+	{
+		AFlareSpacecraft* Spacecraft = SectorSpacecrafts[i];
+		FinishLoadSpacecraft(Spacecraft);
+	}
+
 	IsDestroyingSector = false;
 
 	for (UFlareCompany* Company : UniqueCompanies)
 	{
 		Company->NewSectorLoaded();
 	}
-	SimulateLocalCompanyAI();
 }
 
 void UFlareSector::Tick(float DeltaSeconds)
@@ -102,6 +107,7 @@ void UFlareSector::Tick(float DeltaSeconds)
 	{
 		return;
 	}
+
 	for (AFlareSpacecraft* Ship : SectorSpacecrafts)
 	{
 		if (!Ship || Ship == nullptr || Ship->IsSafeDestroying())
@@ -118,7 +124,7 @@ void UFlareSector::SimulateLocalCompanyAI()
 	{
 		for (UFlareCompany* Company : UniqueCompanies)
 		{
-			if (Company)
+			if (Company && !GetGame()->GetGameWorld()->GetPrimarySimulate())
 			{
 				Company->SimulateActiveAI();
 			}
@@ -374,7 +380,6 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 	if (Spacecraft && !Spacecraft->IsPendingKillPending())
 	{
 		Spacecraft->Load(ParentSpacecraft);
-		UPrimitiveComponent* RootComponent = Cast<UPrimitiveComponent>(Spacecraft->GetRootComponent());
 
 		if (Spacecraft->IsStation())
 		{
@@ -388,178 +393,7 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 		UniqueCompanies.AddUnique(Spacecraft->GetCompany());
 		SectorSpacecrafts.Add(Spacecraft);
 		SectorSpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
-		FRotator Rotation;
-		switch (ParentSpacecraft->GetData().SpawnMode)
-		{
-			// Already known to be correct
-		case EFlareSpawnMode::Safe:
-			{
-				/*FLOGV("UFlareSector::LoadSpacecraft : Safe spawn '%s' at (%f,%f,%f)",
-					*ParentSpacecraft->GetImmatriculation().ToString(),
-					ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
-				*/
-
-				RootComponent->SetPhysicsLinearVelocity(ParentSpacecraft->GetData().LinearVelocity, false);
-				RootComponent->SetPhysicsAngularVelocityInDegrees(ParentSpacecraft->GetData().AngularVelocity, false);
-				break;
-
-				// First spawn
-			}
-			case EFlareSpawnMode::Spawn:
-			{
-				Rotation = ParentSpacecraft->GetData().Rotation;
-				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
-//				{
-					//FVector NewLocation = Spacecraft->GetActorLocation();
-					//FLOGV("UFlareSector::LoadSpacecraft : Placing '%s' at (%f,%f,%f)",
-					//	*ParentSpacecraft->GetImmatriculation().ToString(),
-					//	NewLocation.X, NewLocation.Y, NewLocation.Z);
-//				}
-
-				RootComponent->SetPhysicsLinearVelocity(FVector::ZeroVector, false);
-				RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
-				break;
-			}
-			// Incoming in sector
-			case EFlareSpawnMode::Travel:
-			{
-
-				//FLOGV("UFlareSector::LoadSpacecraft : Travel '%s' at (%f, %f, %f)",
-				//	*ParentSpacecraft->GetImmatriculation().ToString(),
-				//	ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
-
-				FVector SpawnDirection;
-				TArray<AFlareSpacecraft*> FriendlySpacecrafts = GetCompanySpacecrafts(Spacecraft->GetCompany());
-				FVector FriendlyShipLocationSum = FVector::ZeroVector;
-				int FriendlyShipCount = 0;
-
-				for (int SpacecraftIndex = 0 ; SpacecraftIndex < FriendlySpacecrafts.Num(); SpacecraftIndex++)
-				{
-					AFlareSpacecraft *SpacecraftCandidate = FriendlySpacecrafts[SpacecraftIndex];
-					if (!SpacecraftCandidate->IsStation() && SpacecraftCandidate != Spacecraft)
-					{
-						FriendlyShipLocationSum += SpacecraftCandidate->GetActorLocation();
-						FriendlyShipCount++;
-					}
-				}
-
-				if (FriendlyShipCount == 0)
-				{
-					FVector NotFriendlyShipLocationSum = FVector::ZeroVector;
-					int NotFriendlyShipCount = 0;
-					for (int SpacecraftIndex = 0 ; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
-					{
-						AFlareSpacecraft *SpacecraftCandidate = SectorShips[SpacecraftIndex];
-						if (SpacecraftCandidate != Spacecraft && SpacecraftCandidate->GetCompany() != Spacecraft->GetCompany())
-						{
-							NotFriendlyShipLocationSum += SpacecraftCandidate->GetActorLocation();
-							NotFriendlyShipCount++;
-						}
-					}
-
-					if (NotFriendlyShipCount == 0)
-					{
-						SpawnDirection = FMath::VRand();
-					}
-					else
-					{
-						FVector	NotFriendlyShipLocationMean = NotFriendlyShipLocationSum / NotFriendlyShipCount;
-						SpawnDirection = (GetSectorCenter() - NotFriendlyShipLocationMean).GetUnsafeNormal();
-					}
-				}
-				else
-				{
-					FVector	FriendlyShipLocationMean = FriendlyShipLocationSum / FriendlyShipCount;
-					SpawnDirection = (FriendlyShipLocationMean - GetSectorCenter()).GetUnsafeNormal() ;
-				}
-
-				float SpawnDistance = GetSectorRadius() + 1;
-
-				if (GetSimulatedSector()->GetSectorBattleState(Spacecraft->GetCompany()).InBattle)
-				{
-					SpawnDistance += 500000; // 5 km
-				}
-
-				SpawnDistance = FMath::Min(SpawnDistance, GetSectorLimits());
-
-				FVector Location = GetSectorCenter() + SpawnDirection * SpawnDistance;
-
-				FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
-				Rotation = CenterDirection.Rotation();
-				PlaceSpacecraft(Spacecraft, Location, Rotation);
-
-				float SpawnVelocity = 0;
-
-				if (GetSimulatedSector()->GetSectorBattleState(Spacecraft->GetCompany()).InBattle)
-				{
-						SpawnVelocity = 10000;
-				}
-
-				RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
-				RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
-			}
-			break;
-			case EFlareSpawnMode::Exit:
-			{
-				float SpawnDistance = GetSectorLimits() * 0.9;
-				float SpawnVelocity = ParentSpacecraft->GetData().LinearVelocity.Size() * 0.6;
-				FVector SpawnDirection = ParentSpacecraft->GetData().Location.GetUnsafeNormal();
-				FVector Location = SpawnDirection * SpawnDistance;
-				FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
-				Rotation = CenterDirection.Rotation();
-
-				//FLOGV("UFlareSector::LoadSpacecraft : Exit '%s' at (%f, %f, %f)",
-				//	*ParentSpacecraft->GetImmatriculation().ToString(),
-				//	Location.X, Location.Y, Location.Z);
-
-				PlaceSpacecraft(Spacecraft, Location, Rotation);
-
-				RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
-				RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
-
-			}
-			break;
-			case EFlareSpawnMode::InternalDocked:
-			{
-				if (ParentSpacecraft->GetShipMaster())
-				{
-					FVector Location = ParentSpacecraft->GetShipMaster()->GetData().Location;
-					Rotation = ParentSpacecraft->GetData().Rotation;
-					PlaceSpacecraft(Spacecraft, Location, Rotation, 250, false, Spacecraft->GetMeshScale(), false);
-					float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetData().LinearVelocity.Size() * 0.6;
-					FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
-					RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
-					RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
-				}
-				else
-				{
-					Rotation = ParentSpacecraft->GetData().Rotation;
-					PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
-				}
-				break;
-			}
-		}
-
-		ParentSpacecraft->SetInternalDockedTo(NULL);
-		if (ParentSpacecraft->GetData().SpawnMode == EFlareSpawnMode::Travel && GetSimulatedSector()->IsTravelSector())
-		{
-			FLOG("UFlareSector::LoadSpacecraft : ship is still traveling");
-		}
-		else
-		{
-			ParentSpacecraft->SetSpawnMode(EFlareSpawnMode::Safe);
-		}
-
-		if (CompanySpacecraftsPerCompanyCache.Contains(ParentSpacecraft->GetCompany()))
-		{
-			CompanySpacecraftsPerCompanyCache[ParentSpacecraft->GetCompany()].Add(Spacecraft);
-		}
-
-		if (CompanyShipsPerCompanyCache.Contains(ParentSpacecraft->GetCompany()))
-		{
-			CompanyShipsPerCompanyCache[ParentSpacecraft->GetCompany()].Add(Spacecraft);
-		}
-
+		SetSpacecraftSpawnPosition(ParentSpacecraft, Spacecraft);
 	}
 	else
 	{
@@ -575,6 +409,191 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 	}
 
 	return Spacecraft;
+}
+
+void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentSpacecraft, AFlareSpacecraft* Spacecraft)
+{
+	FRotator Rotation;
+	UPrimitiveComponent* RootComponent = Cast<UPrimitiveComponent>(Spacecraft->GetRootComponent());
+	switch (ParentSpacecraft->GetData().SpawnMode)
+	{
+		// Already known to be correct
+	case EFlareSpawnMode::Safe:
+	{
+		/*FLOGV("UFlareSector::LoadSpacecraft : Safe spawn '%s' at (%f,%f,%f)",
+			*ParentSpacecraft->GetImmatriculation().ToString(),
+			ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
+		*/
+
+		RootComponent->SetPhysicsLinearVelocity(ParentSpacecraft->GetData().LinearVelocity, false);
+		RootComponent->SetPhysicsAngularVelocityInDegrees(ParentSpacecraft->GetData().AngularVelocity, false);
+		break;
+
+		// First spawn
+	}
+	case EFlareSpawnMode::Spawn:
+	{
+		Rotation = ParentSpacecraft->GetData().Rotation;
+		PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
+		//				{
+							//FVector NewLocation = Spacecraft->GetActorLocation();
+							//FLOGV("UFlareSector::LoadSpacecraft : Placing '%s' at (%f,%f,%f)",
+							//	*ParentSpacecraft->GetImmatriculation().ToString(),
+							//	NewLocation.X, NewLocation.Y, NewLocation.Z);
+		//				}
+
+		RootComponent->SetPhysicsLinearVelocity(FVector::ZeroVector, false);
+		RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
+		break;
+	}
+	// Incoming in sector
+	case EFlareSpawnMode::Travel:
+	{
+
+		//FLOGV("UFlareSector::LoadSpacecraft : Travel '%s' at (%f, %f, %f)",
+		//	*ParentSpacecraft->GetImmatriculation().ToString(),
+		//	ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
+
+		FVector SpawnDirection;
+		TArray<AFlareSpacecraft*> FriendlySpacecrafts = GetCompanySpacecrafts(Spacecraft->GetCompany());
+		FVector FriendlyShipLocationSum = FVector::ZeroVector;
+		int FriendlyShipCount = 0;
+
+		for (int SpacecraftIndex = 0; SpacecraftIndex < FriendlySpacecrafts.Num(); SpacecraftIndex++)
+		{
+			AFlareSpacecraft *SpacecraftCandidate = FriendlySpacecrafts[SpacecraftIndex];
+			if (!SpacecraftCandidate->IsStation() && SpacecraftCandidate != Spacecraft)
+			{
+				FriendlyShipLocationSum += SpacecraftCandidate->GetActorLocation();
+				FriendlyShipCount++;
+			}
+		}
+
+		if (FriendlyShipCount == 0)
+		{
+			FVector NotFriendlyShipLocationSum = FVector::ZeroVector;
+			int NotFriendlyShipCount = 0;
+			for (int SpacecraftIndex = 0; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
+			{
+				AFlareSpacecraft *SpacecraftCandidate = SectorShips[SpacecraftIndex];
+				if (SpacecraftCandidate != Spacecraft && SpacecraftCandidate->GetCompany() != Spacecraft->GetCompany())
+				{
+					NotFriendlyShipLocationSum += SpacecraftCandidate->GetActorLocation();
+					NotFriendlyShipCount++;
+				}
+			}
+
+			if (NotFriendlyShipCount == 0)
+			{
+				SpawnDirection = FMath::VRand();
+			}
+			else
+			{
+				FVector	NotFriendlyShipLocationMean = NotFriendlyShipLocationSum / NotFriendlyShipCount;
+				SpawnDirection = (GetSectorCenter() - NotFriendlyShipLocationMean).GetUnsafeNormal();
+			}
+		}
+		else
+		{
+			FVector	FriendlyShipLocationMean = FriendlyShipLocationSum / FriendlyShipCount;
+			SpawnDirection = (FriendlyShipLocationMean - GetSectorCenter()).GetUnsafeNormal();
+		}
+
+		float SpawnDistance = GetSectorRadius() + 1;
+
+		if (GetSimulatedSector()->GetSectorBattleState(Spacecraft->GetCompany()).InBattle)
+		{
+			SpawnDistance += 500000; // 5 km
+		}
+
+		SpawnDistance = FMath::Min(SpawnDistance, GetSectorLimits());
+
+		FVector Location = GetSectorCenter() + SpawnDirection * SpawnDistance;
+
+		FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
+		Rotation = CenterDirection.Rotation();
+		PlaceSpacecraft(Spacecraft, Location, Rotation);
+
+		float SpawnVelocity = 0;
+
+		if (GetSimulatedSector()->GetSectorBattleState(Spacecraft->GetCompany()).InBattle)
+		{
+			SpawnVelocity = 10000;
+		}
+
+		RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
+		RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
+	}
+	break;
+	case EFlareSpawnMode::Exit:
+	{
+		float SpawnDistance = GetSectorLimits() * 0.9;
+		float SpawnVelocity = ParentSpacecraft->GetData().LinearVelocity.Size() * 0.6;
+		FVector SpawnDirection = ParentSpacecraft->GetData().Location.GetUnsafeNormal();
+		FVector Location = SpawnDirection * SpawnDistance;
+		FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
+		Rotation = CenterDirection.Rotation();
+
+		//FLOGV("UFlareSector::LoadSpacecraft : Exit '%s' at (%f, %f, %f)",
+		//	*ParentSpacecraft->GetImmatriculation().ToString(),
+		//	Location.X, Location.Y, Location.Z);
+
+		PlaceSpacecraft(Spacecraft, Location, Rotation);
+
+		RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
+		RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
+	}
+	break;
+	case EFlareSpawnMode::InternalDocked:
+	{
+		if (ParentSpacecraft->GetShipMaster())
+		{
+			FVector Location = ParentSpacecraft->GetShipMaster()->GetData().Location;
+			Rotation = ParentSpacecraft->GetData().Rotation;
+			PlaceSpacecraft(Spacecraft, Location, Rotation, 250, false, Spacecraft->GetMeshScale(), false);
+			float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetData().LinearVelocity.Size() * 0.6;
+			FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
+			RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
+			RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
+		}
+		else
+		{
+			Rotation = ParentSpacecraft->GetData().Rotation;
+			PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, Rotation);
+		}
+		break;
+	}
+	}
+
+	ParentSpacecraft->SetInternalDockedTo(NULL);
+	if (ParentSpacecraft->GetData().SpawnMode == EFlareSpawnMode::Travel && GetSimulatedSector()->IsTravelSector())
+	{
+		FLOG("UFlareSector::LoadSpacecraft : ship is still traveling");
+	}
+	else
+	{
+		ParentSpacecraft->SetSpawnMode(EFlareSpawnMode::Safe);
+	}
+
+	if (CompanySpacecraftsPerCompanyCache.Contains(ParentSpacecraft->GetCompany()))
+	{
+		CompanySpacecraftsPerCompanyCache[ParentSpacecraft->GetCompany()].Add(Spacecraft);
+	}
+
+	if (CompanyShipsPerCompanyCache.Contains(ParentSpacecraft->GetCompany()))
+	{
+		CompanyShipsPerCompanyCache[ParentSpacecraft->GetCompany()].Add(Spacecraft);
+	}
+
+	if (!GetIsDestroyingSector())
+	{
+		FinishLoadSpacecraft(Spacecraft);
+	}
+}
+
+void UFlareSector::FinishLoadSpacecraft(AFlareSpacecraft* Spacecraft)
+{
+	Spacecraft->FinishLoadandReady();
 }
 
 AFlareBomb* UFlareSector::LoadBomb(const FFlareBombSave& BombData)

@@ -1437,48 +1437,51 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 		float BestAntiLarge = 0;
 		float BestAntiSmall = 0;
 
-		// Find best weapons against specific archetypes
-		TArray<FFlareSpacecraftComponentDescription*> WeaponList;
-		PartsCatalog->GetWeaponList(WeaponList, Order->Description->Size,NULL,Order->Description->Identifier);
-		for (FFlareSpacecraftComponentDescription* Weapon : WeaponList)
-		{
-			int32 UpgradeCombatValue = Order->WeaponTypes.Num() * Weapon->CombatPoints;
-			if (UpgradeCombatValue > RemainingCombatValue)
-			{
-				continue;
-			}
-
-			float AntiLarge = Weapon->WeaponCharacteristics.AntiLargeShipValue;
-			if (AntiLarge > BestAntiLarge)
-			{
-				BestAntiLarge = AntiLarge;
-				BestAntiLargeWeapon = Weapon;
-			}
-
-			float AntiSmall = Weapon->WeaponCharacteristics.AntiSmallShipValue;
-			if (AntiSmall > BestAntiSmall)
-			{
-				BestAntiSmall = AntiSmall;
-				BestAntiSmallWeapon = Weapon;
-			}
-		}
-
-		// Assign one anti-L weapon to each L ship, else use anti small
-		FFlareSpacecraftComponentDescription* UpgradeWeapon = NULL;
-		if (PlayerLargeShips > 0 && BestAntiLargeWeapon)
-		{
-			UpgradeWeapon = BestAntiLargeWeapon;
-			PlayerLargeShips = PlayerLargeShips - Order->Quantity;
-		}
-		else if (BestAntiSmallWeapon)
-		{
-			UpgradeWeapon = BestAntiSmallWeapon;
-		}
-
 		// Upgrade
-		if (UpgradeWeapon)
+		for (int32 WeaponIndex = 0; WeaponIndex < Order->WeaponTypes.Num(); WeaponIndex++)
 		{
-			for (int32 WeaponIndex = 0; WeaponIndex < Order->WeaponTypes.Num(); WeaponIndex++)
+			// Find best weapons against specific archetypes
+			FFlareSpacecraftDescription* ConstDescription = const_cast<FFlareSpacecraftDescription*>(Order->Description);
+			FFlareSpacecraftSlotGroupDescription* SlotGroupDescription = &ConstDescription->WeaponGroups[Index];
+
+			TArray<FFlareSpacecraftComponentDescription*> WeaponList;
+			PartsCatalog->GetWeaponList(WeaponList, Order->Description->Size, NULL, Order->Description->Identifier, SlotGroupDescription);
+			for (FFlareSpacecraftComponentDescription* Weapon : WeaponList)
+			{
+				int32 UpgradeCombatValue = Order->WeaponTypes.Num() * Weapon->CombatPoints;
+				if (UpgradeCombatValue > RemainingCombatValue)
+				{
+					continue;
+				}
+
+				float AntiLarge = Weapon->WeaponCharacteristics.AntiLargeShipValue;
+				if (AntiLarge > BestAntiLarge)
+				{
+					BestAntiLarge = AntiLarge;
+					BestAntiLargeWeapon = Weapon;
+				}
+
+				float AntiSmall = Weapon->WeaponCharacteristics.AntiSmallShipValue;
+				if (AntiSmall > BestAntiSmall)
+				{
+					BestAntiSmall = AntiSmall;
+					BestAntiSmallWeapon = Weapon;
+				}
+			}
+
+			// Assign one anti-L weapon to each L ship, else use anti small
+			FFlareSpacecraftComponentDescription* UpgradeWeapon = NULL;
+			if (PlayerLargeShips > 0 && BestAntiLargeWeapon)
+			{
+				UpgradeWeapon = BestAntiLargeWeapon;
+				PlayerLargeShips = PlayerLargeShips - Order->Quantity;
+			}
+			else if (BestAntiSmallWeapon)
+			{
+				UpgradeWeapon = BestAntiSmallWeapon;
+			}
+
+			if (UpgradeWeapon)
 			{
 				Order->WeaponTypes[WeaponIndex] = UpgradeWeapon->Identifier;
 				CurrentCombatValue += UpgradeWeapon->CombatPoints;
@@ -1554,8 +1557,11 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 	WeaponBox->ClearChildren();
 	UpgradeBox->SetVisibility(EVisibility::Visible);
 
+	//TODO: This seems so wonderfully stupid, either unconst the description or do something less awesome than this
+	FFlareSpacecraftDescription* ConstDescription = const_cast<FFlareSpacecraftDescription*>(Order->Description);
+
 	// Engines
-	Catalog->GetEngineList(PartList, Desc->Size,NULL,Desc->Identifier);
+	Catalog->GetEngineList(PartList, Desc->Size,NULL,Desc->Identifier, ConstDescription);
 	for (auto Engine : PartList)
 	{
 		FLinearColor Color = (Order->EngineType == Engine->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
@@ -1575,7 +1581,7 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 
 	// RCS
 	PartList.Empty();
-	Catalog->GetRCSList(PartList, Desc->Size, NULL, Desc->Identifier);
+	Catalog->GetRCSList(PartList, Desc->Size, NULL, Desc->Identifier, ConstDescription);
 	for (auto RCS : PartList)
 	{
 		FLinearColor Color = (Order->RCSType == RCS->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
@@ -1594,12 +1600,14 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 	}
 
 	// Weapons
-	PartList.Empty();
-	Catalog->GetWeaponList(PartList, Desc->Size, NULL, Desc->Identifier);
 	for (int32 Index = 0; Index < Order->Description->WeaponGroups.Num(); Index++)
 	{
-		// Create vertical structure
-		const FFlareSpacecraftSlotGroupDescription& Slot = Order->Description->WeaponGroups[Index];
+		// Create vertical structure	
+		FFlareSpacecraftSlotGroupDescription* SlotGroupDescription = &ConstDescription->WeaponGroups[Index];
+		
+		PartList.Empty();
+		Catalog->GetWeaponList(PartList, Desc->Size, NULL, Desc->Identifier, SlotGroupDescription);
+					
 		TSharedPtr<SVerticalBox> WeaponSlot;
 		WeaponBox->AddSlot()
 		[
@@ -1893,7 +1901,14 @@ void SFlareSkirmishSetupMenu::SetOrderDefaults(TSharedPtr<FFlareSkirmishSpacecra
 
 		for (auto& Slot : Order->Description->WeaponGroups)
 		{
-			Order->WeaponTypes.Add(FName("weapon-eradicator"));
+			if (Slot.DefaultWeapon != NAME_None)
+			{
+				Order->WeaponTypes.Add(Slot.DefaultWeapon);
+			}
+			else
+			{
+				Order->WeaponTypes.Add(FName("weapon-eradicator"));
+			}
 		}
 	}
 	else
@@ -1903,9 +1918,27 @@ void SFlareSkirmishSetupMenu::SetOrderDefaults(TSharedPtr<FFlareSkirmishSpacecra
 
 		for (auto& Slot : Order->Description->WeaponGroups)
 		{
-			Order->WeaponTypes.Add(FName("weapon-artemis"));
+			if (Slot.DefaultWeapon != NAME_None)
+			{
+				Order->WeaponTypes.Add(Slot.DefaultWeapon);
+			}
+			else
+			{
+				Order->WeaponTypes.Add(FName("weapon-artemis"));
+			}
 		}
 	}
+
+	if (Order->Description->DefaultRCS != NAME_None)
+	{
+		Order->RCSType = Order->Description->DefaultRCS;
+	}
+
+	if (Order->Description->DefaultEngine != NAME_None)
+	{
+		Order->EngineType = Order->Description->DefaultEngine;
+	}
+
 }
 
 

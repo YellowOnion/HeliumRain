@@ -395,7 +395,26 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateShips(ShipSolen, PlayerCompany, FirstLight, 30);
 	CreateShips(ShipOrca, MiningSyndicate, FirstLight, 35);
 
-	//	CreateStations("station-shipyard", PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationFarm, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationSolarPlant, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHabitation, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationIceMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationIronMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationSilicaMine, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationSteelworks, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationToolFactory, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHydrogenPump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationMethanePump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHeliumPump, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationCarbonRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationPlasticsRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationArsenal, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationShipyard, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHub, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationOutpost, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationFoundry, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationFusion, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationResearch, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	PlayerCompany->GiveResearch(999999999);
 	PlayerCompany->GiveMoney(99999999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)

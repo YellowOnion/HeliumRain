@@ -923,7 +923,7 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 				}
 				else
 				{
-					int32 CycleProductionCost = UFlareGameTools::ComputeSpacecraftPrice(Desc->Identifier, TargetShipyard->GetCurrentSector(), true);
+					int32 CycleProductionCost = UFlareGameTools::ComputeSpacecraftPrice(Desc->Identifier, TargetShipyard->GetCurrentSector(), true,false,true,MenuManager->GetPC()->GetCompany(),TargetShipyard->GetCompany());
 					ProductionCost = FText::Format(LOCTEXT("FactoryProductionCostFormat", "\u2022 {0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(CycleProductionCost)));
 				}
 			}

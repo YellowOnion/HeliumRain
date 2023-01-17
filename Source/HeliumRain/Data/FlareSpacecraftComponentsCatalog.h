@@ -46,15 +46,13 @@ public:
 
 	/** Search all engines and get one that fits */
 	const void GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, UFlareSimulatedSpacecraft* FilterShip = NULL);
-	const void GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None);
+	const void GetEngineList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None, FFlareSpacecraftDescription* FilterDescription = NULL);
 
 	/** Search all RCS and get one that fits */
 	const void GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, UFlareSimulatedSpacecraft* FilterShip = NULL);
-	const void GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None);
+	const void GetRCSList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None, FFlareSpacecraftDescription* FilterDescription = NULL);
 
 	/** Search all weapons and get one that fits */
-	const void GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, UFlareSimulatedSpacecraft* FilterShip = NULL);
-	const void GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None);
-
-
+	const void GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, UFlareSimulatedSpacecraft* FilterShip = NULL, FFlareSpacecraftSlotGroupDescription* WeaponGroupDesc = NULL);
+	const void GetWeaponList(TArray<FFlareSpacecraftComponentDescription*>& OutData, TEnumAsByte<EFlarePartSize::Type> Size, UFlareCompany* FilterCompany = NULL, FName FilterShip = NAME_None, FFlareSpacecraftSlotGroupDescription* WeaponGroupDesc = NULL);
 };

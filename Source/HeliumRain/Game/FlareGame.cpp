@@ -1749,4 +1749,10 @@ bool AFlareGame::IsSkirmish() const
 {
 	return SkirmishManager->IsPlaying();
 }
+
+FFlareTechnologyDescription* AFlareGame::GetTechnologyCatalogDescription(FName Identifier) const
+{
+	return GetTechnologyCatalog()->Get(Identifier);
+}
+
 #undef LOCTEXT_NAMESPACE

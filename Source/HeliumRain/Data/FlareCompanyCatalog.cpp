@@ -26,12 +26,13 @@ UFlareCompanyCatalog::UFlareCompanyCatalog(const class FObjectInitializer& PCIP)
 		UFlareCompanyCatalogEntry* OldEntry = NULL;
 		for (UFlareCompanyCatalogEntry* CompanySub : CompanyCatalog)
 		{
-			if (CompanySub->Data.ShortName == CompanyEntry->Data.ShortName)
+			if (CompanySub->Data.ShortName == CompanyEntry->Data.ShortName && CompanySub->Data.ModLoadPriority <= CompanyEntry->Data.ModLoadPriority)
 			{
 				OldEntry = CompanySub;
 				break;
 			}
 		}
+		
 		if (OldEntry)
 		{
 			CompanyCatalog.Remove(OldEntry);

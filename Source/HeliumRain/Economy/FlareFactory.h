@@ -61,6 +61,8 @@ public:
 
 	bool HasCostReserved();
 
+	float GetResourceInputMultiplier();
+
 	void BeginProduction();
 
 	void CancelProduction();

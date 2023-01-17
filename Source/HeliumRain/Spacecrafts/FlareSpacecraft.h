@@ -120,6 +120,8 @@ public:
 
 	virtual void Save();
 
+	virtual void FinishLoadandReady();
+
 	virtual void SetOwnerCompany(UFlareCompany* Company);
 	
 	virtual UFlareInternalComponent* GetInternalComponentAtLocation(FVector Location) const;
@@ -290,6 +292,8 @@ public:
 	virtual void LockDirectionOff();
 
 	virtual void FindTarget();
+
+	bool GetAttachedToParentActor();
 
 protected:
 	/*----------------------------------------------------

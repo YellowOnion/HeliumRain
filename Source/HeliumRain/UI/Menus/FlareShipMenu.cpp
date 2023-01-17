@@ -908,13 +908,16 @@ void SFlareShipMenu::UpdatePartList(FFlareSpacecraftComponentDescription* Select
 
 		// Update list
 		PartList->RequestListRefresh();
-		if (Index != INDEX_NONE)
+		if (PartListDataShared.Num())
 		{
-			PartList->SetSelection(PartListDataShared[Index]);
-		}
-		else
-		{
-			PartList->SetSelection(PartListDataShared[0]);
+			if (Index != INDEX_NONE)
+			{
+				PartList->SetSelection(PartListDataShared[Index]);
+			}
+			else
+			{
+				PartList->SetSelection(PartListDataShared[0]);
+			}
 		}
 	}
 
@@ -2173,7 +2176,9 @@ void SFlareShipMenu::ShowWeapons(TSharedPtr<int32> WeaponGroupIndex)
 		}
 	}
 
-	Catalog->GetWeaponList(PartListData, TargetSpacecraft->GetDescription()->Size, MenuManager->GetPC()->GetCompany(), TargetSpacecraft);
+	FFlareSpacecraftSlotGroupDescription* WeaponGroupDesc = &TargetDescription->WeaponGroups[CurrentWeaponGroupIndex];
+	Catalog->GetWeaponList(PartListData, TargetDescription->Size, MenuManager->GetPC()->GetCompany(), TargetSpacecraft, WeaponGroupDesc);
+
 	FLOGV("SFlareShipMenu::ShowWeapons : %d parts", PartListData.Num());
 	UpdatePartList(PartDesc);
 }
@@ -2183,7 +2188,7 @@ void SFlareShipMenu::OnPartPicked(TSharedPtr<FInterfaceContainer> Item, ESelectI
 	int32 Index = PartListData.Find(Item->PartDescription);
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	
-	if (PC && Item->PartDescription && Index != CurrentPartIndex)
+	if (PC && Item && Item->PartDescription && Index != CurrentPartIndex)
 	{
 		AFlareMenuPawn* Viewer = PC->GetMenuPawn();
 		RenameBox->SetVisibility(EVisibility::Collapsed);
