@@ -353,6 +353,7 @@ void SFlareOrbitalMenu::Enter()
 	}
 
 	// Update stuff
+	UpdateSectorBattleStates();
 	StopFastForward();
 	UpdateMap();
 	TradeRouteInfo->Update();
@@ -416,21 +417,35 @@ void SFlareOrbitalMenu::RequestOrbitalFleetsUpdate()
 	OrbitalFleetsUpdateRequested = true;
 }
 
+void SFlareOrbitalMenu::UpdateSectorStates()
+{
+	RefreshTrackedButtons();
+	UpdateSectorBattleStates();
+}
+
+void SFlareOrbitalMenu::UpdateSectorBattleStates()
+{
+	for (UFlareSimulatedSector* Sector : MenuManager->GetPC()->GetCompany()->GetKnownSectors())
+	{
+		Sector->UpdateSectorBattleState(MenuManager->GetPC()->GetCompany());
+	}
+}
+
 void SFlareOrbitalMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 
 	if (IsEnabled() && MenuManager.IsValid())
 	{
-		for(UFlareSimulatedSector* Sector : MenuManager->GetPC()->GetCompany()->GetKnownSectors())
-		{
-			MenuManager->GetPC()->CheckSectorStateChanges(Sector);
-		}
-
 		// Fast forward every FastForwardPeriod
 		TimeSinceFastForward += InDeltaTime;
 		if (FastForwardActive)
 		{
+			for (UFlareSimulatedSector* Sector : MenuManager->GetPC()->GetCompany()->GetKnownSectors())
+			{
+				MenuManager->GetPC()->CheckSectorStateChanges(Sector);
+			}
+
 			if (!FastForwardStopRequested && (TimeSinceFastForward > FastForwardPeriod || UFlareGameTools::FastFastForward))
 			{
 				MenuManager->GetGame()->GetGameWorld()->FastForward();
@@ -456,6 +471,7 @@ void SFlareOrbitalMenu::UpdateMap()
 	TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = Game->GetOrbitalBodies()->OrbitalBodies;
 
 	TArray<FString> BrokenSectors;
+/*
 	if (MenuManager->GetModStrings().Num())
 	{
 		for (FString MenuModStrings : MenuManager->GetModStrings())
@@ -475,7 +491,9 @@ void SFlareOrbitalMenu::UpdateMap()
 			}
 		}
 	}
-
+*/
+	SectorButtons.Empty();
+	SectorButtons.Reserve(MenuManager->GetPC()->GetCompany()->GetKnownSectors().Num());
 	UpdateMapForBody(NemaBox, &OrbitalBodies[0], BrokenSectors);
 	UpdateMapForBody(AnkaBox, &OrbitalBodies[1], BrokenSectors);
 	UpdateMapForBody(AstaBox, &OrbitalBodies[2], BrokenSectors);
@@ -513,13 +531,14 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 
 	// Find highest altitude
 	int32 MaxAltitude = 0;
-	bool UseBrokenSectorsWorkAround = false;
+//	bool UseBrokenSectorsWorkAround = false;
 
 	for (UFlareSimulatedSector* Sector : MenuManager->GetGame()->GetGameWorld()->GetSectors())
 	{
 		if (Sector->GetOrbitParameters()->Altitude > MaxAltitude
 		 && Sector->GetOrbitParameters()->CelestialBodyIdentifier == Body->CelestialBodyIdentifier)
 		{
+/*
 			for (FString PossibleBroken : BrokenSectors)
 			{
 				if (PossibleBroken == Sector->GetName())
@@ -528,15 +547,16 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 					break;
 				}
 			}
+*/
 			MaxAltitude = Sector->GetOrbitParameters()->Altitude;
 		}
 	}
-
+/*
 	if (UseBrokenSectorsWorkAround)
 	{
-		MaxAltitude = 100000;
+	MaxAltitude = 100000;
 	}
-
+*/
 	// Add the name
 	Map->AddSlot()
 	.Altitude(MaxAltitude)
@@ -557,19 +577,18 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 	KnownSectors.Sort(FSortByAltitudeAndPhase());
 
 	// Add the sectors
-	SectorButtons.Reserve(KnownSectors.Num());
 	for (int32 SectorIndex = 0; SectorIndex < KnownSectors.Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = KnownSectors[SectorIndex];
 		TSharedPtr<int32> IndexPtr(new int32(MenuManager->GetPC()->GetCompany()->GetKnownSectors().Find(Sector)));
 		double Altitude = Sector->GetOrbitParameters()->Altitude;
 		double Phase = Sector->GetOrbitParameters()->Phase;
-
+/*
 		if (UseBrokenSectorsWorkAround)
 		{
 			Altitude = 100000;
 		}
-
+*/
 		Map->AddSlot()
 		.Altitude(Altitude)
 		.Phase(Phase)
@@ -820,7 +839,7 @@ void SFlareOrbitalMenu::OnOpenSector(TSharedPtr<int32> Index)
 {
 	UFlareSimulatedSector* Sector = MenuManager->GetPC()->GetCompany()->GetKnownSectors()[*Index];
 	PreviouslySelectedSector = Sector;
-	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet())
+	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet() && OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentSector() != Sector)
 	{
 		UFlareFleet* TargetFleet = OrbitalFleetsInfo->GetSelectedFleet();
 		bool Escape = TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger
@@ -876,6 +895,12 @@ void SFlareOrbitalMenu::OnStartSelectedFleetTravelConfirmed()
 			if (Travel)
 			{
 				FleetsBegunTravel(TravelingFrom, PreviouslySelectedSector, OldTravel);
+				if (TargetFleet == MenuManager->GetPC()->GetPlayerFleet())
+				{
+					FFlareMenuParameterData Data;
+					Data.Travel = Travel;
+					MenuManager->OpenMenu(EFlareMenu::MENU_Travel, Data);
+				}
 			}
 		}
 	}

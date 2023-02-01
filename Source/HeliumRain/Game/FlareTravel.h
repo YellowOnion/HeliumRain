@@ -51,7 +51,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Load the travel from a save file */
-	virtual void Load(const FFlareTravelSave& Data);
+	virtual void Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet);
 
 	/** Save the travel to a save file */
 	virtual FFlareTravelSave* Save();

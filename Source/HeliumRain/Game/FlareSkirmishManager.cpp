@@ -137,17 +137,15 @@ void UFlareSkirmishManager::EndPlay()
 		}
 
 		// Detect victory
+		AFlarePlayerController* PC = GetGame()->GetPC();
+		FFlareSectorBattleState BattleState = GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany());
+		if (BattleState.FriendlyControllableShipCount > 0 && !BattleState.HasDanger)
 		{
-			AFlarePlayerController* PC = GetGame()->GetPC();
-			FFlareSectorBattleState BattleState = GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany());
-			if (BattleState.FriendlyControllableShipCount > 0 && !BattleState.HasDanger)
-			{
-				Result.PlayerVictory = true;
-			}
-			else
-			{
-				Result.PlayerVictory = false;
-			}
+			Result.PlayerVictory = true;
+		}
+		else
+		{
+			Result.PlayerVictory = false;
 		}
 		// Reset phase
 		CurrentPhase = EFlareSkirmishPhase::End;

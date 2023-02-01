@@ -22,11 +22,16 @@ UFlareTechnologyCatalog::UFlareTechnologyCatalog(const class FObjectInitializer&
 		//FLOGV("UFlareTechnologyCatalog::UFlareTechnologyCatalog : Found '%s'", *AssetList[Index].GetFullName());
 		UFlareTechnologyCatalogEntry* Technology = Cast<UFlareTechnologyCatalogEntry>(AssetList[Index].GetAsset());
 		FCHECK(Technology);
+		TechnologyCatalog.Add(Technology);
+	}
 
+	for (int32 Index = 0; Index < TechnologyCatalog.Num(); Index++)
+	{
+		UFlareTechnologyCatalogEntry* Technology = TechnologyCatalog[Index];
 		UFlareTechnologyCatalogEntry* OldEntry = NULL;
 		for (UFlareTechnologyCatalogEntry* TechnologySub : TechnologyCatalog)
 		{
-			if (TechnologySub->Data.Identifier == Technology->Data.Identifier && TechnologySub->Data.ModLoadPriority <= Technology->Data.ModLoadPriority)
+			if (TechnologySub != Technology && TechnologySub->Data.Identifier == Technology->Data.Identifier && TechnologySub->Data.ModLoadPriority <= Technology->Data.ModLoadPriority)
 			{
 				OldEntry = TechnologySub;
 				break;
@@ -35,12 +40,18 @@ UFlareTechnologyCatalog::UFlareTechnologyCatalog(const class FObjectInitializer&
 
 		if (OldEntry)
 		{
-			TechnologyCatalog.Remove(OldEntry);
+			if (TechnologyCatalog.Remove(OldEntry))
+			{
+				Index = FMath::Min(0, Index -= 1);
+			}
 		}
 
-		if (!Technology->Data.IsDisabled)
+		if (Technology->Data.IsDisabled)
 		{
-			TechnologyCatalog.Add(Technology);
+			if (TechnologyCatalog.Remove(Technology))
+			{
+				Index = FMath::Min(0, Index -= 1);
+			}
 		}
 	}
 }

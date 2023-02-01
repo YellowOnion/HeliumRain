@@ -370,7 +370,7 @@ FText SFlareHUDMenu::GetInfoText() const
 		}
 
 		// Build result
-		FString Result = FlightInfo.ToString() + " - " + TargetText.ToString() + "\n" + CurrentSector->GetSectorBalanceText(true).ToString();
+		FString Result = FlightInfo.ToString() + " - " + TargetText.ToString() + "\n" + CurrentSector->GetSectorBalanceText().ToString();
 		if (BattleText.ToString().Len())
 		{
 			Result += " - " + BattleText.ToString();

@@ -26,7 +26,7 @@ UFlareResourceCatalog::UFlareResourceCatalog(const class FObjectInitializer& PCI
 		UFlareResourceCatalogEntry* OldEntry = NULL;
 		for (UFlareResourceCatalogEntry* ResourceSub : Resources)
 		{
-			if (ResourceSub->Data.Identifier == Resource->Data.Identifier)
+			if (ResourceSub != Resource && ResourceSub->Data.Identifier == Resource->Data.Identifier && ResourceSub->Data.ModLoadPriority <= Resource->Data.ModLoadPriority)
 			{
 				OldEntry = ResourceSub;
 				break;

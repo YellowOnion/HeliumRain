@@ -170,6 +170,7 @@ void AFlareCockpitManager::SetExternalCamera(bool External)
 	}
 	else
 	{
+//		PlayerShip->SetActorHiddenInGame(true);
 		EnterCockpit(PlayerShip);
 	}
 }

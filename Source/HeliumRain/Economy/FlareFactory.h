@@ -210,6 +210,8 @@ public:
 
 	uint32 GetInputResourceQuantity(FFlareResourceDescription* Resource);
 
+	uint32 GetInputResourceQuantityCycles(FFlareResourceDescription* Resource);
+
 	uint32 GetOutputResourceQuantity(FFlareResourceDescription* Resource);
 
 	bool HasOutputResource(FFlareResourceDescription* Resource);

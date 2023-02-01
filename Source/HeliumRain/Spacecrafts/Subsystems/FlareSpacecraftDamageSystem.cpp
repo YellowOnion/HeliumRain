@@ -149,9 +149,10 @@ void UFlareSpacecraftDamageSystem::SetDead()
 	{
 		SimmedVersion->GetDamageSystem()->SetDead();
 	}
+	OnSpacecraftDestroyed(true,true);
 }
 
-void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
+void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, bool ForceExplosion)
 {
 	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 
@@ -234,7 +235,7 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages)
 
 	if (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector())
 	{
-		PC->GetGame()->GetActiveSector()->AddDestroyedSpacecraft(Spacecraft);
+		PC->GetGame()->GetActiveSector()->AddDestroyedSpacecraft(Spacecraft, ForceExplosion);
 	}
 
 	PC->OnSpacecraftDestroyed();
@@ -440,26 +441,6 @@ void UFlareSpacecraftDamageSystem::CheckRecovery()
 		else
 		{
 			PC->GetMenuManager()->OpenMenu(EFlareMenu::MENU_GameOver);
-		}
-	}
-
-	// Check skirmish victory
-	else if (PC->GetGame()->IsSkirmish())
-	{
-		FFlareSectorBattleState State = Spacecraft->GetOwnerSector()->GetSectorBattleState(PC->GetCompany());
-
-		if (State.BattleWon)
-		{
-			PC->GetGame()->GetSkirmishManager()->EndPlay();
-		}
-		else if(!State.InFight && !State.BattleWon)
-		{
-			PC->GetGame()->GetSkirmishManager()->EndPlay();
-		}
-		// battles which have reserve ships specifically needs this extra check encase the reserves don't join the battle
-		else if ((State.FriendlyControllableShipCount == 0 && State.DangerousFriendlyActiveMissileCount == 0) || (State.DangerousHostileActiveSpacecraftCount == 0 && State.DangerousHostileActiveMissileCount == 0))
-		{
-			PC->GetGame()->GetSkirmishManager()->EndPlay();
 		}
 	}
 }
@@ -876,6 +857,21 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 			}
 		}
 
+		// Update uncontrollable status
+		if (Spacecraft->GetParent()->GetCurrentFleet() == PC->GetPlayerFleet())
+		{
+			CheckRecovery();
+		}
+
+		Spacecraft->GetParent()->GetCurrentSector()->UpdateSectorBattleState(Spacecraft->GetCompany());
+		if (DamageSource && DamageSource->GetCompany() != Spacecraft->GetCompany())
+		{
+			DamageSource->GetCurrentSector()->UpdateSectorBattleState(DamageSource->GetCompany());
+		}
+
+		// Check skirmish victory
+		Spacecraft->GetOwnerSector()->CheckSkirmishEndCondition();
+
 		if (MakeUncontrolableDestroyed)
 		{
 			// Player kill
@@ -916,12 +912,6 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 			if (Spacecraft->IsMilitary() && Spacecraft->IsPlayerHostile() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorBattleState(PC->GetCompany()).BattleWon)
 			{
 				PC->SetAchievementProgression("ACHIEVEMENT_BATTLE", 1);
-			}
-
-			// Update uncontrollable status
-			if (Spacecraft->GetParent()->GetCurrentFleet() == PC->GetPlayerFleet())
-			{
-				CheckRecovery();
 			}
 		}
 	}

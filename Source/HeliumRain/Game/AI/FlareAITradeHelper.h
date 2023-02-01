@@ -245,7 +245,7 @@ struct AITradeHelper
 	static void ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&Deal, TMap<UFlareSimulatedSector*, SectorVariation>* WorldResourceVariation, bool AllowTravel, bool AllowUseNoTradeForMe);
 
 	/** Get the resource flow in this sector */
-	static SectorVariation ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe);
+	static SectorVariation ComputeSectorResourceVariation(UFlareCompany* Company, UFlareSimulatedSector* Sector, bool AllowUseNoTradeForMe, bool FactorIncoming = true);
 
 	static void GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& MaintenanceNeeds, AITradeNeeds& StorageNeeds, UFlareWorld* World);
 

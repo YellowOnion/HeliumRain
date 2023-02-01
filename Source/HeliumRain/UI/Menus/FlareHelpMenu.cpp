@@ -1509,6 +1509,117 @@ Companies are the factions which control the entire environment in Helium Rain. 
 			.HeaderHelp(LOCTEXT("TechnicalTabInfo", "Technical Information"))
 			[
 				SNew(SFlareTabView)
+
+				+ SFlareTabView::Slot()
+				.Header(LOCTEXT("HRFMVersionTab", "HRFM Version history"))
+				.HeaderHelp(LOCTEXT("HRFMVersionInfo", "Helium Rain HRFM version history"))
+				[
+					SNew(SBox)
+					.WidthOverride(2.2 * Theme.ContentWidth)
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Fill)
+				[
+					SNew(SHorizontalBox)
+					// Info block
+				+ SHorizontalBox::Slot()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				.AutoWidth()
+				[
+					// Data
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SScrollBox)
+					.Style(&Theme.ScrollBoxStyle)
+				.ScrollBarStyle(&Theme.ScrollBarStyle)
+
+				+ SScrollBox::Slot()
+				.Padding(Theme.ContentPadding)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+				.Padding(Theme.ContentPadding)
+				.AutoWidth()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(SVerticalBox)
+					+SVerticalBox::Slot()
+					.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("VersionHRFM", "HRFM Version History"))
+				.TextStyle(&Theme.SubTitleFont)
+				]
+
+			+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.WrapTextAt(TextWrappingBig)
+				.TextStyle(&Theme.TextFont)
+				.Text(LOCTEXT("VersionHistoryHRFM", "Created by Wanabe\n\
+\n\
+1.3.9\n\n\
+(Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
+(Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
+(Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\
+(Active Simulation) Re - Enabled Flak detonation(I had disabled it sometime ago.Probably due to their heavy FPS cost)\n\
+(Active Simulation) Improved in sector explosion effect\n\
+(Active Simulation) Small debris can sometimes break off ship components when components are destroyed\n\
+\n\
+(UI) Orbital Sectors menu now has toggles to turn on / off events / trade routes / fleets information\n\
+(UI) Orbital Sectors menu can now show a list of fleets fit for travel.Click a fleet and then click a sector to send them.\n\
+(UI) Fleets now have a new toggle option to hide them from the travel lists.\n\
+(UI) Fleets assigned to un - paused trade routes and Fleets which are travelling but can't change their destination are hidden from sector travel lists.\n\
+(UI) Selected Shipyards in station menu lists will show the quantity of ships in production and queued for production\n\
+(UI) Viable trade filter will now filter out stations which have full cargo for a particular resource when assessing sell stations\n\
+(UI) The move up / down buttons in the Trade Route screen become disabled if they aren't useful\n\
+(UI) Fleet menu Remove&Add button can now remove the last ship of a fleet\n\
+(UI) Skirmish components helptext now shows the description of the component\n\
+\n\
+(Performance) Moved sector Shell cache to a more generic cache system.Added in Bomb, Debris and Asteroid cache.\n\
+(Performance) Shells, Bomb, Asteroid, ShipPilot, TurretAI tick speeds have been reduced.Optimisations to some of their processes\n\
+(Performance) Set EPSCPoolMethod::AutoRelease for various types of particles, enabling UE to automatically pool / fetch them\n\
+(Performance) FlareSectorButtons no longer have a tick override\n\
+(Performance) Spacecraft tick moved over into a new sector tick method\n\
+(Performance) Turrets no longer look for targets if the ship is not engaged in battle\n\
+(Performance) Spacecraft Damage System no longer checks controllable / alive / recovery every tick, instead triggered when damaged\n\
+(Performance) The spacecraft used for display previews can be reused rather than recreated / deleted each time\n\
+(Performance) GetSectorBattleState() can now remember the last result on a per company basis and will only do a full refresh at specific points.\n\
+\n\
+(Modding) Technology, Resource, Ships / Stations with duplicate identifiers can have 'newer' versions remove the older one from the game.This means modifications packed as a DLC can be used to override default entities without duplicates.\n\
+(Modding) Added in UnlockItems to FFlareTechnologyDescription.Array of what this technology unlocks when researched.Hooks into the already existing RequiredTechnologies arrays for Ships / Stations and ship components.\n\
+(Modding) The game now detects what the maximum technology level is rather than setting it to a fixed value of 5.\n\
+(Modding) Added Data / FlareCompanyCataLogEntry, giving a method of properly adding new companies.However, if using this method all the original companies will be completely ignored\n\
+(Modding) Added IsDisabledOverrideStats to FFlareSpacecraftDescription.If enabled along with IsDisabled will copy certain stats over to the original version of the description.Useful for overriding some stats of an existing ship if you don't have the model data etc to go along with it. Also doubles as an useful method of improving mod compatibility\n\
+(Modding) Added ShipyardFabBonus to TechnologyDesc.Acts as a multiplier which lowers the resource costs of building ships.Half of the bonus is utilised by external companies when considering the cost, effectively increasing the profit margin\n\
+(Modding) Added RestrictedWeapons to FFlareSpacecraftSlotGroupDescription.An array of names to limit the allowable choices of weapons for that specific slot.Also RestrictedEngines and RestrictedRCS\n\
+(Modding) Added DefaultWeapon, DefaultRCS and DefaultEngine.If defined this ship will use those respective items as their defaults.\n\
+(Modding) A variety of changes to improve how Drones and their Carriers work\n\
+(Modding) Added SectorLimits variable to sectorDesc\n\
+(Modding / Other) Added Launch / Retrieve Drone keybind and an option in the mousewheel menu\n\
+\n\
+Fixed(HRFanMod): Stations were running the CargoAI and could sometimes try to dock with each other which would lead to(hilarious) immersion breaking physics interactions\n\
+Fixed(HRFanMod): Fixed simulation crash in UpdateReserveShips() routine\n\
+Fixed(HRFanMod): Player owned fighters would not properly select targets to engage\n\
+Fixed(HRFanMod): External Info Configuration / Allow External orders buttons weren't properly hiding themselves when looking at a player ship after looking at a shipyard\n\
+Fixed(HRFanMod): If reentering a sector quickly(such as skipping a single day) Shipyards could collide with their previous counterpart which hadn't yet been deleted and gain collision damage along with spinning out of control\n\
+Fixed(Vanilla): Station menu 'Docked Ships' section can now see the ships docked within attached complex elements\n\
+Fixed(Vanilla): sudden frame rate drop in situations when turrets are trying to target during a battle where bombs are involved\n\
+Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry.Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\
+Fixed(Vanilla): AI cargo ships trying to dock in sector could not find a friendly station to dock at\n\
+Fixed(Vanilla): Damaged stations constantly heat up over time, and as such their temperature could increase to multiple thousands of Kelvin which caused them to emit extremely bright, blinding lights.As a work around the maximum temperature value for the visual effect now has an upper limit.\n\
+Fixed(Vanilla): contracts / quests can now see station complex children for completion conditions\n\
+Fixed (Vanilla): If a company declares war on a player while in the Orbital Map Menu the sector buttons would not immediately update their display to show the Red war state\n\
+\n\
+1.3.8\n\
+'lots of stuff'"))
+				]]]]]]]
+
 				+ SFlareTabView::Slot()
 				.Header(LOCTEXT("VersionTab", "Version history"))
 				.HeaderHelp(LOCTEXT("VersionTabInfo", "Helium Rain version history"))
@@ -1546,6 +1657,7 @@ Companies are the factions which control the entire environment in Helium Rain. 
 									.VAlign(VAlign_Top)
 									[
 										SNew(SVerticalBox)
+
 										+ SVerticalBox::Slot()
 										.AutoHeight()
 										[

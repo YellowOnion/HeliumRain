@@ -75,7 +75,7 @@ protected:
 
 
 	/** The ship was destroyed */
-	void OnSpacecraftDestroyed(bool SuppressMessages=false);
+	void OnSpacecraftDestroyed(bool SuppressMessages=false,bool ForceExplosion = false);
 
 	virtual void CheckRecovery();
 

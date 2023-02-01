@@ -2662,14 +2662,15 @@ void UFlareQuestConditionNoCapturingStationInSector::Save(FFlareBundle* Bundle)
 int32 UFlareQuestConditionNoCapturingStationInSector::GetCapturingStations()
 {
 	int32 CapturingStationCount = 0;
-	for(UFlareSimulatedSpacecraft* Station : TargetSector->GetSectorStations())
+//	for(UFlareSimulatedSpacecraft* Station : TargetSector->GetSectorStations())
+	for(UFlareSimulatedSpacecraft* Station : TargetCompany->GetCompanySectorStations(TargetSector))
 	{
-
+/*
 		if(Station->GetCompany() != TargetCompany)
 		{
 			continue;
 		}
-
+*/
 		if(Station->GetCapturePoint(TargetEnemyCompany) > 0)
 		{
 			CapturingStationCount++;
@@ -2686,14 +2687,15 @@ bool UFlareQuestConditionNoCapturingStationInSector::IsCompleted()
 		InitialCapturingStations = GetCapturingStations();
 	}
 
-	for(UFlareSimulatedSpacecraft* Station : TargetSector->GetSectorStations())
+//	for(UFlareSimulatedSpacecraft* Station : TargetSector->GetSectorStations())
+	for (UFlareSimulatedSpacecraft* Station : TargetCompany->GetCompanySectorStations(TargetSector))
 	{
-
+/*
 		if(Station->GetCompany() != TargetCompany)
 		{
 			continue;
 		}
-
+*/
 		if(Station->GetCapturePoint(TargetEnemyCompany) > 0)
 		{
 			return false;

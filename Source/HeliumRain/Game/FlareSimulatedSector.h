@@ -80,9 +80,14 @@ struct FFlareSectorBattleState
 	int32 FriendlyStationCount;
 	int32 FriendlyStationInCaptureCount;
 
+	int32 DangerousFriendlyActiveSpacecraftCount;
 	int32 DangerousHostileActiveSpacecraftCount;
+	int32 DangerousNeutralActiveSpacecraftCount;
+
 	int32 DangerousFriendlyActiveMissileCount;
 	int32 DangerousHostileActiveMissileCount;
+
+	int32 NeutralSpacecraftCount;
 
 	FFlareSectorBattleState Init()
 	{
@@ -97,9 +102,14 @@ struct FFlareSectorBattleState
 		FriendlyStationCount = 0;
 		FriendlyStationInCaptureCount = 0;
 
+		DangerousFriendlyActiveSpacecraftCount = 0;
 		DangerousHostileActiveSpacecraftCount = 0;
+		DangerousNeutralActiveSpacecraftCount = 0;
+
 		DangerousFriendlyActiveMissileCount = 0;
 		DangerousHostileActiveMissileCount = 0;
+
+		NeutralSpacecraftCount = 0;
 		return *this;
 	}
 
@@ -179,6 +189,10 @@ struct FFlareSectorDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	float Phase;
 
+	/** Physical size of the sector. IE: 1500000 is 15KM from the center*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	float SectorLimits;
+	
 	/** Is this sector ice-rich */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsIcy;
@@ -203,6 +217,10 @@ struct FFlareSectorDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsAutoDiscovered;
 
+	/** Telescope level required to reveal this sector */
+	UPROPERTY(EditAnywhere, Category = Content)
+	int TelescopeDiscoveryLevel;
+
 	/** Level to load for this sector */
 	UPROPERTY(EditAnywhere, Category = Content)
 	FName LevelName;
@@ -215,6 +233,13 @@ struct FFlareSectorDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	FFlareDebrisFieldInfo DebrisFieldInfo;
 
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
+
+	/** This sector is disabled */
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
+
+	/** This sector is disabled but it will override the stats of an older version that was found with this ones. Useful if wanting to adjust sector from a mod that may not actually exist*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
 };
 
 
@@ -396,6 +421,8 @@ public:
         Gameplay
     ----------------------------------------------------*/
 
+	float GetSectorLimits();
+
     /** Create a station in the level  for a specific company */
 	UFlareSimulatedSpacecraft* CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction,
 		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters());
@@ -455,11 +482,8 @@ public:
 
 	void ClearBombs();
 
-	/** Get the balance of forces in the sector */
-	void GetSectorBalance(UFlareCompany* Company, int32& PlayerShips, int32& EnemyShips, int32& NeutralShips, bool ActiveOnly);
-
 	/** Get the balance of forces as a text */
-	FText GetSectorBalanceText(bool ActiveOnly);
+	FText GetSectorBalanceText();
 
 	void ProcessMeteorites();
 	void GenerateMeteorites();
@@ -499,6 +523,7 @@ protected:
 	TMap<FFlareResourceDescription*, FFlareFloatBuffer>			LastResourcePrices;
 	TMap<UFlareCompany*, TArray<UFlareSimulatedSpacecraft*>>	ReservesByCompany;
 	TArray<UFlareSimulatedSpacecraft*>							SectorReserves;
+	TMap<UFlareCompany*, FFlareSectorBattleState>				LastSectorBattleStates;
 
 public:
 
@@ -639,6 +664,11 @@ public:
 
 	/** Get the current battle status of a company */
 	FFlareSectorBattleState GetSectorBattleState(UFlareCompany* Company);
+
+	void CheckSkirmishEndCondition();
+
+	/** Update the current battle status of a company */
+	FFlareSectorBattleState UpdateSectorBattleState(UFlareCompany* Company);
 
 	/** Get the current battle status text */
 	FText GetSectorBattleStateText(UFlareCompany* Company);

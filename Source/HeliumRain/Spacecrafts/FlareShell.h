@@ -120,4 +120,7 @@ protected:
 	TArray<AFlareSpacecraft*>					   DetonationSpacecraftCandidates;
 	TArray<AFlareMeteorite*>	   				   DetonationMeteoriteCandidates;
 	TArray<AFlareBomb*>							   DetonationBombCandidates;
+
+public:
+	UFlareWeapon* GetParentWeapon();
 };

@@ -148,6 +148,7 @@ public:
 	bool ProposeTributeToPlayer = false;
 	bool FinishedResearch = false;
 	bool FinishedBuyingSectorStationLicenses = false;
+	bool IsMercenaryCompany = false;
 	TArray<FName> ResearchOrder;
 
 	/*----------------------------------------------------

@@ -356,11 +356,6 @@ void AFlarePlayerController::PlayerTick(float DeltaSeconds)
 		SCOPE_CYCLE_COUNTER(STAT_FlarePlayerTick_Sound);
 		SoundManager->Update(DeltaSeconds);
 	}
-
-	if (ShipPawn && GetPlayerShip()->GetCurrentSector())
-	{
-		CheckSectorStateChanges(GetPlayerShip()->GetCurrentSector());
-	}
 }
 
 float AFlarePlayerController::VerticalToHorizontalFOV(float VerticalFOV) const
@@ -720,7 +715,6 @@ void AFlarePlayerController::Clean()
 	TimeSinceWeaponSwitch = 0;
 
 	LastBattleState.Init();
-	LastSectorBattleStates.Empty();
 
 	MenuManager->FlushNotifications();
 	MenuManager->ClearHistory();
@@ -1260,9 +1254,8 @@ void AFlarePlayerController::GetPlayerShipThreatStatus(bool& IsTargeted, bool& I
 
 void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sector)
 {
-	FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(GetCompany());
+	FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(GetCompany());
 	FText BattleStateText = Sector->GetSectorBattleStateText(GetCompany());
-
 
 	FFlareSectorBattleState LastSectorBattleState;
 	LastSectorBattleState.Init();
@@ -1343,6 +1336,7 @@ void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sect
 	}
 }
 
+
 void AFlarePlayerController::DiscoverSector(UFlareSimulatedSector* Sector, bool MarkedAsVisited, bool NotifyPlayer)
 {
 	// Discover, visit if needed
@@ -1365,7 +1359,7 @@ void AFlarePlayerController::DiscoverSector(UFlareSimulatedSector* Sector, bool 
 		}
 		GetCompany()->DiscoverSector(Sector);
 	}
-
+	
 	// Refresh menus
 	if (MenuManager->IsMenuOpen())
 	{
@@ -1396,6 +1390,16 @@ void AFlarePlayerController::DiscoverSector(UFlareSimulatedSector* Sector, bool 
 			EFlareMenu::MENU_Sector,
 			Data);
 	}
+}
+
+bool AFlarePlayerController::UpdateOrbitalBattleStatesIfOpen()
+{
+	if (MenuManager->IsMenuOpen() && MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+	{
+		MenuManager->GetOrbitMenu()->UpdateSectorStates();
+		return true;
+	}
+	return false;
 }
 
 void AFlarePlayerController::SetAchievementProgression(FName Name, float CompletionRatio)
@@ -2770,10 +2774,27 @@ void AFlarePlayerController::WheelPressed()
 				&& GetCompany()->IsTechnologyUnlocked("auto-docking"))
 			{
 				MouseMenu->AddWidget("Trade_Button", LOCTEXT("Trade", "Trade"),
-					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::StartTrading));
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::StartTrading));
 			}
 
 			// Fleet controls
+			if (ShipPawn->GetDescription()->IsDroneCarrier)
+			{
+				if (ShipPawn->GetParent()->GetShipChildren().Num() > 0)
+				{
+					if (ShipPawn->GetWantUndockInternalShips())
+					{
+						MouseMenu->AddWidget("Mouse_Flee", LOCTEXT("RetrieveDrones", "Retrieve Drones"),
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::RetrieveDrones));
+					}
+					else
+					{
+						MouseMenu->AddWidget("Mouse_MatchSpeed", LOCTEXT("LaunchDrones", "Launch Drones"),
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::LaunchDrones));
+					}
+				}
+			}
+
 			if (ShipPawn->IsMilitary())
 			{
 				MouseMenu->AddWidget("Mouse_ProtectMe", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::ProtectMe),
@@ -2791,9 +2812,19 @@ void AFlarePlayerController::WheelPressed()
 	}
 }
 
+void AFlarePlayerController::LaunchDrones()
+{
+	ShipPawn->SetWantUndockInternalShips(true);
+}
+
+void AFlarePlayerController::RetrieveDrones()
+{
+	ShipPawn->SetWantUndockInternalShips(false);
+}
+
+
 void AFlarePlayerController::WheelReleased()
 {
-//	if (GetGame()->IsLoadedOrCreated() && MenuManager && !MenuManager->IsUIOpen() && GetNavHUD()->IsWheelMenuOpen())
 	if (GetGame()->IsLoadedOrCreated() && MenuManager && GetNavHUD()->IsWheelMenuOpen())
 	{
 		GetNavHUD()->SetWheelMenu(false);

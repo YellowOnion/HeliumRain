@@ -431,7 +431,7 @@ struct FFlareSpacecraftSlotGroupDescription
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RestrictedWeapons;
 
 	/** Name of default weapon for this weapon group*/
-	FName DefaultWeapon;
+	UPROPERTY(EditAnywhere, Category = Content) FName DefaultWeapon;
 };
 
 /** Catalog binding between FFlareSpacecraftDescription and FFlareSpacecraftComponentDescription structure */
@@ -701,7 +701,10 @@ struct FFlareSpacecraftDescription
 
 	/** Launching delay of carrier ships*/
 	UPROPERTY(EditAnywhere, Category = Content) float DroneLaunchDelay;
-	
+
+	/** How close a drone needs to get before it can dock. 125 is the default*/
+	UPROPERTY(EditAnywhere, Category = Content) float DroneDockRadius;
+
 	/** If this is a drone it is not buildable via shipyards and has a different method*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
 
@@ -711,8 +714,13 @@ struct FFlareSpacecraftDescription
 	/** This ship is disabled but it will override the stats of an older version that was found with this ones. Useful if rebalancing ships that your mod doesn't have the models etc for*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
 
+	/** Disables this entry if the designated mod isn't detected*/
+	UPROPERTY(EditAnywhere, Category = Content) FString IsDisabledIfModNotLoaded;
+
 	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
 	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
+
+//	HarmonicResonance
 
 	/** All required unlocked technologies to build station or ship.*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
@@ -877,6 +885,10 @@ struct FFlareSpacecraftSave
 	/** Ship angular velocity */
 	UPROPERTY(EditAnywhere, Category = Save)
 		FVector AngularVelocity;
+
+	/** Ship angular velocity */
+	UPROPERTY(EditAnywhere, Category = Save)
+		bool WantUndockInternalShips;
 
 	/** Ship immatriculation. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)

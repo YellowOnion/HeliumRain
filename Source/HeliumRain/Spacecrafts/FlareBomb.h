@@ -106,8 +106,7 @@ public:
 	void OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal);
 
 	/** Bomb detonated */
-	void OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal);
-
+	void OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal, UFlareCompany* DamageSourceCompany);
 	/** Attach bomb */
 	void AttachBomb(AFlareSpacecraft* HitSpacecraft);
 

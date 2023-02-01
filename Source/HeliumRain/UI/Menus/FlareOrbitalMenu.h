@@ -64,6 +64,9 @@ public:
 
 	void RequestOrbitalFleetsUpdate();
 
+	void UpdateSectorBattleStates();
+	void UpdateSectorStates();
+
 	/** Get the display mode */
 	EFlareOrbitalMode::Type GetDisplayMode() const;
 

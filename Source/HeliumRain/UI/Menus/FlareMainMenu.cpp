@@ -319,7 +319,6 @@ void SFlareMainMenu::Enter()
 	
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
-	CheckActivePlugins();
 }
 
 void SFlareMainMenu::Exit()
@@ -422,24 +421,11 @@ FText SFlareMainMenu::GetButtonText(int32 Index) const
 	return (Game->DoesSaveSlotExist(Index) ? LOCTEXT("Load", "Load game") : LOCTEXT("Create", "New game"));
 }
 
-void SFlareMainMenu::CheckActivePlugins()
-{
-	TArray<FString> ModStrings;
-	for (TSharedRef<IPlugin> Plugin : IPluginManager::Get().GetEnabledPlugins())
-	{
-		if (Plugin->GetType() == EPluginType::Mod)
-		{
-			ModStrings.Add(Plugin->GetName());
-		}
-	}
-	MenuManager->SetModStrings(ModStrings);
-}
-
 FText SFlareMainMenu::GetModInfo() const
 {
 	FString ModString;
 
-	for (FString MenuModStrings : MenuManager->GetModStrings())
+	for (FString MenuModStrings : Game->GetModStrings())
 	{
 		ModString += MenuModStrings + " ";
 	}

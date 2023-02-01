@@ -63,7 +63,6 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 	// Station-building
 	else
 	{
-		//		FCHECK(TargetSector);
 		ProductionTime = Desc->CycleCost.ProductionTime;
 	}
 
@@ -97,7 +96,9 @@ void SFlareSpaceCraftOverlayInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(Desc->Name)
-		.TextStyle(&Theme.NameFont)
+//			.Text(FText::FromName(Desc->Identifier))
+//			.Text(Desc->ImmatriculationCode)
+			.TextStyle(&Theme.NameFont)
 		]
 
 	+ SVerticalBox::Slot()
@@ -215,83 +216,88 @@ EVisibility SFlareSpaceCraftOverlayInfo::GetProductionTimeVisibility() const
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 {
-	// Ship description
-	if (Desc->TurretSlots.Num())
+	uint32 CargoBayCount = Desc->CargoBayCount;
+	uint32 CargoBayCapacity = Desc->CargoBayCapacity;
+
+	FText ShipDesignation;
+	FText Drones;
+	FText GunsandTurrets;
+	FText CargoInfo;
+	
+	bool GunsAndTurretsSet = false;
+
+	if (Desc->DroneMaximum)
 	{
-		uint32 CargoBayCount = Desc->CargoBayCount;
-		uint32 CargoBayCapacity = Desc->CargoBayCapacity;
-		if (Desc->IsStation())
-		{
-			if (CargoBayCount&&CargoBayCapacity)
-			{
-				return FText::Format(LOCTEXT("FactoryWeaponGunFormatCargoStation", "({0} turrets, {1} combat value, {2}x{3} cargo units)"),
-					FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints),
-					FText::AsNumber(CargoBayCount),
-					FText::AsNumber(CargoBayCapacity));
-			}
-			else
-			{
-				return FText::Format(LOCTEXT("FactoryWeaponTurretFormatStation", "({0} turrets, {1} combat value)"),
-					FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints));
-			}
-		}
-		else if (CargoBayCount&&CargoBayCapacity && !TargetSkirmish)
-		{
-			return FText::Format(LOCTEXT("FactoryWeaponGunFormatCargo", "(Military ship, {0} turrets, {1} combat value, {2}x{3} cargo units)"),
-				FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints),
-				FText::AsNumber(CargoBayCount),
-				FText::AsNumber(CargoBayCapacity));
-		}
-		else
-		{
-			return FText::Format(LOCTEXT("FactoryWeaponTurretFormat", "(Military ship, {0} turrets, {1} combat value)"),
-				FText::AsNumber(Desc->TurretSlots.Num()), FText::AsNumber(Desc->CombatPoints));
-		}
+		Drones = FText::Format(LOCTEXT("Drones", "{0} drones, "),
+		FText::AsNumber(Desc->DroneMaximum));
 	}
-	else if (Desc->GunSlots.Num())
+
+	if (!Desc->IsStation())
 	{
-		uint32 CargoBayCount = Desc->CargoBayCount;
-		uint32 CargoBayCapacity = Desc->CargoBayCapacity;
-		if (Desc->IsStation())
+		if (Desc->GunSlots.Num() || Desc->TurretSlots.Num())
 		{
-			if (CargoBayCount && CargoBayCapacity)
-			{
-				return FText::Format(LOCTEXT("FactoryWeaponGunFormatCargoStation", "({0} gun slots, {1} combat value, {2}x{3} cargo units)"),
-					FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints),
-					FText::AsNumber(CargoBayCount),
-					FText::AsNumber(CargoBayCapacity));
-			}
-			else
-			{
-				return FText::Format(LOCTEXT("FactoryWeaponGunFormatStation", "({0} gun slots, {1} combat value)"),
-					FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints));
-			}
+			ShipDesignation = LOCTEXT("MilitaryShip", "Military Ship (");
 		}
-		else if (CargoBayCount && CargoBayCapacity && !TargetSkirmish)
+		else if (CargoBayCount > 0 || CargoBayCapacity > 0)
 		{
-			return FText::Format(LOCTEXT("FactoryWeaponGunFormatCargo", "(Military ship, {0} gun slots, {1} combat value, {2}x{3} cargo units)"),
-				FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints),
-				FText::AsNumber(CargoBayCount),
-				FText::AsNumber(CargoBayCapacity));
+			ShipDesignation = LOCTEXT("TradeShip", "Trade Ship (");
 		}
-		else
-		{
-			return FText::Format(LOCTEXT("FactoryWeaponGunFormat", "(Military ship, {0} gun slots, {1} combat value)"),
-				FText::AsNumber(Desc->GunSlots.Num()), FText::AsNumber(Desc->CombatPoints));
-		}
-	}
-	else if (Desc->IsStation())
-	{
-		return FText::Format(LOCTEXT("FactoryTraderFormatStation", "({0}x{1} cargo units)"),
-			FText::AsNumber(Desc->CargoBayCount),
-			FText::AsNumber(Desc->CargoBayCapacity));
 	}
 	else
 	{
-		return FText::Format(LOCTEXT("FactoryTraderFormat", "(Trading ship, {0}x{1} cargo units)"),
-			FText::AsNumber(Desc->CargoBayCount),
-			FText::AsNumber(Desc->CargoBayCapacity));
+		if (Desc->GunSlots.Num() || Desc->TurretSlots.Num())
+		{
+			ShipDesignation = LOCTEXT("MilitaryStation", "Militarized Station (");
+		}
+		else
+		{
+			ShipDesignation = LOCTEXT("Station", "Station (");
+		}
 	}
+
+	if (Desc->GunSlots.Num() || Desc->TurretSlots.Num())
+	{
+		GunsAndTurretsSet = true;
+		if (Desc->GunSlots.Num() && Desc->TurretSlots.Num())
+		{
+			GunsandTurrets = FText::Format(LOCTEXT("GunsAndTurrets", "{0}{1} guns, {2} turrets, {3} combat value"),
+			Drones,
+			FText::AsNumber(Desc->GunSlots.Num()),
+			FText::AsNumber(Desc->TurretSlots.Num()),
+			FText::AsNumber(Desc->CombatPoints));
+		}
+		else if (Desc->GunSlots.Num())
+		{
+			GunsandTurrets = FText::Format(LOCTEXT("GunSlots", "{0}{1} gun slots, {2} combat value"),
+			Drones,
+			FText::AsNumber(Desc->GunSlots.Num()),
+			FText::AsNumber(Desc->CombatPoints));
+		}
+		else
+		{
+			GunsandTurrets = FText::Format(LOCTEXT("GunSlots", "{0}{1} turrets, {2} combat value"),
+			Drones,
+			FText::AsNumber(Desc->TurretSlots.Num()),
+			FText::AsNumber(Desc->CombatPoints));
+		}
+	}
+
+	if (CargoBayCount > 0 || CargoBayCapacity > 0)
+	{
+		if (GunsAndTurretsSet)
+		{
+			GunsandTurrets = FText::Format(LOCTEXT("GunsAndTurretsFormatCargo", "{0}, "),
+			GunsandTurrets);
+		}
+		CargoInfo = FText::Format(LOCTEXT("CargoInformation", "{0}x{1} cargo units"),
+		FText::AsNumber(CargoBayCount),
+		FText::AsNumber(CargoBayCapacity));
+	}
+
+	return FText::Format(LOCTEXT("SpaceShipInfo", "{0}{1}{2})"),
+	ShipDesignation,
+	GunsandTurrets,
+	CargoInfo);
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseLeft() const
@@ -366,6 +372,16 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		OrbitalEngineIdentifier = FName("pod-thera");
 	}
 
+	if (Desc->DefaultRCS != NAME_None)
+	{
+		RCSIdentifier = Desc->DefaultRCS;
+	}
+
+	if (Desc->DefaultEngine != NAME_None)
+	{
+		OrbitalEngineIdentifier = Desc->DefaultEngine;
+	}
+
 	if (Desc->RCSCount > 0)
 	{
 		for (int32 i = 0; i < Desc->RCSCount; i++)
@@ -408,6 +424,9 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		}
 	}
 
+//	FString InternalCompString;
+//	FString InternalCompRightString;
+
 	if (Desc->InternalComponentSlots.Num() > 0)
 	{
 		for (int32 SlotIndex = 0; SlotIndex < Desc->InternalComponentSlots.Num(); SlotIndex++)
@@ -419,6 +438,23 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentIdentifier);
 				if (ComponentDescription)
 				{
+/*
+					if (InternalCompString.Len())
+					{
+						InternalCompString += "\n";
+					}
+
+					InternalCompString += FString::Printf(TEXT("%s - %s"), *SlotDescription->SlotIdentifier.ToString(), *SlotDescription->ComponentIdentifier.ToString());
+					if (SlotDescription->PoweredComponents.Num() > 0)
+					{
+						InternalCompRightString += FString::Printf(TEXT("\n \n %s\n \n"), *SlotDescription->SlotIdentifier.ToString());
+						for (int32 PowerSlotIndex = 0; PowerSlotIndex < SlotDescription->PoweredComponents.Num(); PowerSlotIndex++)
+						{
+							FName PoweredSlot = SlotDescription->PoweredComponents[PowerSlotIndex];
+							InternalCompRightString += FString::Printf(TEXT("%s\n"), *PoweredSlot.ToString());
+						}
+					}
+*/
 					HitPoints += ComponentDescription->HitPoints;
 					ArmourPoints += ComponentDescription->Armor;
 					Heatsink += ComponentDescription->GeneralCharacteristics.HeatSink;
@@ -463,6 +499,9 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			}
 		}
 	}
+
+//	FString TurretAngleStrings;
+
 	if (Desc->TurretSlots.Num() > 0)
 	{
 		for (int32 SlotIndex = 0; SlotIndex < Desc->TurretSlots.Num(); SlotIndex++)
@@ -475,7 +514,28 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 				{
 					ComponentIdentifier = DefaultTurretIdentifier;
 				}
+/*
+				if (TurretAngleStrings.Len())
+				{
+					TurretAngleStrings += ", ";
+				}
 
+				TurretAngleStrings += FString::Printf(TEXT("%s "), *SlotDescription->SlotIdentifier.ToString());
+
+				for (int32 BarrelAngles = 0; BarrelAngles < SlotDescription->TurretBarrelsAngleLimit.Num(); BarrelAngles++)
+				{
+					float Value = SlotDescription->TurretBarrelsAngleLimit[BarrelAngles];
+					if (BarrelAngles == 0)
+					{
+						
+						TurretAngleStrings += FString::Printf(TEXT("%f"), Value);
+					}
+					else
+					{
+						TurretAngleStrings += FString::Printf(TEXT(", %f"), Value);
+					}
+				}
+*/
 				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentIdentifier);
 				if (ComponentDescription)
 				{
@@ -518,6 +578,10 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	FText ComponentCargoTextRight;
 	FText TotalAmmoCapacityText;
 	FText TotalAmmoCapacityTextRight;
+
+//	FText TurretAngles = FText::FromString(TurretAngleStrings);
+//	FText InternalCompsLeft = FText::FromString(InternalCompString);
+//	FText InternalCompsRight = FText::FromString(InternalCompRightString);
 
 	if (HitPoints > 0)
 	{
@@ -681,6 +745,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		LinearMaxVelocity,
 		DroneMax,
 		InternalComponents);
+//		InternalCompsLeft);
+//		TurretAngles);
 
 	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}"),
 		MassRight,
@@ -691,6 +757,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		LinearMaxVelocityRight,
 		DroneMaxRight,
 		InternalComponentsRight);
+//		InternalCompsRight);
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
@@ -912,11 +979,7 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 			}
 			else
 			{
-				//				// Production time
-				//				ProductionTime = TargetShipyard->GetShipProductionTime(Desc->Identifier);
-				//				ProductionTime += TargetShipyard->GetEstimatedQueueAndProductionDuration(Desc->Identifier, -1);
-
-								// Production cost
+				// Production cost
 				if (MenuManager->GetPC()->GetCompany() == TargetShipyard->GetCompany())
 				{
 					ProductionCost = FText::Format(LOCTEXT("FactoryProductionResourcesFormat", "\u2022 {0}"), TargetShipyard->GetShipCost(Desc->Identifier));

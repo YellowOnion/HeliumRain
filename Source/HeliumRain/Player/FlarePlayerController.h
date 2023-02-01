@@ -53,7 +53,7 @@ public:
 
 	/** Is the player ship being targeted ? Get one of the attackers too. */
 	void GetPlayerShipThreatStatus(bool& IsTargeted, bool& IsFiredUpon, bool& CollidingSoon, bool& ExitingSoon, bool& LowHealth, UFlareSimulatedSpacecraft*& Threat) const;
-	
+
 	/** Update a sector */
 	void CheckSectorStateChanges(UFlareSimulatedSector* Sector);
 
@@ -62,6 +62,8 @@ public:
 
 	/** Set the current progress of an achievement */
 	void SetAchievementProgression(FName Name, float CompletionRatio);
+
+	bool UpdateOrbitalBattleStatesIfOpen();
 
 	/** Increment the current progress of an achievement */
 	void IncrementAchievementProgression(FName Name, float AddedRatio);
@@ -402,6 +404,8 @@ public:
 	/** trade with the station we're docked to */
 	void StartTrading();
 
+	void LaunchDrones();
+	void RetrieveDrones();
 
 protected:
 	

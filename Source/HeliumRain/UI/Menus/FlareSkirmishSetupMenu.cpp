@@ -1442,7 +1442,7 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 		{
 			// Find best weapons against specific archetypes
 			FFlareSpacecraftDescription* ConstDescription = const_cast<FFlareSpacecraftDescription*>(Order->Description);
-			FFlareSpacecraftSlotGroupDescription* SlotGroupDescription = &ConstDescription->WeaponGroups[Index];
+			FFlareSpacecraftSlotGroupDescription* SlotGroupDescription = &ConstDescription->WeaponGroups[WeaponIndex];
 
 			TArray<FFlareSpacecraftComponentDescription*> WeaponList;
 			PartsCatalog->GetWeaponList(WeaponList, Order->Description->Size, NULL, Order->Description->Identifier, SlotGroupDescription);
@@ -1549,7 +1549,6 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 
 	// Prepare data
 	FText Text = LOCTEXT("PickComponentFormat", "{0}\n({1} value)");
-	FText HelpText = LOCTEXT("PickComponentHelp", "Upgrade with this component");
 
 	// Reset lists
 	OrbitalEngineBox->ClearChildren();
@@ -1565,6 +1564,12 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 	for (auto Engine : PartList)
 	{
 		FLinearColor Color = (Order->EngineType == Engine->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
+		
+//		FText HelpText = LOCTEXT("PickComponentHelp", "Upgrade with this component");
+
+		FText HelpText = FText::Format(LOCTEXT("PickComponentHelp", "Upgrade with this component.\n\
+\n\
+{0}"), Engine->Description);
 
 		OrbitalEngineBox->InsertSlot(0)
 		.Padding(FMargin(0, 10))
@@ -1585,6 +1590,10 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 	for (auto RCS : PartList)
 	{
 		FLinearColor Color = (Order->RCSType == RCS->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
+
+		FText HelpText = FText::Format(LOCTEXT("PickComponentHelp", "Upgrade with this component.\n\
+\n\
+{0}"), RCS->Description);
 
 		RCSBox->InsertSlot(0)
 		.Padding(FMargin(0, 10))
@@ -1607,7 +1616,7 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 		
 		PartList.Empty();
 		Catalog->GetWeaponList(PartList, Desc->Size, NULL, Desc->Identifier, SlotGroupDescription);
-					
+
 		TSharedPtr<SVerticalBox> WeaponSlot;
 		WeaponBox->AddSlot()
 		[
@@ -1622,6 +1631,10 @@ void SFlareSkirmishSetupMenu::OnUpgradeSpacecraft(TSharedPtr<FFlareSkirmishSpace
 		{
 			FText NameText = FText::Format(Text, Weapon->Name, FText::AsNumber(Weapon->CombatPoints));
 			FLinearColor Color = (Order->WeaponTypes[Index] == Weapon->Identifier) ? Theme.FriendlyColor : Theme.NeutralColor;
+
+			FText HelpText = FText::Format(LOCTEXT("PickComponentHelp", "Upgrade with this component.\n\
+\n\
+{0}"), Weapon->Description);
 
 			WeaponSlot->AddSlot()
 			.Padding(FMargin(0, 10))

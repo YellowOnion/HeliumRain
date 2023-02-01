@@ -463,7 +463,7 @@ public:
 	virtual void OnRepaired();
 
 	/** Create a damaged effect */
-	virtual void StartDestroyedEffects();
+	virtual void StartDestroyedEffects(bool Frominitialization);
 
 	/** Spawn damage effects */
 	virtual void StartDamagedEffect(FVector Location, FRotator Rotation, EFlarePartSize::Type WeaponSize);

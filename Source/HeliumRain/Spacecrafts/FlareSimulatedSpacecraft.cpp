@@ -56,11 +56,17 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	SpacecraftDescription = Game->GetSpacecraftCatalog()->Get(Data.Identifier);
 
 	// Initialize damage system
-	DamageSystem = NewObject<UFlareSimulatedSpacecraftDamageSystem>(this, UFlareSimulatedSpacecraftDamageSystem::StaticClass());
+	if (!DamageSystem)
+	{
+		DamageSystem = NewObject<UFlareSimulatedSpacecraftDamageSystem>(this, UFlareSimulatedSpacecraftDamageSystem::StaticClass());
+	}
 	DamageSystem->Initialize(this, &SpacecraftData);
 
 	// Initialize weapons system
-	WeaponsSystem = NewObject<UFlareSimulatedSpacecraftWeaponsSystem>(this, UFlareSimulatedSpacecraftWeaponsSystem::StaticClass());
+	if (!WeaponsSystem)
+	{
+		WeaponsSystem = NewObject<UFlareSimulatedSpacecraftWeaponsSystem>(this, UFlareSimulatedSpacecraftWeaponsSystem::StaticClass());
+	}
 	WeaponsSystem->Initialize(this, &SpacecraftData);
 
 	// Initialize complex
@@ -217,7 +223,6 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		ConstructionCargoBay = nullptr;
 	}
 
-
 	if (!IsComplexElement() && IsUnderConstruction())
 	{
 		AutoFillConstructionCargoBay();
@@ -315,9 +320,13 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		for (FName OwnedShips : SpacecraftData.OwnedShipNames)
 		{
 			UFlareSimulatedSpacecraft* ChildShip = Company->FindSpacecraft(OwnedShips);
-			if (ChildShip)
+			if (ChildShip && !ChildShip->IsDestroyed())
 			{
 				AddShipChildren(ChildShip);
+			}
+			else
+			{
+				SpacecraftData.OwnedShipNames.Remove(OwnedShips);
 			}
 		}
 	}
@@ -510,7 +519,6 @@ void UFlareSimulatedSpacecraft::SetCurrentSector(UFlareSimulatedSector* Sector)
 
 void UFlareSimulatedSpacecraft::TryMigrateDrones()
 {
-//	UFlareSimulatedSector* CurrentSector = this->GetCurrentSector();
 	if (CurrentSector)
 	{
 		for (UFlareSimulatedSpacecraft* SectorShip : CurrentSector->GetSectorShips())
@@ -520,7 +528,7 @@ void UFlareSimulatedSpacecraft::TryMigrateDrones()
 				continue;
 			}
 
-			int32 ActiveShipyards = SectorShip->GetShipChildren().Num();
+			int32 ActiveShipyards = 0;
 			for (UFlareFactory* Shipyard : SectorShip->GetShipyardFactories())
 			{
 				if (Shipyard->IsProducing())
@@ -529,27 +537,22 @@ void UFlareSimulatedSpacecraft::TryMigrateDrones()
 				}
 			}
 
-			if (ActiveShipyards < SectorShip->GetDescription()->DroneMaximum)
+			if ((ActiveShipyards + SectorShip->ShipChildren.Num()) < SectorShip->GetDescription()->DroneMaximum)
 			{
-				this->SetOwnerShip(SectorShip);
+				SetOwnerShip(SectorShip);
 				SectorShip->GetCurrentFleet()->AddShip(this);
 				return;
 			}
 		}
-	}
 
-	AFlareSpacecraft* ActiveShip =  this->GetActive();
-	if (ActiveShip)
-	{
-		UFlareSpacecraftDamageSystem* Damagesystem = ActiveShip->GetDamageSystem();
-		if (Damagesystem)
+		if (GetActive())
 		{
-			// for possible localized explosion effects or something
-			ActiveShip->GetDamageSystem()->SetDead();
+			GetActive()->GetDamageSystem()->SetDead();
 			return;
 		}
 	}
-//	this->GetDamageSystem()->SetDead();
+
+	GetDamageSystem()->SetDead();
 }
 
 /*----------------------------------------------------
@@ -1162,8 +1165,18 @@ void UFlareSimulatedSpacecraft::Stabilize()
 		SpacecraftData.LinearVelocity = FVector::ZeroVector;
 		SpacecraftData.AngularVelocity = FVector::ZeroVector;
 
-		float Limits = UFlareSector::GetSectorLimits();
+//		float Limits = UFlareSector::GetSectorLimits();
+		float Limits = GetCurrentSector()->GetSectorLimits();
 		float Distance = SpacecraftData.Location.Size();
+
+		if (GetCurrentSector())
+		{
+			Limits = GetCurrentSector()->GetSectorLimits();
+		}
+		else if (GetCurrentFleet()->GetCurrentTravel() && GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector())
+		{
+			Limits = GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector()->GetSectorLimits();
+		}
 
 		if(Distance > Limits)
 		{
@@ -1296,24 +1309,25 @@ void UFlareSimulatedSpacecraft::SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShi
 				UFlareSimulatedSpacecraft* OldOwnerShip = this->ShipMaster;
 				FFlareSpacecraftSave& OldOwnerData = OldOwnerShip->GetData();
 				OldOwnerShip->AddShipChildren(this,true);
-				if (OldOwnerData.OwnedShipNames.Find(this->GetImmatriculation()) == INDEX_NONE)
-				{
-					OldOwnerData.OwnedShipNames.Remove(this->GetImmatriculation());
-				}
+				OldOwnerData.OwnedShipNames.Remove(this->GetImmatriculation());
 			}
 
 			OwnerShip->AddShipChildren(this);
 
 			SpacecraftData.OwnerShipName = OwnerShip->GetImmatriculation();
 			FFlareSpacecraftSave& NewOwnerData = OwnerShip->GetData();
-			if (NewOwnerData.OwnedShipNames.Find(this->GetImmatriculation()) == INDEX_NONE)
-			{
-				NewOwnerData.OwnedShipNames.Add(this->GetImmatriculation());
-			}
+			NewOwnerData.OwnedShipNames.AddUnique(this->GetImmatriculation());
 		}
 	}
 	else
 	{
+		if (this->ShipMaster != NULL)
+		{
+			UFlareSimulatedSpacecraft* OldOwnerShip = this->ShipMaster;
+			FFlareSpacecraftSave& OldOwnerData = OldOwnerShip->GetData();
+			OldOwnerShip->AddShipChildren(this, true);
+			OldOwnerData.OwnedShipNames.Remove(this->GetImmatriculation());
+		}
 		SpacecraftData.OwnerShipName = NAME_None;
 	}
 }
@@ -2624,12 +2638,17 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 		Efficiency = (1.f - Coef) * DamageRatio + Coef;
 	}
 
-	if (!OwnerHasStationLicense)
+	if (!OwnerHasStationLicense && IsStation())
 	{
 		//note: -1.f efficiency = 10X slower production
 		Efficiency = Efficiency -0.25f;
 	}
 
+	if (CurrentFleet && CurrentFleet->IsTraveling())
+	{
+		//carriers which are traveling build a little slower, no help from locals perhaps?
+		Efficiency = Efficiency - 0.10f;
+	}
 	return Efficiency;
 }
 

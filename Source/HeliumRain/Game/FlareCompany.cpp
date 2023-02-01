@@ -277,10 +277,8 @@ void UFlareCompany::Simulate()
 
 void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 {
-	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
-
 	TArray<UFlareSimulatedSpacecraft*> CompanyCarriersLocal = CompanyCarriers;
-	while (CompanyCarriersLocal.Num())
+	while (CompanyCarriersLocal.Num() > 0)
 	{
 		int32 Index = FMath::RandRange(0, CompanyCarriersLocal.Num() - 1);
 		UFlareSimulatedSpacecraft* Ship = CompanyCarriersLocal[Index];
@@ -296,7 +294,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 		TArray<FFlareResourceDescription*> InputResources;
 		TArray<UFlareFactory*> Shipyards = Ship->GetShipyardFactories();
 
-		int32 ActiveShipyards = 1;
+		int32 ActiveShipyards = 0;
 		for (UFlareFactory* Shipyard : Shipyards)
 		{
 			if (Shipyard->IsProducing())
@@ -308,7 +306,6 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 				FFlareResourceDescription* Resource = Shipyard->GetInputResource(ResourceIndex);
 				InputResources.AddUnique(Resource);
 			}
-
 		}
 
 		if (Ship->IsAllowAutoConstruction())
@@ -317,7 +314,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 			bool CheckingOrders = true;
 			while (1)
 			{
-				if (CurrentCount + ActiveShipyards > Ship->GetDescription()->DroneMaximum)
+				if (CurrentCount + ActiveShipyards >= Ship->GetDescription()->DroneMaximum)
 				{
 					break;
 				}
@@ -336,6 +333,10 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 				if (!Ship->ShipyardOrderShip(this, SelectedName, false))
 				{
 					break;
+				}
+				else
+				{
+					ActiveShipyards++;
 				}
 			}
 		}
@@ -383,6 +384,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 						}
 					}
 
+					bool SuccessfulTrade = false;
 					if (LowestResource)
 					{
 						UFlareSimulatedSpacecraft* BestStation = NULL;
@@ -414,22 +416,18 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 									{
 										BestCompanyStation = BuyingStation;
 										BestStationCompanyQuantity = Stock;
-		//								FLOGV("Found Company station");
 									}
 								}
 								else if (!BestStation || Stock > BestStationQuantity)
 								{
 									BestStation = BuyingStation;
 									BestStationQuantity = Stock;
-		//							FLOGV("Found Best Station");
 								}
 							}
 						}
 
-		//				FLOGV("After main loop...checking statements");
 						if (BestCompanyStation && !BestStation && BestStationCompanyQuantity > 0)
 						{
-		//					FLOGV("Dealing to company station");
 							int32 Quantity = SectorHelper::Trade(BestCompanyStation,
 								Ship,
 								LowestResource,
@@ -438,10 +436,13 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 								NULL,
 								false,
 								1);
+							if (Quantity > 0)
+							{
+								SuccessfulTrade = true;
+							}
 						}
 						else if (BestCompanyStation && BestStation)
 						{
-		//					FLOGV("Dealing to...");
 							int32 ResourcePrice = LocalSector->GetTransfertResourcePrice(BestStation, Ship, LowestResource);
 							int32 MaxAffordableQuantity = FMath::Max(0, int32(this->GetMoney() / ResourcePrice));
 							BestStationQuantity = FMath::Min(BestStationQuantity, MaxAffordableQuantity);
@@ -450,7 +451,6 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 							if (Ratio >= 0.50f)
 							{
-		//						FLOGV("Company");
 								//trade company
 								int32 Quantity = SectorHelper::Trade(BestCompanyStation,
 									Ship,
@@ -460,10 +460,13 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 									NULL,
 									false,
 									1);
+								if (Quantity > 0)
+								{
+									SuccessfulTrade = true;
+								}
 							}
 							else
 							{
-		//						FLOGV("Other");
 								//trade other
 								int32 Quantity = SectorHelper::Trade(BestStation,
 									Ship,
@@ -473,11 +476,15 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 									NULL,
 									false,
 									1);
+								if (Quantity > 0)
+								{
+									SuccessfulTrade = true;
+								}
+
 							}
 						}
 						else if (BestStation && BestStationQuantity > 0)
 						{
-		//					FLOGV("Dealing to best station");
 							int32 Quantity = SectorHelper::Trade(BestStation,
 								Ship,
 								LowestResource,
@@ -486,13 +493,23 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 								NULL,
 								false,
 								1);
+							if (Quantity > 0)
+							{
+								SuccessfulTrade = true;
+							}
 						}
+					}
+					if (!SuccessfulTrade && this != this->GetGame()->GetPC()->GetCompany())
+					{
+						CompanyAI->UpdateNeedyCarrierMovement(Ship, InputResources);
 					}
 				}
 			}
 		}
 		CompanyCarriersLocal.RemoveSwap(Ship);
 	}
+
+	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
 }
 
 void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
@@ -500,7 +517,6 @@ void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
 	if (CapturedStation)
 	{
 		GetAI()->CapturedStation(CapturedStation);
-//		AddOrRemoveCompanySectorStation(CapturedStation, false);
 		CheckStationLicenseStateStation(CapturedStation);
 	}
 }
@@ -608,11 +624,11 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 	if (TargetCompany && TargetCompany != this)
 	{
 		bool WasHostile = CompanyData.HostileCompanies.Contains(TargetCompany->GetIdentifier());
+		UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
+
 		if (Hostile && !WasHostile)
 		{
 			CompanyData.HostileCompanies.AddUnique(TargetCompany->GetIdentifier());
-			
-			UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
 			if (TargetCompany == PlayerCompany)
 			{
 				if (PlayerCompany->GetHostility(this) != EFlareHostility::Hostile)
@@ -627,7 +643,6 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 						EFlareMenu::MENU_Leaderboard,
 						Data);
 				}
-
 				PlayerCompany->SetHostilityTo(this, true);
 			}
 
@@ -701,9 +716,6 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 		else if(!Hostile && WasHostile)
 		{
 			CompanyData.HostileCompanies.Remove(TargetCompany->GetIdentifier());
-
-			UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
-
 			if(this == PlayerCompany)
 			{
 				TargetCompany->ResetLastPeaceDate();
@@ -741,6 +753,18 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 			{
 				Game->GetQuestManager()->OnWarStateChanged(this, TargetCompany);
 			}
+		}
+
+		if (TargetCompany == PlayerCompany || this == PlayerCompany)
+		{
+			Game->GetPC()->UpdateOrbitalBattleStatesIfOpen();
+		}
+
+		UFlareSector* ActiveSector = Game->GetActiveSector();
+		if (ActiveSector)
+		{
+			ActiveSector->GetSimulatedSector()->UpdateSectorBattleState(TargetCompany);
+			ActiveSector->GetSimulatedSector()->UpdateSectorBattleState(this);
 		}
 	}
 }
@@ -1057,6 +1081,11 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 		CompanyCarriers.Remove(Spacecraft);
 	}
 
+	if (Spacecraft->GetShipMaster())
+	{
+		Spacecraft->SetOwnerShip(NULL);
+	}
+
 	TArray<UFlareSimulatedSpacecraft*> StepChildren = Spacecraft->GetShipChildren();
 	if (StepChildren.Num() > 0)
 	{
@@ -1293,10 +1322,39 @@ bool UFlareCompany::WantWarWith(UFlareCompany* TargetCompany)
 			return true;
 		}
 	}
-	else if (PlayerCompany->GetCompanyValue().ArmyCurrentCombatPoints < Game->GetGameWorld()->GetTotalWorldCombatPoint() / 4)
+	else
 	{
-		float MyWeight = ComputeCompanyDiplomaticWeight();
-		return TargetCompany->ComputeCompanyDiplomaticWeight() > MyWeight;
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		float RequiredMultiplier = 1;
+
+		switch (GameDifficulty)
+		{
+		case -1: // Easy
+			RequiredMultiplier = 0.20;
+			break;
+		case 0: // Normal
+			RequiredMultiplier = 0.25;
+			break;
+		case 1: // Hard
+			RequiredMultiplier = 0.275;
+			break;
+		case 2: // Very Hard
+			RequiredMultiplier = 0.3025;
+			break;
+		case 3: // Expert
+			RequiredMultiplier = 0.33275;
+			break;
+		case 4: // Unfair
+			RequiredMultiplier = 0.366025;
+			break;
+		}
+
+		if (PlayerCompany->GetCompanyValue().ArmyCurrentCombatPoints < (Game->GetGameWorld()->GetTotalWorldCombatPoint() * RequiredMultiplier))
+		{
+			float MyWeight = ComputeCompanyDiplomaticWeight();
+			return TargetCompany->ComputeCompanyDiplomaticWeight() > MyWeight;
+		}
 	}
 
 	return false;
@@ -2083,8 +2141,6 @@ bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription*
 
 bool UFlareCompany::IsPartRestricted(const FFlareSpacecraftComponentDescription* Description, FName Ship) const
 {
-	FName Identifier = Description->Identifier;
-
 	if (Description->RestrictedShips.Num() > 0)
 	{
 		if (!Description->RestrictedShips.Contains(Ship))
@@ -2540,6 +2596,7 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	CompanyValue.StationsValue = 0;
 	CompanyValue.TotalDailyProductionCost = 0;
 	CompanyValue.TotalShipCount = 0;
+	CompanyValue.TotalDroneCount = 0;
 	CompanyValue.TotalShipCountMilitaryLSalvager = 0;
 	CompanyValue.TotalShipCountMilitarySSalvager = 0;
 	CompanyValue.TotalShipCountMilitaryS = 0;
@@ -2553,17 +2610,15 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 
 		UFlareSimulatedSector *ReferenceSector =  Spacecraft->GetCurrentSector();
 
-		if(SectorFilter && !IncludeIncoming && SectorFilter != ReferenceSector)
-		{
-			// Not in sector filter
-			continue;
-		}
-
 		if (!ReferenceSector)
 		{
 			if (Spacecraft->GetCurrentFleet() && Spacecraft->GetCurrentFleet()->GetCurrentTravel())
 			{
 				ReferenceSector = Spacecraft->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector();
+				if (!ReferenceSector)
+				{
+					ReferenceSector = Spacecraft->GetCurrentFleet()->GetCurrentTravel()->GetOldDestinationSector();
+				}
 			}
 			else
 			{
@@ -2579,6 +2634,11 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			continue;
 		}
 
+		if (!IsValid(ReferenceSector) || ReferenceSector == nullptr)
+		{
+			continue;
+		}
+
 		// Value of the spacecraft
 		int64 SpacecraftPrice = UFlareGameTools::ComputeSpacecraftPrice(Spacecraft->GetDescription()->Identifier, ReferenceSector, true);
 
@@ -2589,7 +2649,14 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 		else
 		{
 			CompanyValue.ShipsValue += SpacecraftPrice;
-			CompanyValue.TotalShipCount++;
+			if (Spacecraft->GetDescription()->IsDroneShip)
+			{
+				CompanyValue.TotalDroneCount++;
+			}
+			else
+			{
+				CompanyValue.TotalShipCount++;
+			}
 		}
 
 		if(Spacecraft->IsMilitary())

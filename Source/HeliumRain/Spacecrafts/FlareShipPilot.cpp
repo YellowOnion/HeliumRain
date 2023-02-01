@@ -35,7 +35,8 @@ DECLARE_CYCLE_STAT(TEXT("FlareShipPilot Flagship"), STAT_FlareShipPilot_Flagship
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot FindBestHostileTarget"), STAT_FlareShipPilot_FindBestHostileTarget, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ExitAvoidance"), STAT_FlareShipPilot_ExitAvoidance, STATGROUP_Flare);
 
-#define PILOT_AI_TICKRATE 0.033f
+#define PILOT_AI_TICKRATE_LARGE 0.025f
+
 #define PILOT_ANTICOLLISION_SPEED -200.f
 //Large ships get 4 subordinates = wing of 5 ships
 #define LEADER_SQUAD_LARGE 4
@@ -73,7 +74,6 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	MaxFollowDistance = 0;
 	LockTarget = false;
 	WantFire = false;
-	HasUndockedAllInternalShips = false;
 	InitiatedCombat = false;
 
 	TimeSinceLastDockingAttempt = 0.0f;
@@ -87,22 +87,28 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 
 void UFlareShipPilot::TickPilot(float DeltaSeconds)
 {
-	PreviousTick += DeltaSeconds;
-
-	if (PreviousTick < PILOT_AI_TICKRATE)
+	if (Ship->GetSize() == EFlarePartSize::L)
 	{
-		return;
+		PreviousTick += DeltaSeconds;
+		if (PreviousTick < PILOT_AI_TICKRATE_LARGE)
+		{
+			return;
+		}
+		PreviousTick -= PILOT_AI_TICKRATE_LARGE;
 	}
 
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Tick);
-	PreviousTick -= PILOT_AI_TICKRATE;
 
 	if (Ship->IsStation())
 	{
 			// Basic pilot for stations
-		if (Ship->IsCapableCarrier() && PilotTarget.IsValid())
+		if ((PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable()) || PilotTarget.BombTarget || PilotTarget.MeteoriteTarget)
 		{
-			CarrierReleaseInternalDockShips(DeltaSeconds);
+			Ship->SetWantUndockInternalShips(true);
+		}
+		else
+		{
+			Ship->SetWantUndockInternalShips(false);
 		}
 
 		if (Ship->IsMilitary())
@@ -119,11 +125,28 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 		AngularTargetVelocity = FVector::ZeroVector;
 		UseOrbitalBoost = true;
 
-		if (Ship->IsCapableCarrier() && PilotTarget.IsValid() && !HasUndockedAllInternalShips)
+		if (Ship->IsCapableCarrier() && PilotTarget.IsValid())
 		{
-			CarrierReleaseInternalDockShips(DeltaSeconds);
+			if ((PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable()) || PilotTarget.BombTarget || PilotTarget.MeteoriteTarget)
+			{
+				Ship->SetWantUndockInternalShips(true);
+			}
+			else
+			{
+				Ship->SetWantUndockInternalShips(false);
+			}
 		} 
-		else if (Ship->IsMilitary())
+
+		else if (Ship->GetParent()->GetShipMaster() && !Ship->GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
+		{
+			WantFire = false;
+			if (DroneReturnToCarrier(DeltaSeconds))
+			{
+				return;
+			}
+		}
+
+		if (Ship->IsMilitary())
 		{
 			MilitaryPilot(DeltaSeconds);
 		}
@@ -153,63 +176,32 @@ void UFlareShipPilot::Initialize(const FFlareShipPilotSave* Data, UFlareCompany*
 /*----------------------------------------------------
 	Pilot functions
 ----------------------------------------------------*/
-
-void UFlareShipPilot::CarrierReleaseInternalDockShips(float DeltaSeconds)
-{
-	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_CarrierRelease);
-	TimeBeforeNextInternalUndock -= DeltaSeconds;
-	if (TimeBeforeNextInternalUndock <= 0)
-	{
-		bool UndockedAShip = false;
-		for (UFlareSimulatedSpacecraft* OwnedShips : Ship->GetParent()->GetShipChildren())
-		{
-			if (!OwnedShips->IsActive() && OwnedShips->IsInternalDockedTo(Ship->GetParent()) && !OwnedShips->IsReserve())
-			{
-				if (OwnedShips->GetGame()->GetActiveSector() && OwnedShips->GetGame()->GetActiveSector()->GetSimulatedSector() == OwnedShips->GetCurrentSector())
-				{
-					OwnedShips->GetGame()->GetActiveSector()->LoadSpacecraft(OwnedShips);
-					UndockedAShip = true;
-					break;
-				}
-			}
-		}
-
-		if (Ship->GetParent()->GetDescription()->DroneLaunchDelay>0)
-		{
-			TimeBeforeNextInternalUndock = Ship->GetParent()->GetDescription()->DroneLaunchDelay;
-		}
-		else
-		{
-			TimeBeforeNextInternalUndock = 1;
-		}
-
-		if (!UndockedAShip)
-		{
-			HasUndockedAllInternalShips = true;
-		}
-	}
-}
-
-void UFlareShipPilot::SetUndockedAllShips(bool Set)
-{
-	HasUndockedAllInternalShips = Set;
-}
-
 bool UFlareShipPilot::DroneReturnToCarrier(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_ReturnToCarrier);
 	AFlareSpacecraft* LocalMaster = Ship->GetParent()->GetShipMaster()->GetActive();
 	if (LocalMaster)
 	{
+		if (Ship->GetNavigationSystem()->IsDocked())
+		{
+			Ship->GetNavigationSystem()->Undock();
+		}
+
 		FVector Location = LocalMaster->GetActorLocation();
 		FVector DeltaLocation = LocalMaster->GetActorLocation() - Ship->GetActorLocation();
 		float Distance = (DeltaLocation.Size() ) * 0.01f; // Distance in meters
-		if (Distance < 100)
+		float DroneDockRadius = Ship->GetParent()->GetShipMaster()->GetDescription()->DroneDockRadius;
+		if (!DroneDockRadius)
+		{
+			DroneDockRadius = 125;
+		}
+
+		if (Distance <= DroneDockRadius)
 		{
 			Ship->GetParent()->SetInternalDockedTo(Ship->GetParent()->GetShipMaster());
 			Ship->GetGame()->GetActiveSector()->RemoveSpacecraft(Ship);
 			Ship->SafeHide(false);
-			HasUndockedAllInternalShips = false;
+			LocalMaster->SetUndockedAllShips(false);
 			return true;
 		}
 
@@ -491,7 +483,7 @@ void UFlareShipPilot::CargoPilot(float DeltaSeconds)
 	}
 
 	//Cargo ships can "dock for repairs" if needed as long as they aren't already doing something
-	if (Ship->GetParent()->IsRepairing())
+	if (!Ship->GetParent()->GetShipMaster() && Ship->GetParent()->IsRepairing())
 	{
 		if (Ship->GetNavigationSystem()->IsDocked())
 		{
@@ -1312,14 +1304,6 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 
 	// If there is enemy fly away
 
-	if (Ship->GetParent()->GetShipMaster())
-	{
-		if (DroneReturnToCarrier(DeltaSeconds))
-		{
-			return;
-		}
-	}
-
 	FindPilotAvoidShip(DeltaSeconds);
 	// If enemy near, run away !
 	if (PilotAvoidShip)
@@ -1347,7 +1331,7 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 	else
 	{
 		// Ship is refilling or repairing, find a station to dock with
-		if (Ship->GetParent()->IsRefilling() || Ship->GetParent()->IsRepairing())
+		if (!Ship->GetParent()->GetShipMaster() && (Ship->GetParent()->IsRefilling() || Ship->GetParent()->IsRepairing()))
 		{
 			if (Ship->GetNavigationSystem()->IsDocked())
 			{
@@ -1397,7 +1381,6 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 		{
 			FollowLeaderShip();
 		}
-
 	}
 
 	AngularTargetVelocity = FVector::ZeroVector;
@@ -1438,6 +1421,12 @@ FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* TargetShip
 void UFlareShipPilot::FollowLeaderShip(int32 DefaultRadius)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_FollowLeaderShip);
+
+	if (Ship->IsCapableCarrier() && !Ship->GetHasUndockedInternalShips())
+	{
+		return;
+	}
+
 	// Follow the leader
 
 	if (Ship->GetCompany() == Ship->GetGame()->GetPC()->GetCompany())
@@ -1590,6 +1579,11 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 
 void UFlareShipPilot::FlagShipMovement(float DeltaSeconds)
 {
+	if (Ship->IsCapableCarrier() && !Ship->GetHasUndockedInternalShips())
+	{
+		return;
+	}
+
 	float TargetLocationToTargetShipDistance = (PilotTargetLocation - PilotTarget.GetActorLocation()).Size();
 	float TargetLocationToShipDistance = (PilotTargetLocation - Ship->GetActorLocation()).Size();
 

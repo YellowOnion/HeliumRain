@@ -436,6 +436,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	Data->SpawnMode = LoadEnum<EFlareSpawnMode::Type>(Object, "SpawnMode", "EFlareSpawnMode");
 	LoadVector(Object, "LinearVelocity", &Data->LinearVelocity);
 	LoadVector(Object, "AngularVelocity", &Data->AngularVelocity);
+	Object->TryGetBoolField(TEXT("WantUndockInternalShips"), Data->WantUndockInternalShips);
 	LoadFName(Object, "DockedTo", &Data->DockedTo);
 	LoadInt32(Object, "DockedAt", &Data->DockedAt);
 	LoadFName(Object, "DockedAtInternally", &Data->DockedAtInternally);

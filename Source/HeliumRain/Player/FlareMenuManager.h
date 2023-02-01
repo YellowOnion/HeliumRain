@@ -332,6 +332,8 @@ public:
 	/** Get the spacecraft menu */
 	TSharedPtr<SFlareShipMenu> GetShipMenu() const;
 
+	UFlareSimulatedSpacecraft* GetShipMenuTergetSpacecraft() const;
+
 	/** Get the Trade menu */
 	TSharedPtr<SFlareTradeMenu> GetTradeMenu() const;
 
@@ -388,9 +390,6 @@ public:
 
 	/** Get the menu manager */
 	static AFlareMenuManager* GetSingleton();
-
-	void SetModStrings(TArray<FString> ModStrings);
-	TArray<FString> GetModStrings() const;
 
 protected:
 

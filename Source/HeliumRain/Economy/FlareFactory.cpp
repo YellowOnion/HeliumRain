@@ -63,8 +63,7 @@ void UFlareFactory::Simulate()
 	{
 		goto post_prod;
 	}
-
-
+	
 	// Check if production is running
 	if (!IsNeedProduction())
 	{
@@ -94,13 +93,22 @@ void UFlareFactory::Simulate()
 			goto post_prod;
 		}
 
-		DoProduction();
+		if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
+		{
+			goto post_prod;
+		}
 
+		DoProduction();
 	}
 
 	TryBeginProduction();
 	if (GetProductionTime(GetCycleData()) == 0  && HasCostReserved())
 	{
+		if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
+		{
+			goto post_prod;
+		}
+
 		DoProduction();
 	}
 
@@ -579,7 +587,6 @@ void UFlareFactory::PerformCreateShipAction(const FFlareFactoryAction* Action)
 			// Get data
 			UFlareSimulatedSpacecraft* ParentTypecast = Parent;
 
-//			UFlareSimulatedSpacecraft* Spacecraft = Parent->GetCurrentSector()->CreateSpacecraft(ShipDescription, Company, SpawnPosition);
 			UFlareSimulatedSpacecraft* Spacecraft = Parent->GetCurrentSector()->CreateSpacecraft(ShipDescription, Company, SpawnPosition, FRotator::ZeroRotator, NULL, 0, false, NAME_None, Parent);	
 			AFlarePlayerController* PC = Parent->GetGame()->GetPC();
 			FFlareMenuParameterData Data;
@@ -664,7 +671,7 @@ TArray<UFlareSimulatedSector*> UFlareFactory::GetTelescopeTargetList()
 	TArray<UFlareSimulatedSector*> Candidates;
 	for (auto CandidateSector : Parent->GetGame()->GetGameWorld()->GetSectors())
 	{
-		if (!Company->IsKnownSector(CandidateSector) && !CandidateSector->GetDescription()->IsHiddenFromTelescopes)
+		if (!Company->IsKnownSector(CandidateSector) && !CandidateSector->GetDescription()->IsHiddenFromTelescopes && Parent->GetLevel() >= CandidateSector->GetDescription()->TelescopeDiscoveryLevel)
 		{
 			Candidates.Add(CandidateSector);
 		}
@@ -1006,6 +1013,19 @@ uint32 UFlareFactory::GetInputResourceQuantity(FFlareResourceDescription* Resour
 	return 0;
 }
 
+uint32 UFlareFactory::GetInputResourceQuantityCycles(FFlareResourceDescription* Resource)
+{
+	for (int32 ResourceIndex = 0; ResourceIndex < GetCycleData().InputResources.Num(); ResourceIndex++)
+	{
+		FFlareResourceDescription* ResourceCandidate = &GetCycleData().InputResources[ResourceIndex].Resource->Data;
+		if (ResourceCandidate == Resource)
+		{
+			return GetCycleData().InputResources[ResourceIndex].Quantity / GetCycleData().ProductionTime;
+		}
+	}
+	return -1;
+}
+
 uint32 UFlareFactory::GetOutputResourceQuantity(FFlareResourceDescription* Resource)
 {
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().OutputResources.Num() ; ResourceIndex++)
@@ -1016,7 +1036,6 @@ uint32 UFlareFactory::GetOutputResourceQuantity(FFlareResourceDescription* Resou
 			return GetCycleData().OutputResources[ResourceIndex].Quantity;
 		}
 	}
-
 	return 0;
 }
 

@@ -21,7 +21,7 @@ public:
 
 	virtual FFlareSpacecraftComponentSave* Save() override;
 
-	virtual void StartDestroyedEffects() override;
+	virtual void StartDestroyedEffects(bool Frominitialization) override;
 
 	virtual void GetBoundingSphere(FVector& Location, float& Radius) override;
 

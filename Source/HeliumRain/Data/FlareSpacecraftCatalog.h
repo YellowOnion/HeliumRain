@@ -5,7 +5,7 @@
 #include "../Spacecrafts/FlareSpacecraft.h"
 #include "FlareSpacecraftCatalog.generated.h"
 
-
+class AFlareGame;
 
 UCLASS()
 class HELIUMRAIN_API UFlareSpacecraftCatalog : public UObject
@@ -31,8 +31,12 @@ public:
 	/*----------------------------------------------------
 		Public methods
 	----------------------------------------------------*/
-	
+
+	void InitialSetup(AFlareGame* GameMode);
+
 	/** Get a ship from identifier */
 	FFlareSpacecraftDescription* Get(FName Identifier) const;
 	const void GetSpacecraftList(TArray<FFlareSpacecraftDescription*>& OutData);
+
+	void ReplaceOldEntrySettings(FFlareSpacecraftDescription* OldEntryDesc, UFlareSpacecraftCatalogEntry* Spacecraft);
 };

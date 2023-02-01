@@ -630,7 +630,7 @@ void AFlareShell::ProcessCurrentDetonations()
 					AFlareBomb* Bomb = Cast<AFlareBomb>(BestHitResult.Actor.Get());
 					if (Bomb)
 					{
-						Bomb->OnBombDetonated(nullptr, nullptr, BestHitResult.Location, BestHitResult.ImpactNormal);
+						Bomb->OnBombDetonated(nullptr, nullptr, BestHitResult.Location, BestHitResult.ImpactNormal,ParentWeapon->GetSpacecraft()->GetCompany());
 					}
 					else
 					{
@@ -1042,6 +1042,12 @@ void AFlareShell::Destroyed()
 	Super::Destroyed();
 }
 */
+
+UFlareWeapon* AFlareShell::GetParentWeapon()
+{
+	return ParentWeapon;
+}
+
 void AFlareShell::SetFuzeTimer(float TargetSecureTime, float TargetActiveTime)
 {
 	SecureTime = TargetSecureTime;

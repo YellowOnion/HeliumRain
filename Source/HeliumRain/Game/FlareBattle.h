@@ -55,6 +55,9 @@ protected:
 	AFlareGame*                             Game;
 	UFlareCompany*                          PlayerCompany;
 	UFlareSpacecraftComponentsCatalog*      Catalog;
+	TArray<UFlareCompany*>					FightingCompanies;
+	TArray<UFlareSimulatedSpacecraft*>		SectorViableFightingShips;
+	bool									CalculatedInitial;
 
 public:
 

@@ -427,12 +427,18 @@ void SFlareSpacecraftInfo::SetSpacecraft(UFlareSimulatedSpacecraft* Target)
 			if (Target->GetCompany() == PC->GetCompany())
 			{
 				InspectButton->SetText(LOCTEXT("InspectOwnedShipyard", "BUILD SHIP"));
+				InspectButton->SetHelpText(LOCTEXT("InspectShipyardInfo", "Order ships or manage ships production."));
+			}
+			else if(!Target->GetDescription()->IsDroneCarrier)
+			{
+				InspectButton->SetText(LOCTEXT("InspectShipyard", "BUY SHIP"));
+				InspectButton->SetHelpText(LOCTEXT("InspectShipyardInfo", "Order ships or manage ships production."));
 			}
 			else
 			{
-				InspectButton->SetText(LOCTEXT("InspectShipyard", "BUY SHIP"));
+				InspectButton->SetText(LOCTEXT("InspectRegular", "DETAILS"));
+				InspectButton->SetHelpText(LOCTEXT("InspectRegularInfo", "Take a closer look at this spacecraft"));
 			}
-			InspectButton->SetHelpText(LOCTEXT("InspectShipyardInfo", "Order ships or manage ships production."));
 		}
 		else
 		{
@@ -513,7 +519,7 @@ void SFlareSpacecraftInfo::Show()
 
 		// Permissions
 		bool CanDock =     !IsDocked && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(PlayerShip->GetActive());
-		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
+		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector() && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
 		bool CanUpgradeDocked = ActiveTargetSpacecraft && DockedStation && DockedStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade);
 		bool CanUpgrade = !TargetSpacecraft->IsStation() && (CanUpgradeDistant || CanUpgradeDocked);
 //		bool CanTrade = IsCargo && 1;//(IsDocked || IsOutsidePlayerFleet);
@@ -561,7 +567,7 @@ void SFlareSpacecraftInfo::Show()
 			FlyButton->SetVisibility(EVisibility::Collapsed);
 			DockButton->SetVisibility(EVisibility::Collapsed);
 			UndockButton->SetVisibility(EVisibility::Collapsed);
-			ScrapButton->SetVisibility(EVisibility::Collapsed);
+//			ScrapButton->SetVisibility(EVisibility::Collapsed);
 		}
 
 		// Flyable ships : disable when not flyable
@@ -800,7 +806,8 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 			{
 				AddMessage(LOCTEXT("ShipyardCapability", "You can order and upgrade ships at this station"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
 			}
-			else if(TargetSpacecraft->GetDescription()->IsDroneCarrier)
+
+			if(TargetSpacecraft->GetDescription()->IsDroneCarrier && PC->GetCompany() == TargetSpacecraft->GetCompany())
 			{
 				AddMessage(LOCTEXT("CarrierCapability", "You can order drones at this carrier"), FFlareStyleSet::GetIcon("Shipyard"), NULL, 0);
 			}
@@ -810,23 +817,51 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 
 			if (TargetSpacecraft->GetOngoingProductionList().Num() == 1)
 			{
-				ProductionShips = LOCTEXT("ProductionShipsShip", "ship");
+				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+				{
+					ProductionShips = LOCTEXT("ProductionShipsDrone", "drone");
+				}
+				else
+				{
+					ProductionShips = LOCTEXT("ProductionShipsShip", "ship");
+				}
 			}
 			else
 			{
-				ProductionShips = LOCTEXT("ProductionShipsShips", "ships");
+				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+				{
+					ProductionShips = LOCTEXT("ProductionShipsDrones", "drones");
+				}
+				else
+				{
+					ProductionShips = LOCTEXT("ProductionShipsShips", "ships");
+				}
 			}
 
 			if (TargetSpacecraft->GetShipyardOrderQueue().Num() == 1)
 			{
-				QueueShips = LOCTEXT("QueueShip", "ship");
+				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+				{
+					QueueShips = LOCTEXT("QueueDrone", "drone");
+				}
+				else
+				{
+					QueueShips = LOCTEXT("QueueShip", "ship");
+				}
 			}
 			else
 			{
-				QueueShips = LOCTEXT("QueueShips", "ships");
+				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
+				{
+					QueueShips = LOCTEXT("QueueDrones", "drones");
+				}
+				else
+				{
+					QueueShips = LOCTEXT("QueueShips", "ships");
+				}
 			}
 
-			AddMessage(FText::Format(LOCTEXT("ShipyardQueCount", "{0} {1} in production. {2} {3} in queue"), FText::AsNumber(TargetSpacecraft->GetOngoingProductionList().Num()), ProductionShips, FText::AsNumber(TargetSpacecraft->GetShipyardOrderQueue().Num()), QueueShips),
+			AddMessage(FText::Format(LOCTEXT("ShipyardQueCount", "{0} {1} in production. {2} {3} in queue."), FText::AsNumber(TargetSpacecraft->GetOngoingProductionList().Num()), ProductionShips, FText::AsNumber(TargetSpacecraft->GetShipyardOrderQueue().Num()), QueueShips),
 			FFlareStyleSet::GetIcon("Shipyard"),
 			NULL,
 			0);
@@ -1177,7 +1212,10 @@ void SFlareSpacecraftInfo::OnScrapConfirmed()
 				PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Station ||
 				PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_ShipConfig)
 			{
-				PC->GetMenuManager()->Back();
+				if (PC->GetMenuManager()->GetShipMenuTergetSpacecraft() == TargetSpacecraft)
+				{
+					PC->GetMenuManager()->Back();
+				}
 			}
 			else
 			{
@@ -1217,7 +1255,10 @@ void SFlareSpacecraftInfo::OnScrapConfirmed()
 					PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Station ||
 					PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_ShipConfig)
 				{
-					PC->GetMenuManager()->Back();
+					if (PC->GetMenuManager()->GetShipMenuTergetSpacecraft() == TargetSpacecraft)
+					{
+						PC->GetMenuManager()->Back();
+					}
 				}
 				else
 				{
@@ -1252,6 +1293,7 @@ void SFlareSpacecraftInfo::OnCapture()
 
 FText SFlareSpacecraftInfo::GetName() const
 {
+//	return FText::FromName(TargetSpacecraftDesc->Identifier);
 	return UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft);
 }
 

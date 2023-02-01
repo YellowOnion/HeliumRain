@@ -368,9 +368,9 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 
 		if (StartingShips.Num() > 0)
 		{
-			for (int KnowIndex = 0; KnowIndex < StartingShips.Num(); KnowIndex++)
+			for (int ShipIndex = 0; ShipIndex < StartingShips.Num(); ShipIndex++)
 			{
-				FFlareCompanyStartingShips CurrentShips = StartingShips[KnowIndex];
+				FFlareCompanyStartingShips CurrentShips = StartingShips[ShipIndex];
 				UFlareSimulatedSector* RealSector = World->FindSector(CurrentShips.SpawnSector);
 				if (RealSector != NULL)
 				{
@@ -389,7 +389,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 
 	/*
 	//for testing
-	CreateShips("ship-carrier", PlayerCompany, FirstLight, 2);
 	CreateShips(ShipInvader, PlayerCompany, FirstLight, 1);
 	CreateShips(ShipGhoul, PlayerCompany, FirstLight, 40);
 	CreateShips(ShipSolen, PlayerCompany, FirstLight, 30);
@@ -409,14 +408,14 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateStations(StationCarbonRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationPlasticsRefinery, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationArsenal, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationShipyard, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHub, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationOutpost, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationFoundry, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationFusion, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationResearch, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationShipyard, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	PlayerCompany->GiveResearch(999999999);
-	PlayerCompany->GiveMoney(99999999999, FFlareTransactionLogEntry::LogInitialMoney());
+	PlayerCompany->GiveMoney(9999999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 	{
 		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
@@ -424,7 +423,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	//for testing
 */
 	// Give technology
-
 	IonLane->UnlockTechnology("stations", false, true);
 	IonLane->UnlockTechnology("chemicals", false, true);
 
@@ -664,7 +662,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-		CreateStations("station-shipyard", GhostWorksShipyards, BlueShores, 1, 1, SpawnParameters, RandomizeStationLocations);
+		CreateStations("station-shipyard", GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations);
 
 		CreateShips(ShipSphinx, IonLane, Tranquility, 1);
 		CreateShips(ShipSphinx, InfiniteOrbit, Tranquility, 1);

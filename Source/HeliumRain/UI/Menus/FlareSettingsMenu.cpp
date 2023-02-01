@@ -1755,7 +1755,6 @@ void SFlareSettingsMenu::OnEffectsQualitySliderChanged(float Value)
 	EffectsQualitySlider->SetValue((float)StepValue / (float)Step);
 
 	UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
-
 	if (MyGameSettings->ScalabilityQuality.EffectsQuality != StepValue)
 	{
 		FLOGV("SFlareSettingsMenu::OnEffectsQualitySliderChanged : Set Effects quality to %d (current is %d)", StepValue, MyGameSettings->ScalabilityQuality.EffectsQuality);
@@ -2521,7 +2520,9 @@ Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick shi
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Combat zoom", "Combat zoom")))
 		->AddActionMapping("CombatZoom")
 		->AddDefaults(EKeys::SpaceBar)));
-
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Launch Drones", "Launch / Retrieve Drones")))
+		->AddActionMapping("LaunchRetrieveDrones")
+		->AddDefaults(EKeys::G)));
 	// Menus
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Menus", "MENUS")))->MakeHeader()));
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toggle menus", "Open / close menus")))

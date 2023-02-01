@@ -174,6 +174,15 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 			// If damage the firerate is randomly reduced to a min of 10 times normal value
 			float DamageDelay = FMath::Square(1.f- GetUsableRatio()) * 10 * FiringPeriod * FMath::FRandRange(0.f, 1.f);
 			TimeSinceLastShell = -DamageDelay;
+
+			if (GetCurrentAmmo() <= 0)
+			{
+				UFlareSector* ActiveSector = Spacecraft->GetGame()->GetActiveSector();
+				if (ActiveSector)
+				{
+					ActiveSector->SignalLocalSectorUpdateSectorBattleStates = true;
+				}
+			}
 		}
 
 		// Empty

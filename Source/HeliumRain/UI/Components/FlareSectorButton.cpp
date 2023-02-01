@@ -81,15 +81,17 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 					.ButtonStyle(FCoreStyle::Get(), "NoBorder")
 					[
 						// Background
-						SNew(SBorder)
+//						SNew(SBorder)
+						SAssignNew(BackgroundBorder,SBorder)
 						.Padding(Theme.SectorButtonPadding)
 						.BorderImage(&Theme.SectorButtonBorder)
-						.BorderBackgroundColor(this, &SFlareSectorButton::GetBorderColor)
+//						.BorderBackgroundColor(this, &SFlareSectorButton::GetBorderColor)
 						[
 							// Icon
-							SNew(SImage)
-							.Image(this, &SFlareSectorButton::GetBackgroundBrush)
-							.ColorAndOpacity(this, &SFlareSectorButton::GetMainColor)
+							SAssignNew(ButtonImage, SImage)
+//							SNew(SImage)
+//							.Image(this, &SFlareSectorButton::GetBackgroundBrush)
+//							.ColorAndOpacity(this, &SFlareSectorButton::GetMainColor)
 						]
 					]
 				]
@@ -107,7 +109,6 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxOne, SHorizontalBox)
-//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 
 			+ SVerticalBox::Slot()
@@ -154,6 +155,7 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 
 		]
 	];
+
 	RefreshButton();
 }
 TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
@@ -193,8 +195,22 @@ TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 	return CurrentBox;
 }
 
+void SFlareSectorButton::UpdateBackgroundImages()
+{
+
+	BackgroundBorder->SetBorderBackgroundColor(GetBorderColor());
+	ButtonImage->SetImage(GetBackgroundBrush());
+	ButtonImage->SetColorAndOpacity(GetMainColor());
+}
+
 void SFlareSectorButton::RefreshButton()
 {
+	if (Sector == nullptr || !IsValid(Sector))
+	{
+		return;
+	}
+
+	UpdateBackgroundImages();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 
@@ -355,6 +371,7 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 	SWidget::OnMouseEnter(MyGeometry, MouseEvent);
 
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
+	UpdateBackgroundImages();
 	if (MenuManager && Sector && Sector->IsValidLowLevel())
 	{
 		FText SectorStatus = Sector->GetSectorFriendlynessText(PlayerCompany);
@@ -393,6 +410,7 @@ void SFlareSectorButton::OnMouseLeave(const FPointerEvent& MouseEvent)
 {
 	SWidget::OnMouseLeave(MouseEvent);
 
+	UpdateBackgroundImages();
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 	if (MenuManager)
 	{
@@ -482,18 +500,11 @@ FText SFlareSectorButton::GetSectorText() const
 
 			if (OwnedStations > 0)
 			{
-//				DetailedStationString += "\n";
 				FString FormattedNumber = FString::FormatAsNumber(OwnedStations);
 				DetailedStationString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
 			}
 			if (NeutralStations > 0 && NeutralStations != TotalSectorStations)
 			{
-/*
-				if (DetailedStationString.Len() <= 0)
-				{
-					DetailedStationString += "\n";
-				}
-*/
 				FString FormattedNumber = FString::FormatAsNumber(NeutralStations);
 				DetailedStationString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
 			}
@@ -503,12 +514,6 @@ FText SFlareSectorButton::GetSectorText() const
 				if (EnemyStations > 0)
 				{
 					FString FormattedNumber = FString::FormatAsNumber(EnemyStations);
-/*
-					if (DetailedStationString.Len() <= 0)
-					{
-						DetailedStationString += "\n";
-					}
-*/
 					DetailedStationString += FString::Printf(TEXT(", %s"), *FormattedNumber);
 					if (EnemyStations == 1)
 					{
@@ -533,19 +538,12 @@ FText SFlareSectorButton::GetSectorText() const
 
 			if (OwnedShips > 0)
 			{
-//				DetailedShipString += "\n";
 				FString FormattedNumber = FString::FormatAsNumber(OwnedShips);
 				DetailedShipString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
 			}
 
 			if (NeutralShips > 0 && NeutralShips != TotalSectorShips)
 			{
-/*
-				if (DetailedShipString.Len() <= 0)
-				{
-					DetailedShipString += "\n";
-				}
-*/
 				FString FormattedNumber = FString::FormatAsNumber(NeutralShips);
 				DetailedShipString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
 			}
@@ -555,12 +553,6 @@ FText SFlareSectorButton::GetSectorText() const
 				if (EnemyShips > 0)
 				{
 					FString FormattedNumber = FString::FormatAsNumber(EnemyShips);
-/*
-					if (DetailedShipString.Len() <= 0)
-					{
-						DetailedShipString += "\n";
-					}
-*/
 					DetailedShipString += FString::Printf(TEXT(", %s"), *FormattedNumber);
 					if (EnemyShips == 1)
 					{
@@ -590,8 +582,8 @@ FText SFlareSectorButton::GetSectorText() const
 const FSlateBrush* SFlareSectorButton::GetBackgroundBrush() const
 {
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-
 	return (IsHovered() ? &Theme.SectorButtonActiveBackground : &Theme.SectorButtonBackground);
+	return &Theme.SectorButtonBackground;
 }
 
 FSlateColor SFlareSectorButton::GetMainColor() const
@@ -649,6 +641,5 @@ FReply SFlareSectorButton::OnButtonClicked()
 
 	return FReply::Handled();
 }
-
 
 #undef LOCTEXT_NAMESPACE

@@ -39,7 +39,7 @@ public:
 	virtual void SpaceCraftExplosionCheck(AFlareSpacecraft* Spacecraft);
 	
 	/** Add dead spacecraft to our dead array*/
-	virtual void AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft);
+	virtual void AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft, bool ForceExplosion = false);
 
 	/*----------------------------------------------------
 		Gameplay
@@ -69,11 +69,13 @@ public:
 
 	AActor* GetNearestBody(FVector Location, float* NearestDistance, bool IncludeSize = true, AActor* ActorToIgnore = NULL);
 
-	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement = 100000, bool RandomLocRadiusBoost = true, float InitialLocationRadius = 100000, bool MultiplyLocationOrAdd = true);
+	void PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement = 100000, bool RandomLocRadiusBoost = true, float InitialLocationRadius = 100000, bool MultiplyLocationOrAdd = true, bool PositiveOrNegative = FMath::RandBool());
+	void PlaceSpacecraftDrone(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement = 100000, float InitialLocationRadius = 100000, bool PositiveOrNegative = FMath::RandBool());
 
 	void AddReinforcingShip(UFlareSimulatedSpacecraft* Ship);
 
 	void SimulateLocalCompanyAI();
+	void UpdateSectorBattleStates();
 
 protected:
 
@@ -108,7 +110,6 @@ protected:
 	bool                           IsDestroyingSector;
 	FVector                        SectorCenter;
 	float                          SectorRadius;
-//	float						   ShellTick;
 
 	TArray<UFlareCompany*> UniqueCompanies;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
@@ -120,6 +121,8 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	bool SignalLocalSectorUpdateSectorBattleStates;
 
 	inline TArray<AFlareBomb*> GetSectorBombs() const
 	{
@@ -151,23 +154,13 @@ public:
 	{
 		return ParentSector->GetDescription();
 	}
-
-
-	/*inline FName GetIdentifier() const
-	{
-		return SectorData.Identifier;
-	}*/
-
+	
 	inline TArray<AFlareSpacecraft*>& GetSpacecrafts()
 	{
 		return SectorSpacecrafts;
 	}
 
 	bool GetIsDestroyingSector();
-
-	/*inline FFlarePeopleSave* GetPeople(){
-		return &SectorData.PeopleData;
-	}*/
 
 	inline TArray<AFlareSpacecraft*>& GetStations()
 	{
@@ -204,10 +197,11 @@ public:
 	FVector GetSectorCenter();
 
 	float GetSectorRadius();
-
+/*
 	static float GetSectorLimits()
 	{
 		return 1500000; // 15 km
 	}
-
+*/
+	float GetSectorLimits();
 };

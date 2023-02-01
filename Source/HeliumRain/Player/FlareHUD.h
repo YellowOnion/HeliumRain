@@ -92,6 +92,8 @@ public:
 	/** Draw on the current canvas the ship's target info */
 	void DrawCockpitTarget(AFlareSpacecraft* PlayerShip);
 
+	FText GetCarrierText(AFlareSpacecraft* PlayerShip);
+
 	/** Draw a subsystem info line on a cockpit instrument */
 	void DrawCockpitSubsystemInfo(EFlareSubsystem::Type Subsystem, FVector2D& Position);
 
@@ -295,6 +297,8 @@ protected:
 	int                                     SmallProgressBarSize;
 	int                                     LargeProgressBarSize;
 	int                                     ProgressBarHeight;
+	int									    DockedDrones;
+	int										TotalDrones;
 	float                                   ProgressBarInternalMargin;
 	float                                   ProgressBarTopMargin;
 	float                                   CockpitIconSize;

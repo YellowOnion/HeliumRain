@@ -41,6 +41,7 @@
 
 // If one cargo out of X ships is wrecked, the fleet is unhealthy
 #define AI_CARGO_HEALTHY_THRESHOLD 5
+#define AI_DRONE_COMBAT_WORTH 3
 
 //#define DEBUG_AI_WAR_MILITARY_MOVEMENT
 //#define DEBUG_AI_BATTLE_STATES
@@ -210,13 +211,12 @@ void UFlareCompanyAI::SimulateActiveAI()
 						}
 						else
 						{
-							if (Ship->GetParent()->GetActiveCargoBay()->GetCapacity() == 0)
+							if (Ship->GetParent()->GetActiveCargoBay()->GetCapacity() > 0)
 							{
-								return;
-							}
-							if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
-							{
-								SimulateActiveTradeShip(Ship);
+								if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
+								{
+									SimulateActiveTradeShip(Ship);
+								}
 							}
 						}
 					}
@@ -250,10 +250,17 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 
 	if (!WorldResourceVariation.Num())
 	{
-		CreateWorldResourceVariations();
+		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
+		WorldResourceVariation.Add(SimulatedSector, Variation);
+	}
+	else
+	{
+		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
+		WorldResourceVariation[SimulatedSector] = Variation;
 	}
 
 	SectorVariation const* ThisSectorVariation = &(WorldResourceVariation[SimulatedSector]);
+
 	if (!ThisSectorVariation)
 	{
 		return;
@@ -625,32 +632,13 @@ void UFlareCompanyAI::AutoScrap()
 	int32 TotalShipCount = TotalValue.TotalShipCount;
 	int32 SCargoShipCount = TotalValue.TotalShipCountTradeS;
 	int32 SMilitaryShipCount = TotalValue.TotalShipCountMilitaryS;
-/*
-	for(UFlareSimulatedSpacecraft* ShipCandidate : Company->GetCompanyShips())
-	{
-		TotalShipCount++;
-		if (ShipCandidate->GetSize() != EFlarePartSize::S)
-		{
-			continue;
-		}
 
-		if(ShipCandidate->IsMilitary())
-		{
-			SMilitaryShipCount++;
-		}
-		else
-		{
-			SCargoShipCount++;
-		}
-
-	}
-*/
 	while(true)
 	{
 		int32 ExtraCargo = SCargoShipCount - AI_MIN_S_CARGO_SHIP_COUNT;
 		int32 ExtraMilitary = SMilitaryShipCount - AI_MIN_S_MILITARY_SHIP_COUNT;
 
-		if(TotalShipCount < AI_MAX_SHIP_BEFORE_SCRAP || (ExtraCargo < 0 && ExtraMilitary < 0)  )
+		if(TotalShipCount < AI_MAX_SHIP_BEFORE_SCRAP || (ExtraCargo < 0 && ExtraMilitary < 0))
 		{
 			return;
 		}
@@ -693,12 +681,15 @@ void UFlareCompanyAI::AutoScrap()
 			{
 				continue;
 			}
+			if (ShipCandidate->GetDescription()->IsDroneShip)
+			{
+				continue;
+			}
 
+			int32 ResourceCount = ShipCandidate->GetActiveCargoBay()->GetUsedCargoSpace();
+			int32 Capacity = ShipCandidate->GetActiveCargoBay()->GetCapacity();
 			if (ScrapMilitary)
 			{
-				int32 ResourceCount = ShipCandidate->GetActiveCargoBay()->GetUsedCargoSpace();
-				int32 Capacity = ShipCandidate->GetActiveCargoBay()->GetCapacity();
-
 				FFlareSpacecraftDescription* Description = ShipCandidate->GetDescription();
 				int32 WeaponGroups = Description->WeaponGroups.Num();
 
@@ -712,9 +703,6 @@ void UFlareCompanyAI::AutoScrap()
 			}
 			else
 			{
-				int32 ResourceCount = ShipCandidate->GetActiveCargoBay()->GetUsedCargoSpace();
-				int32 Capacity = ShipCandidate->GetActiveCargoBay()->GetCapacity();
-
 				if (BestScrapCandidate == nullptr || ResourceCount < BestScrapCandidateResourceCount || Capacity < BestScrapCandidateCapacity)
 				{
 					BestScrapCandidate = ShipCandidate;
@@ -2380,7 +2368,8 @@ TArray<UFlareSimulatedSpacecraft*> UFlareCompanyAI::GenerateWarShipList(AIWarCon
 		 &&  Ship->CanTravel()
 		 && !Ship->GetDamageSystem()->IsDisarmed()
 		 && !Ship->GetDamageSystem()->IsStranded()
-		 && Ship != ExcludeShip)
+		 && Ship != ExcludeShip
+		 && !Ship->GetDescription()->IsDroneShip)
 		{
 			WarShips.Add(Ship);
 		}
@@ -3440,6 +3429,50 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 
 //#define DEBUG_AI_PEACE_MILITARY_MOVEMENT
 
+void UFlareCompanyAI::UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship, TArray<FFlareResourceDescription*> InputResources)
+{
+	if (WasAtWar || !Ship->GetDamageSystem()->IsAlive() || Ship->IsTrading() || (Ship->GetCurrentFleet() && Ship->GetCurrentFleet()->IsTraveling()) || Ship->GetShipChildren().Num() >= Ship->GetDescription()->DroneMaximum || !Ship->CanTravel())
+	{
+		return;
+	}
+
+	TArray<UFlareSimulatedSector*> KnownSectorsLocal = Company->GetKnownSectors();
+	while (KnownSectorsLocal.Num() > 0)
+	{
+		int32 Index = FMath::RandRange(0, KnownSectorsLocal.Num() - 1);
+		UFlareSimulatedSector* Sector = KnownSectorsLocal[Index];
+
+		bool FoundResources = false;
+
+		for (int32 CargoIndex = 0; CargoIndex < InputResources.Num(); CargoIndex++)
+		{
+			FFlareResourceDescription* Resource = InputResources[CargoIndex];
+
+			for (UFlareSimulatedSpacecraft* BuyingStation : Sector->GetSectorStations())
+			{
+				if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(Company))
+				{
+					continue;
+				}
+
+				if (BuyingStation->GetActiveCargoBay()->WantSell(Resource, Company, true) && BuyingStation->GetActiveCargoBay()->GetResourceQuantity(Resource,Company) > 0 && Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Company) > 0)
+				{
+					FoundResources = true;
+					break;
+				}
+			}
+		}
+
+		if (FoundResources)
+		{
+			Game->GetGameWorld()->StartTravel(Ship->GetCurrentFleet(), Sector);
+			break;
+		}
+
+		KnownSectorsLocal.RemoveSwap(Sector);
+	}
+}
+
 void UFlareCompanyAI::UpdatePeaceMilitaryMovement()
 {
 	CompanyValue TotalValue = Company->GetCompanyValue();
@@ -3493,10 +3526,16 @@ void UFlareCompanyAI::UpdatePeaceMilitaryMovement()
 				}
 
 				if (ShipCandidate->GetActiveCargoBay()->GetCapacity() > 0)
-					if(!ShipCandidate->GetDescription()->IsDroneCarrier)
-						{
-							continue;
-						}
+				{
+					if (!ShipCandidate->GetDescription()->IsDroneCarrier)
+					{
+						continue;
+					}
+					else if(ShipCandidate->GetShipChildren().Num() < ShipCandidate->GetDescription()->DroneMaximum)
+					{
+						continue;
+					}
+				}
 
 				ShipCandidates.Add(ShipCandidate);
 			}
@@ -3638,16 +3677,15 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 //#define DEBUG_AI_SHIP_ORDER
 const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Military)
 {
-	//DEBUG
-	int32 ShipSCount = 0;
-	int32 ShipLCount = 0;
-
 	int32 TotalCompanyShipCount = Company->GetCompanyShips().Num();
-
 	if(TotalCompanyShipCount > AI_MAX_SHIP_COUNT)
 	{
 		return nullptr;
 	}
+
+	//DEBUG
+	int32 ShipSCount = 0;
+	int32 ShipLCount = 0;
 
 	// Count owned ships
 	TMap<const FFlareSpacecraftDescription*, int32> OwnedShipSCount;
@@ -3656,7 +3694,6 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	for (int32 ShipIndex = 0; ShipIndex < Company->GetCompanyShips().Num(); ShipIndex++)
 	{
 		UFlareSimulatedSpacecraft* Ship = Company->GetCompanyShips()[ShipIndex];
-
 		if (Military != Ship->IsMilitary())
 		{
 			continue;
@@ -3768,9 +3805,30 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	for (auto& CatalogEntry : Game->GetSpacecraftCatalog()->ShipCatalog)
 	{
 		const FFlareSpacecraftDescription* Description = &CatalogEntry->Data;
+		if (Description->IsDroneShip)
+		{
+			continue;
+		}
+		if (Description->BuyableCompany.Num() > 0)
+		{
+			//buyable company has something, check if we're allowed to buy this in the first place
+			if (!Description->BuyableCompany.Contains(Company->GetDescription()->ShortName))
+			{
+				continue;
+			}
+		}
+
 		if (Military == Description->IsMilitary())
 		{
-			if (PickLShip == (Description->Size == EFlarePartSize::L))
+			if ((PickLShip && Description->Size == EFlarePartSize::L) || (!PickLShip && Description->Size == EFlarePartSize::S))
+			{
+				CandidateShips.Add(Description);
+			}
+		}
+		//not specifically looking for military ships, but a military ship might have cargo capacity
+		else if (!Military && !Description->IsDroneCarrier && Description->CargoBayCapacity > 0 && Description->CargoBayCount > 0)
+		{
+			if ((PickLShip && Description->Size == EFlarePartSize::L) || (!PickLShip && Description->Size == EFlarePartSize::S))
 			{
 				CandidateShips.Add(Description);
 			}
@@ -3798,7 +3856,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 				}
 				else
 				{
-					return A.WeaponGroups.Num() < B.WeaponGroups.Num();
+					return A.CombatPoints + (A.DroneMaximum * AI_DRONE_COMBAT_WORTH) < B.CombatPoints + (B.DroneMaximum * AI_DRONE_COMBAT_WORTH);
 				}
 			}
 			else
@@ -3822,27 +3880,12 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 
 	for (const FFlareSpacecraftDescription* Description : CandidateShips)
 	{
-		if (Description->IsDroneShip)
-		{
-			continue;
-		}
-
-		if (Description->BuyableCompany.Num() > 0)
-		{
-			//buyable company has something, check if we're allowed to buy this in the first place
-//			FFlareCompanyDescription* CompanyDescription = ;
-			if (!Description->BuyableCompany.Contains(Company->GetDescription()->ShortName))
-			{
-				continue;
-			}
-		}
-
 		if (BestShipDescription == NULL)
 		{
 			BestShipDescription = Description;
 			continue;
 		}
-		
+
 		int32 CandidateCount = 0;
 		if (OwnedShipCount->Contains(Description))
 		{
@@ -3862,10 +3905,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 			BestEfficiencyCount = (*OwnedShipCount)[BestShipDescriptionEfficiency];
 		}
 */
-		bool BestBigger = (Military ? BestShipDescription->Mass > Description-> Mass : BestShipDescription->GetCapacity() > Description->GetCapacity());
-
 		if (FMath::FRand() <= EfficiencyChance)
-//fudging the ratio for best efficiency ship to be a lower ship, even though it's not actually more efficient
 		{
 			int64 ShipPriceA = UFlareGameTools::ComputeSpacecraftPrice(Description->Identifier, RandomSector, true);
 			int64 ShipPriceB = UFlareGameTools::ComputeSpacecraftPrice(BestShipDescription->Identifier, RandomSector, true);
@@ -3874,32 +3914,48 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 
 			if (Military)
 			{
-				float Ratio1 = Description->Mass / BestShipDescription->Mass;
-				float Ratio2 = Description->CombatPoints;
-				if (BestShipDescription->CombatPoints > 0)
-				{
-					Ratio2 /= BestShipDescription->CombatPoints;
-				}
-				Ratio1 = (Ratio1 + Ratio2) / 2;
+				float Ratio1 = (Description->CombatPoints);
+				float Ratio2 = (Description->DroneMaximum * AI_DRONE_COMBAT_WORTH);
 
-				//			Ratio1 = FMath::RandRange(0.00f, Ratio1);
-				BestEfficiency = Ratio1 > CostRatio;
+				if (BestShipDescription->CombatPoints)
+				{
+					Ratio1 /= (BestShipDescription->CombatPoints);
+				}
+
+				if (BestShipDescription->CombatPoints)
+				{
+					Ratio2 /= (BestShipDescription->DroneMaximum * AI_DRONE_COMBAT_WORTH);
+				}
+
+				if (Ratio1 && Ratio2)
+				{
+					BestEfficiency = (Ratio1+Ratio2) > CostRatio;
+				}
+				else
+				{
+					BestEfficiency = Ratio1 > CostRatio;
+				}
 				/*
-							FText Identifier = Description->Name;
-							FString UniqueId = "war-declared-" + Identifier.ToString() + Company->GetCompanyName().ToString();
-							GetGame()->GetPC()->Notify(
-								LOCTEXT("TestInfo", "Test Notification"),
-								FText::Format(
-									LOCTEXT("TestInfoFormat", "{0} looked at {1}>{2} {3}"),
-									Identifier, FText::AsNumber(Ratio1), FText::AsNumber(CostRatio), FText::AsNumber(BestEfficiency)),
-								FName(*UniqueId),
-								EFlareNotification::NT_Info);
+									FText Identifier = Description->Name;
+									FText Identifier2 = BestShipDescription->Name;
+									FString UniqueId = "war-declared-" + Identifier.ToString() + Company->GetCompanyName().ToString();
+									GetGame()->GetPC()->Notify(
+										LOCTEXT("TestInfo", "Test Notification"),
+										FText::Format(
+											LOCTEXT("TestInfoFormat", "{0} v {1} looked at R1: {2}> CR: {3} BE: {4}"),
+											Identifier, Identifier2, FText::AsNumber(Ratio1), FText::AsNumber(CostRatio), FText::AsNumber(BestEfficiency)),
+										FName(*UniqueId),
+										EFlareNotification::NT_Info);
 				*/
 			}
 			else
 			{
-				float Ratio1 = Description->GetCapacity() / BestShipDescription->GetCapacity();
-				//			Ratio = FMath::RandRange(0.00f, Ratio);
+				float Ratio1 = Description->GetCapacity();
+				if (BestShipDescription->GetCapacity() > 0)
+				{
+					Ratio1 /= BestShipDescription->GetCapacity();
+				}
+
 				BestEfficiency = Ratio1 > CostRatio;
 				/*
 							FText Identifier = Description->Name;
@@ -3919,9 +3975,10 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 				BestShipDescriptionEfficiency = Description;
 			}
 		}
-
 		EfficiencyChance = EfficiencyChance / 2;
 
+//		bool BestBigger = (Military ? BestShipDescription->Mass > Description->Mass : BestShipDescription->GetCapacity() > Description->GetCapacity());
+		bool BestBigger = BestShipDescription->Mass > Description->Mass;
 		if (BestBigger && (BestCount + Diversity) > CandidateCount)
 		{
 			BestShipDescription = Description;
@@ -3931,6 +3988,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 		{
 			BestShipDescription = Description;
 		}
+
 	}
 
 	if (BestShipDescription == NULL)
@@ -3956,15 +4014,15 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 		if (BestEfficiencyCount < BestCount || (BestEfficiencyCount == 0))
 		{
 /*
-		FText Identifier = BestShipDescriptionEfficiency->Name;
-		FString UniqueId = "war-declared-" + Identifier.ToString() + Company->GetCompanyName().ToString();
-		GetGame()->GetPC()->Notify(
-			LOCTEXT("TestInfo", "Test Notification"),
-			FText::Format(
-				LOCTEXT("TestInfoFormat", "{0} picked as most efficient for {1}"),
-				Identifier, Company->GetCompanyName()),
-			FName(*UniqueId),
-			EFlareNotification::NT_Info);
+			FText Identifier = BestShipDescriptionEfficiency->Name;
+			FString UniqueId = "war-declared-" + Identifier.ToString() + Company->GetCompanyName().ToString();
+			GetGame()->GetPC()->Notify(
+				LOCTEXT("TestInfo", "Test Notification"),
+				FText::Format(
+					LOCTEXT("TestInfoFormat", "{0} picked as most efficient for {1}"),
+					Identifier, Company->GetCompanyName()),
+				FName(*UniqueId),
+				EFlareNotification::NT_Info);
 */
 			return BestShipDescriptionEfficiency;
 		}

@@ -53,6 +53,9 @@ struct FFlareResourceDescription
 	/** Display sorting index */
 	UPROPERTY(EditAnywhere, Category = Content)
 	float DisplayIndex;
+
+	/** Higher numbers override older numbers in the event of a conflict*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 };
 
 /** Spacecraft cargo data */

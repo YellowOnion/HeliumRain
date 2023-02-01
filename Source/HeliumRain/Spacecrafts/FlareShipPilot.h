@@ -39,8 +39,6 @@ protected:
 	/*----------------------------------------------------
 		Pilot functions
 	----------------------------------------------------*/
-	virtual void CarrierReleaseInternalDockShips(float DeltaSeconds);
-
 	virtual bool DroneReturnToCarrier(float DeltaSeconds);
 
 	virtual void ArmedStationPilot(float DeltaSeconds);
@@ -80,7 +78,7 @@ protected:
 
 	virtual void GetNewLeaderShip();
 
-	virtual void FollowLeaderShip(int32 DefaultRadius = 50000);
+	virtual void FollowLeaderShip(int32 DefaultRadius = 75000);
 
 public:
 	/*----------------------------------------------------
@@ -199,7 +197,6 @@ protected:
 	int32                                        SelectedWeaponGroupIndex;
 	bool                                         LockTarget;
 	bool                                         LastWantFire;
-	bool										 HasUndockedAllInternalShips;
 
 	float										 TimeBeforeNextInternalUndock;
 	float                                        TimeBeforeNextDrop;
@@ -248,6 +245,4 @@ public:
 	{
 		return PilotTargetShipComponent;
 	}
-
-	void SetUndockedAllShips(bool Set);
 };

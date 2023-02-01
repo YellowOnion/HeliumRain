@@ -6,6 +6,7 @@
 #include "FlareGame.h"
 #include "FlareGameTools.h"
 #include "FlareGameUserSettings.h"
+#include "FlareSkirmishManager.h"
 #include <random>
 
 #include "../Data/FlareResourceCatalog.h"
@@ -64,6 +65,7 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 	SectorChildStations.Empty();
 	SectorSpacecrafts.Empty();
 	SectorFleets.Empty();
+	LastSectorBattleStates.Empty();
 
 	FFlareCelestialBody* Body = Game->GetGameWorld()->GetPlanerarium()->FindCelestialBody(SectorOrbitParameters.CelestialBodyIdentifier);
 	if (Body)
@@ -176,6 +178,15 @@ FFlareSectorSave* UFlareSimulatedSector::Save()
 	return &SectorData;
 }
 
+float UFlareSimulatedSector::GetSectorLimits()
+{
+	if (GetDescription()->SectorLimits)
+	{
+		return GetDescription()->SectorLimits;
+	}
+	return 2000000; // 20 km
+}
+
 UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction, FFlareStationSpawnParameters SpawnParameters)
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
@@ -259,6 +270,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	// Default data
 	FFlareSpacecraftSave ShipData;
 	ShipData.IsDestroyed = false;
+	ShipData.WantUndockInternalShips = false;
 	ShipData.IsUnderConstruction = UnderConstruction;
 	ShipData.Location = TargetPosition;
 	ShipData.Rotation = TargetRotation;
@@ -374,14 +386,12 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	{
 		FFlareSpacecraftComponentSave ComponentData;
 		bool SetDefault = false;
-		if (ShipDescription->WeaponGroups.Num() < i)
+
+		FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->GunSlots[i].GroupIndex];
+		if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
 		{
-			FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->GunSlots[i].GroupIndex];
-			if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
-			{
-				ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
-				SetDefault = true;
-			}
+			ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
+			SetDefault = true;
 		}
 
 		if (!SetDefault)
@@ -519,10 +529,16 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 			{
 				Spacecraft->SetInternalDockedTo(BuiltBy);
 				Spacecraft->SetOwnerShip(BuiltBy);
-				UFlareFleet* JoiningFleet = BuiltBy->GetCurrentFleet();
-				JoiningFleet->AddShip(Spacecraft);
-				return Spacecraft;
+				if (BuiltBy->GetCurrentFleet())
+				{
+					BuiltBy->GetCurrentFleet()->AddShip(Spacecraft);
+					return Spacecraft;
+				}
 			}
+//			else if (BuiltBy->IsStation())
+//			{
+//			}
+
 		}
 		// Add to player fleet if possible
 		UFlareFleet* PlayerFleet = Game->GetPC()->GetPlayerFleet();
@@ -1130,70 +1146,29 @@ void UFlareSimulatedSector::ClearBombs()
 	SectorData.BombData.Empty();
 }
 
-void UFlareSimulatedSector::GetSectorBalance(UFlareCompany* Company, int32& PlayerShips, int32& EnemyShips, int32& NeutralShips, bool ActiveOnly)
+FText UFlareSimulatedSector::GetSectorBalanceText()
 {
-	PlayerShips = 0;
-	EnemyShips = 0;
-	NeutralShips = 0;
-
-	for (int ShipIndex = 0; ShipIndex < SectorShips.Num(); ShipIndex++)
-	{
-		if (SectorShips[ShipIndex]->IsDestroyed() || !SectorShips[ShipIndex]->GetDamageSystem()->IsAlive())
-		{
-			continue;
-		}
-
-		if (ActiveOnly)
-		{
-			if (!SectorShips[ShipIndex]->IsActive())
-			{
-				continue;
-			}
-			if (SectorShips[ShipIndex]->GetActive()->IsSafeEither())
-			{
-				continue;
-			}
-		}
-
-		if (SectorShips[ShipIndex]->IsHostile(Company)
-		 && SectorShips[ShipIndex]->IsMilitary() && !SectorShips[ShipIndex]->GetDamageSystem()->IsDisarmed())
-		{
-			EnemyShips++;
-		}
-		else if (SectorShips[ShipIndex]->GetCompany()->GetHostility(Company) == EFlareHostility::Owned
-		 && SectorShips[ShipIndex]->IsMilitary() && !SectorShips[ShipIndex]->GetDamageSystem()->IsDisarmed())
-		{
-			PlayerShips++;
-		}
-		else
-		{
-			NeutralShips++;
-		}
-	}
-}
-
-FText UFlareSimulatedSector::GetSectorBalanceText(bool ActiveOnly)
-{
-	int32 PlayerShips, EnemyShips, NeutralShips;
-	GetSectorBalance(GetGame()->GetPC()->GetCompany(), PlayerShips, EnemyShips, NeutralShips, ActiveOnly);
-
+	FFlareSectorBattleState BattleState = GetSectorBattleState(GetGame()->GetPC()->GetCompany());
 	FText PlayerShipsText = FText::Format(LOCTEXT("PlayerShipsFormat", "Ships : {0} friendly, "),
-		FText::AsNumber(PlayerShips));
+		FText::AsNumber(BattleState.DangerousFriendlyActiveSpacecraftCount));
 
 	FText HostileShipsText = FText::Format(LOCTEXT("HostileShipsFormat", "{0} {1}, "),
-		FText::AsNumber(EnemyShips),
-		EnemyShips > 1 ? LOCTEXT("HostileShips", "hostiles") : LOCTEXT("HostileShip", "hostile"));
+		FText::AsNumber(BattleState.DangerousHostileActiveSpacecraftCount),
+		BattleState.DangerousHostileActiveSpacecraftCount > 1 ? LOCTEXT("HostileShips", "hostiles") : LOCTEXT("HostileShip", "hostile"));
 
 	FText NeutralShipsText = FText::Format(LOCTEXT("NeutralShipsFormat", "{0} {1}"),
-		FText::AsNumber(NeutralShips),
-		NeutralShips > 1 ? LOCTEXT("NeutralShips", "neutrals") : LOCTEXT("NeutralShip", "neutral"));
-
+		FText::AsNumber(BattleState.NeutralSpacecraftCount),
+		BattleState.NeutralSpacecraftCount > 1 ? LOCTEXT("NeutralShips", "neutrals") : LOCTEXT("NeutralShip", "neutral"));
+/*
+	FText BombsText = FText::Format(LOCTEXT("BombsFormat", "{0} {1}"),
+		FText::AsNumber(BattleState.DangerousHostileActiveMissileCount),
+		BattleState.DangerousHostileActiveMissileCount > 1 ? LOCTEXT("HostileBombs", "bombs") : LOCTEXT("HostileBomb", "bomb"));
+*/
 	return FText::FromString(PlayerShipsText.ToString() + HostileShipsText.ToString() + NeutralShipsText.ToString());
 }
 
 int32 UFlareSimulatedSector::GetSectorCompanyStationCount(UFlareCompany* Company, bool IncludeCapture) const
 {
-//depreciated by Company GetCompanySectorStationsCount
 	int32 CompanyStationCountInSector = 0;
 
 	for(UFlareSimulatedSpacecraft* Station : SectorStations)
@@ -1296,10 +1271,8 @@ FText UFlareSimulatedSector::GetSectorName()
 
 FString UFlareSimulatedSector::GetSectorCode()
 {
-	// TODO cache ?
 	return SectorOrbitParameters.CelestialBodyIdentifier.ToString() + "-" + FString::FromInt(SectorOrbitParameters.Altitude) + "-" + FString::FromInt(SectorOrbitParameters.Phase);
 }
-
 
 EFlareSectorFriendlyness::Type UFlareSimulatedSector::GetSectorFriendlyness(UFlareCompany* Company)
 {
@@ -1315,19 +1288,17 @@ EFlareSectorFriendlyness::Type UFlareSimulatedSector::GetSectorFriendlyness(UFla
 		return EFlareSectorFriendlyness::Neutral;
 	}
 
-	int FriendlySpacecraftCount, HostileSpacecraftCount, NeutralSpacecraftCount;
-	GetSectorBalance(Company, FriendlySpacecraftCount, HostileSpacecraftCount, NeutralSpacecraftCount, false);
-
-	if (FriendlySpacecraftCount > 0 && HostileSpacecraftCount > 0)
+	FFlareSectorBattleState BattleState = GetSectorBattleState(Company);
+	if (BattleState.DangerousFriendlyActiveSpacecraftCount > 0 && (BattleState.DangerousHostileActiveSpacecraftCount > 0 || BattleState.DangerousHostileActiveMissileCount > 0))
 	{
 		return EFlareSectorFriendlyness::Contested;
 	}
 
-	if (FriendlySpacecraftCount > 0)
+	if (BattleState.DangerousFriendlyActiveSpacecraftCount > 0)
 	{
 		return EFlareSectorFriendlyness::Friendly;
 	}
-	else if (HostileSpacecraftCount > 0)
+	else if (BattleState.DangerousHostileActiveSpacecraftCount > 0)
 	{
 		return EFlareSectorFriendlyness::Hostile;
 	}
@@ -1337,10 +1308,40 @@ EFlareSectorFriendlyness::Type UFlareSimulatedSector::GetSectorFriendlyness(UFla
 	}
 }
 
+void UFlareSimulatedSector::CheckSkirmishEndCondition()
+{
+	if (GetGame()->IsSkirmish() && GetGame()->GetSkirmishManager()->GetCurrentPhase() != EFlareSkirmishPhase::End)
+	{
+		FFlareSectorBattleState State = GetSectorBattleState(GetGame()->GetPC()->GetCompany());
+
+		if (State.BattleWon)
+		{
+			GetGame()->GetSkirmishManager()->EndPlay();
+		}
+		else if (!State.InFight && !State.BattleWon)
+		{
+			GetGame()->GetSkirmishManager()->EndPlay();
+		}
+		// battles which have reserve ships specifically needs this extra check encase the reserves don't join the battle
+		else if ((State.FriendlyControllableShipCount == 0 && State.DangerousFriendlyActiveMissileCount == 0) || (State.DangerousHostileActiveSpacecraftCount == 0 && State.DangerousHostileActiveMissileCount == 0))
+		{
+			GetGame()->GetSkirmishManager()->EndPlay();
+		}
+	}
+}
+
 FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompany* Company)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSector_GetSectorBattleState);
+	if (LastSectorBattleStates.Contains(Company))
+	{
+		return LastSectorBattleStates[Company];
+	}
+	return UpdateSectorBattleState(Company);
+}
 
+FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCompany* Company)
+{
 	FFlareSectorBattleState BattleState;
 	BattleState.Init();
 
@@ -1362,18 +1363,23 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	int CrippledFriendlySpacecraftCount = 0;
 	int DangerousFriendlyActiveMissileCount = 0;
 
-	// Neutrals
+	// Neutrals ??
 	int FriendlyStationCount = 0;
 	int FriendlyStationInCaptureCount = 0;
 	int FriendlyControllableShipCount = 0;
 
+	// Neutrals
+	int NeutralSpacecraftCount = 0;
+	int DangerousNeutralSpacecraftCount = 0;
+	int DangerousNeutralActiveSpacecraftCount = 0; 
+
 	// Look at every spacecraft
-	for (int SpacecraftIndex = 0 ; SpacecraftIndex < GetSectorShips().Num(); SpacecraftIndex++)
+	for (int SpacecraftIndex = 0; SpacecraftIndex < GetSectorShips().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = GetSectorShips()[SpacecraftIndex];
 		UFlareCompany* OtherCompany = Spacecraft->GetCompany();
 
-		if (!Spacecraft->GetDamageSystem()->IsAlive())
+		if (!Spacecraft->GetDamageSystem()->IsAlive() || Spacecraft->IsDestroyed())
 		{
 			continue;
 		}
@@ -1384,10 +1390,14 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 			if (!Spacecraft->GetDamageSystem()->IsDisarmed())
 			{
 				DangerousFriendlySpacecraftCount++;
-				if(!Spacecraft->IsReserve())
+				if (!Spacecraft->IsReserve())
 				{
 					DangerousFriendlyActiveSpacecraftCount++;
 				}
+			}
+			else
+			{
+				NeutralSpacecraftCount++;
 			}
 
 			if (Spacecraft->GetDamageSystem()->IsStranded())
@@ -1395,7 +1405,7 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 				CrippledFriendlySpacecraftCount++;
 			}
 
-			if(!Spacecraft->GetDamageSystem()->IsUncontrollable())
+			if (!Spacecraft->GetDamageSystem()->IsUncontrollable())
 			{
 				if (!Spacecraft->IsReserve())
 				{
@@ -1410,16 +1420,25 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 			if (!Spacecraft->GetDamageSystem()->IsDisarmed())
 			{
 				DangerousHostileSpacecraftCount++;
-				if(!Spacecraft->IsReserve())
+				if (!Spacecraft->IsReserve())
 				{
 					DangerousHostileActiveSpacecraftCount++;
 				}
 			}
+			else
+			{
+				NeutralSpacecraftCount++;
+			}
 		}
+		else
+		{
+			NeutralSpacecraftCount++;
+		}
+
 	}
 
 	// Look at every station
-	for (int SpacecraftIndex = 0 ; SpacecraftIndex < GetSectorStations().Num(); SpacecraftIndex++)
+	for (int SpacecraftIndex = 0; SpacecraftIndex < GetSectorStations().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = GetSectorStations()[SpacecraftIndex];
 		UFlareCompany* OtherCompany = Spacecraft->GetCompany();
@@ -1479,9 +1498,13 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	BattleState.FriendlyStationInCaptureCount = FriendlyStationInCaptureCount;
 	BattleState.FriendlyControllableShipCount = FriendlyControllableShipCount;
 
+	BattleState.DangerousFriendlyActiveSpacecraftCount = DangerousFriendlyActiveSpacecraftCount;
 	BattleState.DangerousHostileActiveSpacecraftCount = DangerousHostileActiveSpacecraftCount;
+
 	BattleState.DangerousFriendlyActiveMissileCount = DangerousFriendlyActiveMissileCount;
 	BattleState.DangerousHostileActiveMissileCount = DangerousHostileActiveMissileCount;
+
+	BattleState.NeutralSpacecraftCount = NeutralSpacecraftCount;
 
 	// Danger
 	if (DangerousHostileSpacecraftCount > 0 || DangerousHostileActiveMissileCount > 0)
@@ -1490,7 +1513,7 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 	}
 
 	// No friendly or no hostile ship
-	if (FriendlySpacecraftCount == 0 || HostileSpacecraftCount  == 0)
+	if (FriendlySpacecraftCount == 0 || HostileSpacecraftCount == 0)
 	{
 		BattleState.InBattle = false;
 	}
@@ -1543,17 +1566,22 @@ FFlareSectorBattleState UFlareSimulatedSector::GetSectorBattleState(UFlareCompan
 		}
 	}
 
+	if (LastSectorBattleStates.Contains(Company))
+	{
+		LastSectorBattleStates[Company] = BattleState;
+	}
+	else
+	{
+		LastSectorBattleStates.Add(Company, BattleState);
+	}
+
 	return BattleState;
 }
-
 
 FText UFlareSimulatedSector::GetSectorBattleStateText(UFlareCompany* Company)
 {
 	FText BattleStatusText;
-
 	FFlareSectorBattleState BattleState = GetSectorBattleState(Company);
-
-
 	if(BattleState.InBattle)
 	{
 		if(BattleState.InFight)

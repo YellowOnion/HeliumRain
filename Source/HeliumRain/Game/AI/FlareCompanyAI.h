@@ -153,6 +153,9 @@ public:
 	/** Move military ships while in peace */
 	void UpdatePeaceMilitaryMovement();
 
+	/** Move carriers towards required resources if not maxed on drones*/
+	void UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship, TArray<FFlareResourceDescription*> InputResources);
+
 	UFlareSimulatedSector* FindNearestSectorWithPeace(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
 
 	UFlareSimulatedSector* FindNearestSectorWithFS(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
@@ -258,6 +261,8 @@ protected:
 	TArray<UFlareSimulatedSpacecraft*>       Shipyards;
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionUpgradeStations;
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionStations;
+
+
 	TMap<UFlareSimulatedSector*, SectorVariation> WorldResourceVariation;
 
 	TArray<UFlareSimulatedSector*>            SectorWithBattle;

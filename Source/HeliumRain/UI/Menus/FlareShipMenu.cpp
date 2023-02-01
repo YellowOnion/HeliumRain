@@ -504,13 +504,11 @@ FText SFlareShipMenu::GetExternalOrdersHelp() const
 
 FText SFlareShipMenu::GetAutoConstructionText() const
 {
-//	if (TargetDescription&&TargetDescription->IsDroneCarrier)
 	return LOCTEXT("AllowAutoConstruction", "Allow automatic construction");
 }
 
 FText SFlareShipMenu::GetAutoConstructionHelp() const
 {
-//	if (TargetDescription&&TargetDescription->IsDroneCarrier)
 	return LOCTEXT("AllowAutoConstructionInfo", "Allow this ship to automatically queue up new build orders");
 }
 
@@ -699,6 +697,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
 				{
+					AllowAutoConstructionButton->SetVisibility(EVisibility::Visible);
 					if (TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
 					{
 						AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
@@ -706,6 +705,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 				}
 				else
 				{
+					AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
 					AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 				}
 			}
@@ -713,6 +713,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 			{
 				ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
 				AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
+				AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
 			}
 
 			// Renaming
@@ -732,6 +733,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 			ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
 			ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
 			AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
+			AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
 			RenameBox->SetVisibility(EVisibility::Collapsed);
 		}
 
@@ -752,10 +754,10 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 			NameText = FText::Format(LOCTEXT("NameText", "{0}{1}"), Prefix, Suffix);
 			ObjectName->SetText(NameText);
-
-//			ObjectName->SetText(TargetSpacecraft->IsStation() ? LOCTEXT("Station", "Station") : LOCTEXT("Ship", "Ship"));
-
 			ObjectClassName->SetText(ShipDesc->Name);
+
+//			FString PhaseOneEmitters = ShipDesc->Identifier.ToString();
+//			ObjectClassName->SetText(FText::FromString(PhaseOneEmitters));
 
 			// Description
 			FText SpacecraftDescription = ShipDesc->Description;
@@ -854,9 +856,9 @@ void SFlareShipMenu::LoadPart(FName InternalName)
 	PartCharacteristicBox->SetVisibility(EVisibility::Visible);
 	ShipCustomizationBox->SetVisibility(EVisibility::Collapsed);
 	CantUpgradeReason->SetVisibility(EVisibility::Collapsed);
-
 	ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
 	AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
+	AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
 	FactoryList->SetVisibility(EVisibility::Collapsed);
 	ShipyardList->SetVisibility(EVisibility::Collapsed);
 
@@ -1599,11 +1601,10 @@ EVisibility SFlareShipMenu::GetShipyardAllowExternalOrderVisibility() const
 	{
 		if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
 		{
-			if(TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
+			if(!TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
 			{
-				return EVisibility::Visible;
+				return EVisibility::Collapsed;
 			}
-			return EVisibility::Collapsed;
 		}
 		return EVisibility::Visible;
 	}

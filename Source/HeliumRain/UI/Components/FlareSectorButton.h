@@ -93,6 +93,8 @@ protected:
 
 	// Slate data
 	TSharedPtr<STextBlock>         TextBlock;
+	TSharedPtr<SBorder>			   BackgroundBorder;
+	TSharedPtr<SImage>			   ButtonImage;
 	TSharedPtr<SHorizontalBox>     CurrentBox;
 	TSharedPtr<SHorizontalBox>     FleetBoxOne;
 	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
@@ -108,4 +110,5 @@ protected:
 
 public:
 	void	RefreshButton();
+	void	UpdateBackgroundImages();
 };

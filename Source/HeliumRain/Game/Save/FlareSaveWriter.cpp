@@ -366,6 +366,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetStringField("SpawnMode", FormatEnum<EFlareSpawnMode::Type>("EFlareSpawnMode",Data->SpawnMode));
 	JsonObject->SetStringField("LinearVelocity", FormatVector(Data->LinearVelocity));
 	JsonObject->SetStringField("AngularVelocity", FormatVector(Data->AngularVelocity));
+	JsonObject->SetBoolField("WantUndockInternalShips", Data->WantUndockInternalShips);
 	JsonObject->SetStringField("DockedTo", Data->DockedTo.ToString());
 	JsonObject->SetStringField("DockedAt", FormatInt32(Data->DockedAt));
 	JsonObject->SetStringField("DockedAtInternally", Data->DockedAtInternally.ToString());

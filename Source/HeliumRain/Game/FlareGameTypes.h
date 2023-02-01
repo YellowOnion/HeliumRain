@@ -643,6 +643,10 @@ struct FFlareCompanyAIDescription
 	UPROPERTY(EditAnywhere, Category = Company)
 	float UpgradeMilitarySalvagerLRatio;
 
+	/** If enabled this company won't directly initiate war declarations but will join other groups which are fighting*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	bool IsMercenaryCompany;
+
 	/** Preset research order. If unable to research anything in array will choose random available research. Default: science,instruments*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	TArray<FName> ResearchOrder;
@@ -759,6 +763,7 @@ struct CompanyValue
 	int64 TotalDailyProductionCost;
 
 	int32 TotalShipCount;
+	int32 TotalDroneCount;
 	int32 TotalShipCountMilitaryS;
 	int32 TotalShipCountMilitarySSalvager;
 	int32 TotalShipCountMilitaryL;

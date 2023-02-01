@@ -239,8 +239,9 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	CurrentSpacecraft->StartPresentation();
 
 	// UI
-	CurrentSpacecraft->Load(Spacecraft);
+//	CurrentSpacecraft->Load(Spacecraft);
 	SetIsEnabled(true);
+	CurrentSpacecraft->Load(Spacecraft);
 }
 
 void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDesc)

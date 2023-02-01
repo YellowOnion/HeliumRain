@@ -367,9 +367,7 @@ void AFlareMenuManager::OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrder
 	}
 	else if (Data.Skirmish)
 	{
-//		SpacecraftOrder->Open(GetGame()->GetSkirmishManager(), Data.OrderForPlayer, ConfirmationCallback);
 		SpacecraftOrder->Open(GetGame()->GetSkirmishManager(), Data.CompanyShortName, ConfirmationCallback);
-//
 	}
 }
 
@@ -1405,16 +1403,6 @@ FString AFlareMenuManager::GetKeyNameFromActionName(FName ActionName)
 	return LOCTEXT("NoKey", "").ToString();
 }
 
-void AFlareMenuManager::SetModStrings(TArray<FString> ModStrings)
-{
-	ActiveModStrings = ModStrings;
-}
-
-TArray<FString> AFlareMenuManager::GetModStrings() const
-{
-	return ActiveModStrings;
-}
-
 bool AFlareMenuManager::IsUIOpen() const
 {
 	return IsMenuOpen() || IsOverlayOpen() || Confirmation->IsOpen();
@@ -1525,5 +1513,9 @@ AFlareMenuManager* AFlareMenuManager::GetSingleton()
 	return Singleton;
 }
 
+UFlareSimulatedSpacecraft* AFlareMenuManager::GetShipMenuTergetSpacecraft() const
+{
+	return ShipMenu->GetTargetSpacecraft();
+}
 
 #undef LOCTEXT_NAMESPACE

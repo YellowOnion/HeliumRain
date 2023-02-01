@@ -79,7 +79,6 @@ void UFlareSimulatedSpacecraftDamageSystem::SetDead()
 		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData.ComponentIdentifier);
 		ComponentData.Damage = GetMaxHitPoints(ComponentDescription);
 	}
-//	UpdateSubsystemsHealth();
 }
 
 bool UFlareSimulatedSpacecraftDamageSystem::IsAlive() const

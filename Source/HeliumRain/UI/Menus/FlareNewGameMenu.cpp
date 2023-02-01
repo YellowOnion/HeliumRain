@@ -386,8 +386,8 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					.HAlign(HAlign_Right)
 					[
 						SAssignNew(TutorialButton, SFlareButton)
-						.Text(LOCTEXT("Tutorial", "Training contract"))
-						.HelpText(LOCTEXT("TutorialInfo", "Start with a few training contracts"))
+						.Text(LOCTEXT("Tutorial", "Tutorial Contract"))
+						.HelpText(LOCTEXT("TutorialInfo", "Enable or disable helpful tutorial missions"))
 						.Toggle(true)
 						.Width(6.5)
 					]
@@ -399,7 +399,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(StoryButton, SFlareButton)
 						.Text(LOCTEXT("Story", "Story contract"))
-					.HelpText(LOCTEXT("StoryInfo", "Disable the storyline Pendulum quest"))
+					.HelpText(LOCTEXT("StoryInfo", "Enable or disable the storyline Pendulum quest"))
 					.Toggle(true)
 					.Width(6.5)
 					]
@@ -411,7 +411,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 					[
 						SAssignNew(RandomizeStationButton, SFlareButton)
 						.Text(LOCTEXT("Randomize", "Random Station Positions"))
-					.HelpText(LOCTEXT("RandomizeInfo", "Randomizes most of the starting stations possible sector positions"))
+					.HelpText(LOCTEXT("RandomizeInfo", "Randomizes the starting positions of most stations"))
 					.Toggle(true)
 					.Width(6.5)
 					]

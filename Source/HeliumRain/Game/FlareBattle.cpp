@@ -46,7 +46,9 @@ void UFlareBattle::Load(UFlareSimulatedSector* BattleSector)
     Sector = BattleSector;
     PlayerCompany = Game->GetPC()->GetCompany();
 	Catalog = Game->GetShipPartsCatalog();
-
+	FightingCompanies.Empty();
+	SectorViableFightingShips.Empty();
+	CalculatedInitial = false;
 }
 
 /*----------------------------------------------------
@@ -85,10 +87,10 @@ bool UFlareBattle::HasBattle()
 {
     // Check if battle
     bool HasBattle = false;
+	FightingCompanies.Empty();
     for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
     {
         UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
-
         if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
         {
             // Local sector, don't check if the player want fight
@@ -96,53 +98,72 @@ bool UFlareBattle::HasBattle()
         }
 
 		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
-
 		if(!BattleState.WantFight())
         {
             // Don't want fight
             continue;
         }
+		BattleState = Sector->UpdateSectorBattleState(Company);
+		if (!BattleState.WantFight())
+		{
+			// Still don't want to fight
+			continue;
+		}
 
-        return true;
-    }
-    return false;
+		FightingCompanies.Add(Company);
+	}
+
+	if (FightingCompanies.Num() > 0)
+	{
+		if (!CalculatedInitial)
+		{
+			for (int32 ShipIndex = 0; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
+			{
+				UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
+				if (Ship->IsReserve())
+				{
+					// No in fight
+					continue;
+				}
+
+				if (!Ship->IsMilitary() || Ship->GetDamageSystem()->IsDisarmed())
+				{
+					// No weapon
+					continue;
+				}
+
+				if (!FightingCompanies.Contains(Ship->GetCompany()))
+				{
+					// Not in war
+					continue;
+				}
+				SectorViableFightingShips.Add(Ship);
+			}
+			CalculatedInitial = true;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 bool UFlareBattle::SimulateTurn()
 {
     bool HasFight = false;
-
-    // List company in war
-    TArray<UFlareCompany*> FightingCompanies;
-    for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
-    {
-        UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
-
-		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
-
-		if(!BattleState.WantFight())
-		{
-            // Don't want fight
-            continue;
-        }
-
-        FightingCompanies.Add(Company);
-    }
-
     // List all fighting ships
     TArray<UFlareSimulatedSpacecraft*> ShipToSimulate;
-//  for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorShips().Num(); ShipIndex++)
-    for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
+//    for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
+    for (int32 ShipIndex = 0 ; ShipIndex < SectorViableFightingShips.Num(); ShipIndex++)
 	{
-        UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
-
+        UFlareSimulatedSpacecraft* Ship = SectorViableFightingShips[ShipIndex];
 		if(Ship->IsReserve())
 		{
 			// No in fight
 			continue;
 		}
 
-		if(!Ship->IsMilitary()  || Ship->GetDamageSystem()->IsDisarmed())
+		if(Ship->GetDamageSystem()->IsDisarmed())
         {
             // No weapon
             continue;
@@ -169,7 +190,8 @@ bool UFlareBattle::SimulateTurn()
        ShipToSimulate.RemoveAt(Index);
 	}
 
-	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorSpacecrafts())
+//	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorSpacecrafts())
+	for (UFlareSimulatedSpacecraft* Ship : SectorViableFightingShips)
 	{
 		Ship->GetDamageSystem()->NotifyDamage();
 	}

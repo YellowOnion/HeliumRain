@@ -18,6 +18,9 @@
 
 #define LOCTEXT_NAMESPACE "FlareSector"
 #define SHELL_TICK_RATE 0.025f
+#define SHIP_LARGE_EXPLOSION_CHANCE 0.05f
+#define SHIP_SMALL_EXPLOSION_CHANCE 0.10f
+#define SHIP_DRONE_EXPLOSION_CHANCE 0.50f
 
 UFlareSector::UFlareSector(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -108,6 +111,12 @@ void UFlareSector::Tick(float DeltaSeconds)
 		return;
 	}
 
+	if (SignalLocalSectorUpdateSectorBattleStates)
+	{
+		UpdateSectorBattleStates();
+		SignalLocalSectorUpdateSectorBattleStates = false;
+	}
+
 	for (AFlareSpacecraft* Ship : SectorSpacecrafts)
 	{
 		if (!Ship || Ship == nullptr || Ship->IsSafeDestroying())
@@ -116,6 +125,18 @@ void UFlareSector::Tick(float DeltaSeconds)
 		}
 		Ship->TickSpacecraft(DeltaSeconds);
 	}
+}
+
+void UFlareSector::UpdateSectorBattleStates()
+{
+	for (UFlareCompany* Company : UniqueCompanies)
+	{
+		if (Company && !GetGame()->GetGameWorld()->GetPrimarySimulate())
+		{
+			GetSimulatedSector()->UpdateSectorBattleState(Company);
+		}
+	}
+	GetSimulatedSector()->CheckSkirmishEndCondition();
 }
 
 void UFlareSector::SimulateLocalCompanyAI()
@@ -144,7 +165,7 @@ void UFlareSector::AddReinforcingShip(UFlareSimulatedSpacecraft* Ship)
 		{
 			if (Ship->GetShipMaster() && Ship->GetShipMaster()->GetActive())
 			{
-				Ship->GetShipMaster()->GetActive()->SetUndockedAllShips(false);
+//				Ship->GetShipMaster()->GetActive()->SetUndockedAllShips(false);
 			}
 			else
 			{
@@ -185,7 +206,7 @@ void UFlareSector::Save()
 	SectorData->LocalTime = LocalTime + GetGame()->GetPlanetarium()->GetSmoothTime();
 } 
 
-void UFlareSector::AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft)
+void UFlareSector::AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft, bool ForceExplosion)
 {
 	if (Spacecraft)
 	{
@@ -196,12 +217,18 @@ void UFlareSector::AddDestroyedSpacecraft(AFlareSpacecraft* Spacecraft)
 			SpaceCraftExplosionCheck(Spacecraft);
 		}
 		// lower chance in normal circumstances to cause an explosion chain-reaction
-		else if (FMath::FRand() <= 0.05)
+		else
 		{
-			RemoveSectorSpacecrafts = true;
-			SpaceCraftExplosionCheck(Spacecraft);
+			if (ForceExplosion
+				|| (Spacecraft->GetSize() == EFlarePartSize::L && FMath::FRand() <= SHIP_LARGE_EXPLOSION_CHANCE)
+				|| (Spacecraft->GetSize() == EFlarePartSize::S && !Spacecraft->GetDescription()->IsDroneShip && FMath::FRand() <= SHIP_SMALL_EXPLOSION_CHANCE)
+				|| (Spacecraft->GetDescription()->IsDroneShip && FMath::FRand() <= SHIP_DRONE_EXPLOSION_CHANCE))
+			{
+				RemoveSectorSpacecrafts = true;
+				SpaceCraftExplosionCheck(Spacecraft);
+			}
 		}
-		RemoveSpacecraft(Spacecraft, RemoveSectorSpacecrafts);
+		RemoveSpacecraft(Spacecraft, false);
 	}
 }
 
@@ -256,6 +283,7 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSec
 void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
+	SignalLocalSectorUpdateSectorBattleStates = false;
 	IsDestroyingSector = true;
 	AFlareSpacecraft* PlayerShip = nullptr;
 
@@ -390,7 +418,12 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 			SectorShips.Add(Spacecraft);
 		}
 
-		UniqueCompanies.AddUnique(Spacecraft->GetCompany());
+		if (UniqueCompanies.AddUnique(Spacecraft->GetCompany()) != INDEX_NONE)
+		{
+//AddUnique returns -1, AKA Index_None if it was already in the array. Or the new index position if the element was added to the array
+			GetSimulatedSector()->UpdateSectorBattleState(Spacecraft->GetCompany());
+		}
+
 		SectorSpacecrafts.Add(Spacecraft);
 		SectorSpacecraftsCache.Add(Spacecraft->GetImmatriculation(), Spacecraft);
 		SetSpacecraftSpawnPosition(ParentSpacecraft, Spacecraft);
@@ -455,14 +488,14 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 		//	ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
 
 		FVector SpawnDirection;
-		TArray<AFlareSpacecraft*> FriendlySpacecrafts = GetCompanySpacecrafts(Spacecraft->GetCompany());
+		TArray<AFlareSpacecraft*> FriendlySpacecrafts = GetCompanyShips(Spacecraft->GetCompany());
 		FVector FriendlyShipLocationSum = FVector::ZeroVector;
 		int FriendlyShipCount = 0;
 
 		for (int SpacecraftIndex = 0; SpacecraftIndex < FriendlySpacecrafts.Num(); SpacecraftIndex++)
 		{
 			AFlareSpacecraft *SpacecraftCandidate = FriendlySpacecrafts[SpacecraftIndex];
-			if (!SpacecraftCandidate->IsStation() && SpacecraftCandidate != Spacecraft)
+			if (SpacecraftCandidate != Spacecraft)
 			{
 				FriendlyShipLocationSum += SpacecraftCandidate->GetActorLocation();
 				FriendlyShipCount++;
@@ -527,7 +560,7 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 	break;
 	case EFlareSpawnMode::Exit:
 	{
-		float SpawnDistance = GetSectorLimits() * 0.9;
+		float SpawnDistance = GetSectorLimits() * 0.85;
 		float SpawnVelocity = ParentSpacecraft->GetData().LinearVelocity.Size() * 0.6;
 		FVector SpawnDirection = ParentSpacecraft->GetData().Location.GetUnsafeNormal();
 		FVector Location = SpawnDirection * SpawnDistance;
@@ -550,7 +583,29 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 		{
 			FVector Location = ParentSpacecraft->GetShipMaster()->GetData().Location;
 			Rotation = ParentSpacecraft->GetData().Rotation;
-			PlaceSpacecraft(Spacecraft, Location, Rotation, 250, false, Spacecraft->GetMeshScale(), false);
+			
+			int ShipPosition = 0;
+			for (UFlareSimulatedSpacecraft* OwnedShips : ParentSpacecraft->GetShipMaster()->GetShipChildren())
+			{
+				ShipPosition++;
+				if (OwnedShips == ParentSpacecraft)
+				{
+					break;
+				}
+			}
+
+			bool OddEven;
+			if (ShipPosition % 2)
+			{
+				OddEven = true;
+			}
+			else
+			{
+				OddEven = false;
+			}
+
+			PlaceSpacecraftDrone(Spacecraft, Location, Rotation, 750, ParentSpacecraft->GetShipMaster()->GetActive()->GetMeshScale(), OddEven);
+
 			float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetData().LinearVelocity.Size() * 0.6;
 			FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
 			RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
@@ -781,11 +836,71 @@ AActor* UFlareSector::GetNearestBody(FVector Location, float* NearestDistance, b
 	return NearestCandidateActor;
 }
 
-void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement, bool RandomLocRadiusBoost, float InitialLocationRadius, bool MultiplyLocationOrAdd)
+void UFlareSector::PlaceSpacecraftDrone(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement, float InitialLocationRadius, bool PositiveOrNegative)
 {
 	float RandomLocationRadius = InitialLocationRadius;
 	float EffectiveDistance = -1;
-	bool PositiveOrNegative = FMath::RandBool();
+	float Size = (Spacecraft->IsStation() ? 80000 : Spacecraft->GetMeshScale());
+	int Loops = 0;
+
+	do
+	{
+		float HalfRadius = RandomLocationRadius / 2;
+		if (PositiveOrNegative)
+		{
+//			Location += FMath::VRand();
+			Location.Y += RandomLocationRadius;
+		}
+		else
+		{
+//			Location -= FMath::VRand();
+			Location.Y -= RandomLocationRadius;
+		}
+
+		if (FMath::RandBool())
+		{
+			Location.X -= HalfRadius;
+		}
+		else
+		{
+			Location.X += HalfRadius;
+		}
+
+		if (FMath::RandBool())
+		{
+			Location.Z -= HalfRadius;
+		}
+		else
+		{
+			Location.Z += HalfRadius;
+		}
+
+		float NearestDistance;
+		// Check if location is secure
+		if (GetNearestBody(Location, &NearestDistance, true, Spacecraft) == NULL)
+		{
+			// No other ship.
+			break;
+		}
+
+		EffectiveDistance = NearestDistance - Size;
+		if (Loops == 0)
+		{
+			RandomLocationRadius = RandomLocationRadiusIncrement;
+		}
+		Loops++;
+	} while (EffectiveDistance <= 0 && RandomLocationRadius < RandomLocationRadiusIncrement * 1000);
+
+	Spacecraft->SetActorLocationAndRotation(Location, Rotation);
+}
+
+
+void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Location, FRotator Rotation, float RandomLocationRadiusIncrement, bool RandomLocRadiusBoost, float InitialLocationRadius, bool MultiplyLocationOrAdd, bool PositiveOrNegative)
+{
+	float RandomLocationRadius = InitialLocationRadius;
+	float EffectiveDistance = -1;
+	float Size = (Spacecraft->IsStation() ? 80000 : Spacecraft->GetMeshScale());
+	int Loops = 0;
 
 	do 
 	{
@@ -812,9 +927,7 @@ void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Locatio
 			}
 		}
 
-		float Size = (Spacecraft->IsStation() ? 80000 : Spacecraft->GetMeshScale());
 		float NearestDistance;
-
 		// Check if location is secure
 		if (GetNearestBody(Location, &NearestDistance, true, Spacecraft) == NULL)
 		{
@@ -823,10 +936,15 @@ void UFlareSector::PlaceSpacecraft(AFlareSpacecraft* Spacecraft, FVector Locatio
 		}
 
 		EffectiveDistance = NearestDistance - Size;
-		if (RandomLocRadiusBoost)
+		if (Loops == 0)
+		{
+			RandomLocationRadius = RandomLocationRadiusIncrement;
+		}
+		else if (RandomLocRadiusBoost)
 		{
 			RandomLocationRadius += RandomLocationRadiusIncrement;
 		}
+		Loops++;
 	}
 	while (EffectiveDistance <= 0 && RandomLocationRadius < RandomLocationRadiusIncrement * 1000);
 
@@ -962,4 +1080,14 @@ float UFlareSector::GetSectorRadius()
 	GenerateSectorRepartitionCache();
 	return SectorRadius;
 }
+
+float UFlareSector::GetSectorLimits()
+{
+	if (ParentSector)
+	{
+		return ParentSector->GetSectorLimits();
+	}
+	return 2000000; // 20 km
+}
+
 #undef LOCTEXT_NAMESPACE

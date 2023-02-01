@@ -36,13 +36,47 @@ UFlareTravel::UFlareTravel(const FObjectInitializer& ObjectInitializer)
 {
 }
 
-void UFlareTravel::Load(const FFlareTravelSave& Data)
+void UFlareTravel::InitTravelSector(FFlareSectorSave& NewSectorData)
+{
+	// Init new travel sector
+	NewSectorData.GivenName = FText();
+	NewSectorData.Identifier = TEXT("Travel");
+	NewSectorData.LocalTime = 0;
+	NewSectorData.IsTravelSector = true;
+
+	// Init population
+	NewSectorData.PeopleData.Population = 0;
+	NewSectorData.PeopleData.BirthPoint = 0;
+	NewSectorData.PeopleData.DeathPoint = 0;
+	NewSectorData.PeopleData.FoodStock = 0;
+	NewSectorData.PeopleData.FuelStock = 0;
+	NewSectorData.PeopleData.ToolStock = 0;
+	NewSectorData.PeopleData.TechStock = 0;
+	NewSectorData.PeopleData.FoodConsumption = 0;
+	NewSectorData.PeopleData.FuelConsumption = 0;
+	NewSectorData.PeopleData.ToolConsumption = 0;
+	NewSectorData.PeopleData.TechConsumption = 0;
+	NewSectorData.PeopleData.HappinessPoint = 0;
+	NewSectorData.PeopleData.HungerPoint = 0;
+	NewSectorData.PeopleData.Money = 0;
+	NewSectorData.PeopleData.Dept = 0;
+}
+
+void UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 {
 	Game = Cast<UFlareWorld>(GetOuter())->GetGame();
 	TravelData = Data;
 	TravelShips.Empty();
 
-	Fleet = Game->GetGameWorld()->FindFleet(TravelData.FleetIdentifier);
+	if (!NewFleet)
+	{
+		Fleet = Game->GetGameWorld()->FindFleet(TravelData.FleetIdentifier);
+	}
+	else
+	{
+		Fleet = NewFleet;
+	}
+
 	DestinationSector = Game->GetGameWorld()->FindSector(TravelData.DestinationSectorIdentifier);
 	OldDestinationSector = DestinationSector;
 	OriginSector = Game->GetGameWorld()->FindSector(TravelData.OriginSectorIdentifier);
@@ -84,7 +118,6 @@ void UFlareTravel::Load(const FFlareTravelSave& Data)
 	TravelSector->AddFleet(Fleet);
 
 	NeedNotification = true;
-
 }
 
 
@@ -569,32 +602,6 @@ double UFlareTravel::ComputeAltitudeTravelMoonToMoonDistance(UFlareWorld* World,
 {
 	// Moon1 orbit  to moon2 orbit
 	return FMath::Abs(DestinationCelestialBody->OrbitDistance - OriginCelestialBody->OrbitDistance);
-}
-
-void UFlareTravel::InitTravelSector(FFlareSectorSave& NewSectorData)
-{
-	// Init new travel sector
-	NewSectorData.GivenName = FText();
-	NewSectorData.Identifier = TEXT("Travel");
-	NewSectorData.LocalTime = 0;
-	NewSectorData.IsTravelSector = true;
-
-	// Init population
-	NewSectorData.PeopleData.Population = 0;
-	NewSectorData.PeopleData.BirthPoint = 0;
-	NewSectorData.PeopleData.DeathPoint = 0;
-	NewSectorData.PeopleData.FoodStock = 0;
-	NewSectorData.PeopleData.FuelStock = 0;
-	NewSectorData.PeopleData.ToolStock = 0;
-	NewSectorData.PeopleData.TechStock = 0;
-	NewSectorData.PeopleData.FoodConsumption = 0;
-	NewSectorData.PeopleData.FuelConsumption = 0;
-	NewSectorData.PeopleData.ToolConsumption = 0;
-	NewSectorData.PeopleData.TechConsumption = 0;
-	NewSectorData.PeopleData.HappinessPoint = 0;
-	NewSectorData.PeopleData.HungerPoint = 0;
-	NewSectorData.PeopleData.Money = 0;
-	NewSectorData.PeopleData.Dept = 0;
 }
 
 bool UFlareTravel::IsPlayerHostile()

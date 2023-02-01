@@ -1043,7 +1043,6 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 	TransactionDonation = NULL;
 }
 
-
 /*----------------------------------------------------
 	Navigation commands and helpers
 ----------------------------------------------------*/

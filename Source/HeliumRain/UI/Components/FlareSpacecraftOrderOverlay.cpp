@@ -340,7 +340,6 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, FName F
 	SetVisibility(EVisibility::Visible);
 	TargetSkirmish = Skirmish;
 	OnConfirmedCB = ConfirmationCallback;
-//	OrderForPlayer = ForPlayer;
 	OrderIsConfig = false;
 
 	CancelButton->SetText(LOCTEXT("Cancel", "Cancel"));
@@ -357,7 +356,6 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, FName F
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->ShipCatalog[SpacecraftIndex]->Data;
 			if (!Description->IsSubstation && Description->IsMilitary() && !Description->IsDroneShip)
 			{
-
 				if (Description->BuildableCompany.Num() > 0)
 				{
 					//buildable company has something, check if shipyard owning faction is allowed to build this

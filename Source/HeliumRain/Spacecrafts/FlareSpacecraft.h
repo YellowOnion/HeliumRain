@@ -79,6 +79,12 @@ public:
 
 	virtual float GetSpacecraftMass() const;
 
+	void SetWantUndockInternalShips(bool Set);
+	void LaunchRetrieveDrones();
+
+	void CarrierReleaseInternalDockShips(float DeltaSeconds);
+
+	bool GetWantUndockInternalShips();
 	bool GetIsDestroyed();
 
 	/*----------------------------------------------------
@@ -373,13 +379,14 @@ protected:
 	FFlareDockingInfo                              ManualDockingInfo;
 	AFlareSpacecraft*                              ManualDockingTarget;
 
+	float										   TimeBeforeNextInternalUndock;
 	float										   TimeSinceUncontrollable;
 
 	FFlareMovingAverage<float>                     JoystickRollInputVal;
 
+	bool										   HasUndockedAllInternalShips;
 	bool										   IsSafeDestroyingRunning;
 	bool										   BegunSafeDestroy;
-//	float										   SafeDestroyTimer;
 
 	TArray<AFlareSpacecraft*>					   InSectorSquad;
 	TArray<AFlareBomb*>							   IncomingBombs;
@@ -437,6 +444,20 @@ public:
 	TArray<AFlareSpacecraft*> GetInSectorSquad() const
 	{
 		return InSectorSquad;
+	}
+
+	bool GetHasUndockedInternalShips() const
+	{
+		return HasUndockedAllInternalShips;
+	}
+
+	bool GetWantUndockInternalShips() const
+	{
+		if (GetParent())
+		{
+			return GetParent()->GetData().WantUndockInternalShips;
+		}
+		return false;
 	}
 
 	bool GetIsManualDocking() const
@@ -602,5 +623,4 @@ public:
 	float GetPreferedAnticollisionTime() const;
 
 	float GetAgressiveAnticollisionTime() const;
-
 };

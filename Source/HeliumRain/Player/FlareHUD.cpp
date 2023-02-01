@@ -703,6 +703,19 @@ void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
 		FlareDrawText(TitleText, CurrentPos, Theme.FriendlyColor, false, true);
 		CurrentPos += 2 * InstrumentLine;
 
+		//Drone/Carrier infos
+		if (PlayerShip->IsCapableCarrier())
+		{
+			FText InfoText = GetCarrierText(PlayerShip);
+
+			FVector2D TextPosition = CurrentPos + FVector2D(SmallProgressBarSize + 10, 0);
+			FVector2D BarPosition = CurrentPos + FVector2D(0, ProgressBarTopMargin);
+
+			FlareDrawText(InfoText, TextPosition, Theme.FriendlyColor, false);
+			FlareDrawProgressBar(BarPosition, SmallProgressBarSize, Theme.FriendlyColor, (float)DockedDrones / (float)TotalDrones);
+			CurrentPos += InstrumentLine;
+		}
+
 		// Info
 		if (CurrentWeaponGroup)
 		{
@@ -747,6 +760,7 @@ void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
 			}
 			FlareDrawText(InfoText, CurrentPos, HealthColor, false);
 		}
+
 		CurrentPos += InstrumentLine;
 
 		// Weapon icon
@@ -791,6 +805,20 @@ void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
 		FCHECK(CargoBay);
 
 		// Title
+
+		//Drone/Carrier infos
+		if (PlayerShip->IsCapableCarrier())
+		{
+			FText InfoText = GetCarrierText(PlayerShip);
+
+			FVector2D TextPosition = CurrentPos + FVector2D(SmallProgressBarSize + 10, 0);
+			FVector2D BarPosition = CurrentPos + FVector2D(0, ProgressBarTopMargin);
+
+			FlareDrawText(InfoText, TextPosition, Theme.FriendlyColor, false);
+			FlareDrawProgressBar(BarPosition, SmallProgressBarSize, Theme.FriendlyColor, (float)DockedDrones / (float)TotalDrones);
+			CurrentPos += InstrumentLine;
+		}
+
 		FText CargoText = FText::Format(LOCTEXT("CargoInfoFormat", "Cargo bay ({0} / {1})"),
 			FText::AsNumber(CargoBay->GetUsedCargoSpace()), FText::AsNumber(CargoBay->GetCapacity()));
 		FlareDrawText(CargoText, CurrentPos, Theme.FriendlyColor, false, true);
@@ -820,6 +848,53 @@ void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
 	}
 }
 
+FText AFlareHUD::GetCarrierText(AFlareSpacecraft* PlayerShip)
+{
+	DockedDrones = 0;
+	TotalDrones = 0;
+
+	FText CarrierText;
+
+	for (UFlareSimulatedSpacecraft* OwnedShips : PlayerShip->GetParent()->GetShipChildren())
+	{
+		if (!OwnedShips->IsReserve() && !OwnedShips->GetDamageSystem()->IsUncontrollable())
+		{
+			TotalDrones++;
+			if (!OwnedShips->IsActive() && OwnedShips->IsInternalDockedTo(PlayerShip->GetParent()))
+			{
+				DockedDrones++;
+			}
+		}
+	}
+
+	if (PlayerShip->GetWantUndockInternalShips())
+	{
+		if (PlayerShip->GetHasUndockedInternalShips())
+		{
+			CarrierText = FText::Format(LOCTEXT("AllDronesLaunched", "{0} Drones Launched "),
+			FText::AsNumber(TotalDrones));
+		}
+		else
+		{
+			CarrierText = FText::Format(LOCTEXT("LaunchingDrones", "{0}/{1} Drones Launching"),
+			FText::AsNumber(TotalDrones - DockedDrones), FText::AsNumber(TotalDrones));
+		}
+	}
+	else if (DockedDrones != TotalDrones)
+	{
+		{
+			CarrierText = FText::Format(LOCTEXT("DockingDrones", "{0}/{1} Drones Docking"),
+			FText::AsNumber(DockedDrones), FText::AsNumber(TotalDrones));
+		}
+	}
+	else
+	{
+		CarrierText = FText::Format(LOCTEXT("DockedDrones", "{0} Drones Docked"),
+		FText::AsNumber(TotalDrones));
+	}
+	return CarrierText;
+}
+
 void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 {
 	FVector2D CurrentPos = TopInstrument + FVector2D(0, InstrumentSize.Y) - 5 * InstrumentLine;
@@ -845,7 +920,7 @@ void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 		CurrentPos += InstrumentLine;
 
 		// Sector forces
-		FlareDrawText(CurrentSector->GetSectorBalanceText(true), CurrentPos, Theme.FriendlyColor, false);
+		FlareDrawText(CurrentSector->GetSectorBalanceText(), CurrentPos, Theme.FriendlyColor, false);
 		CurrentPos += InstrumentLine;
 
 		// Battle status
@@ -1224,7 +1299,8 @@ void AFlareHUD::DrawHUDInternal()
 			// Draw icon & distance
 			if (ProjectWorldLocationToCockpit(ObjectiveLocation, ScreenPosition))
 			{
-				if (IsInScreen(ScreenPosition) && !Target->RequiresScan)
+				bool IsInScreenLocal = IsInScreen(ScreenPosition);
+				if (IsInScreenLocal && !Target->RequiresScan)
 				{
 					if (Target->Active)
 					{
@@ -1243,7 +1319,7 @@ void AFlareHUD::DrawHUDInternal()
 				}
 
 				// Tell the HUD to draw the search marker only if we are outside this
-				ShouldDrawMarker = !IsInScreen(ScreenPosition);
+				ShouldDrawMarker = !IsInScreenLocal;
 			}
 			else
 			{

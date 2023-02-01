@@ -48,7 +48,7 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		{
 			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : EngineCatalog)
 			{
-				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				if (EntrySub != SpacecraftComponent && EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
 				{
 					OldEntry = EntrySub;
 					break;
@@ -67,7 +67,7 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		{
 			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : RCSCatalog)
 			{
-				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				if (EntrySub != SpacecraftComponent && EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
 				{
 					OldEntry = EntrySub;
 					break;
@@ -86,7 +86,7 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		{
 			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : WeaponCatalog)
 			{
-				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				if (EntrySub != SpacecraftComponent && EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
 				{
 					OldEntry = EntrySub;
 					break;
@@ -105,7 +105,7 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		{
 			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : InternalComponentsCatalog)
 			{
-				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				if (EntrySub != SpacecraftComponent && EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
 				{
 					OldEntry = EntrySub;
 					break;
@@ -124,7 +124,7 @@ UFlareSpacecraftComponentsCatalog::UFlareSpacecraftComponentsCatalog(const class
 		{
 			for (UFlareSpacecraftComponentsCatalogEntry* EntrySub : MetaCatalog)
 			{
-				if (EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
+				if (EntrySub != SpacecraftComponent && EntrySub->Data.Identifier == SpacecraftComponent->Data.Identifier)
 				{
 					OldEntry = EntrySub;
 					break;
@@ -212,13 +212,13 @@ const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecr
 		FFlareSpacecraftComponentDescription& Candidate = EngineCatalog[i]->Data;
 		if (FilterShip && FilterShip->GetDescription()->RestrictedEngines.Num())
 		{
-			if (FilterShip->GetDescription()->RestrictedEngines.Find(Candidate.Identifier))
+			if (FilterShip->GetDescription()->RestrictedEngines.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}
@@ -232,13 +232,13 @@ const void UFlareSpacecraftComponentsCatalog::GetEngineList(TArray<FFlareSpacecr
 		FFlareSpacecraftComponentDescription& Candidate = EngineCatalog[i]->Data;
 		if (FilterDescription && FilterDescription->RestrictedEngines.Num())
 		{
-			if (FilterDescription->RestrictedEngines.Find(Candidate.Identifier))
+			if (FilterDescription->RestrictedEngines.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}
@@ -252,13 +252,13 @@ const void UFlareSpacecraftComponentsCatalog::GetRCSList(TArray<FFlareSpacecraft
 		FFlareSpacecraftComponentDescription& Candidate = RCSCatalog[i]->Data;
 		if (FilterShip && FilterShip->GetDescription()->RestrictedRCS.Num())
 		{
-			if (FilterShip->GetDescription()->RestrictedRCS.Find(Candidate.Identifier))
+			if (FilterShip->GetDescription()->RestrictedRCS.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate, FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}
@@ -273,13 +273,13 @@ const void UFlareSpacecraftComponentsCatalog::GetRCSList(TArray<FFlareSpacecraft
 
 		if (FilterDescription && FilterDescription->RestrictedRCS.Num())
 		{
-			if (FilterDescription->RestrictedRCS.Find(Candidate.Identifier))
+			if (FilterDescription->RestrictedRCS.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}
@@ -294,13 +294,13 @@ const void UFlareSpacecraftComponentsCatalog::GetWeaponList(TArray<FFlareSpacecr
 
 		if (WeaponGroupDesc && WeaponGroupDesc->RestrictedWeapons.Num())
 		{
-			if (WeaponGroupDesc->RestrictedWeapons.Find(Candidate.Identifier))
+			if (WeaponGroupDesc->RestrictedWeapons.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate,FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NULL || !FilterCompany->IsPartRestricted(&Candidate,FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}
@@ -315,13 +315,13 @@ const void UFlareSpacecraftComponentsCatalog::GetWeaponList(TArray<FFlareSpacecr
 
 		if (WeaponGroupDesc && WeaponGroupDesc->RestrictedWeapons.Num())
 		{
-			if (WeaponGroupDesc->RestrictedWeapons.Find(Candidate.Identifier))
+			if (WeaponGroupDesc->RestrictedWeapons.Find(Candidate.Identifier) == INDEX_NONE)
 			{
 				continue;
 			}
 		}
 
-		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip))))
+		if (Candidate.Size == Size && (FilterCompany == NULL || FilterCompany->IsTechnologyUnlockedPart(&Candidate)) && (FilterShip == NAME_None || !FilterCompany->IsPartRestricted(&Candidate, FilterShip)))
 		{
 			OutData.Add(&Candidate);
 		}

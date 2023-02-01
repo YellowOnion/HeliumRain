@@ -659,7 +659,6 @@ FText SFlareSectorMenu::GetBuildStationHelpText() const
 
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
-//		int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
 		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
 		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
 
@@ -705,17 +704,15 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
-//	int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
-	int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
-	int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
-
-	if (!PC->GetCompany()->HasStationTechnologyUnlocked())
-	{
-		return true;
-	}
-
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
+		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
+		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+
+		if (!PC->GetCompany()->HasStationTechnologyUnlocked())
+		{
+			return true;
+		}
 		if (TargetSector && PC->GetCompany()->HasVisitedSector(TargetSector) && OwnedStationCount < MaxStationCount)
 		{
 			return false;

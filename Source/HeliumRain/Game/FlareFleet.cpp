@@ -163,7 +163,7 @@ uint32 UFlareFleet::GetImmobilizedShipCount()
 
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
-		if (!FleetShips[ShipIndex]->CanTravel() && FleetShips[ShipIndex]->GetDamageSystem()->IsAlive())
+		if (!FleetShips[ShipIndex]->CanTravel() && FleetShips[ShipIndex]->GetDamageSystem()->IsAlive() && !FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
 		{
 			ImmobilizedShip++;
 		}
@@ -336,10 +336,13 @@ void UFlareFleet::RemoveImmobilizedShips()
 		UFlareSimulatedSpacecraft* RemovingShip = FleetShips[ShipIndex];
 		if (RemovingShip && !RemovingShip->CanTravel() && RemovingShip != Game->GetPC()->GetPlayerShip())
 		{
-			if (RemovingShip->GetShipMaster()&&RemovingShip->GetDescription()->IsDroneShip)
+			if (RemovingShip->GetShipMaster())
 			{
-				RemovingShip->TryMigrateDrones();
+				if (RemovingShip->GetDescription()->IsDroneShip)
+				{
+//				RemovingShip->TryMigrateDrones();
 				continue;
+				}
 			}
 			ShipToRemove.Add(FleetShips[ShipIndex]);
 		}
@@ -427,7 +430,7 @@ int32 UFlareFleet::InterceptShips()
 			break;
 		}
 
-		if (Ship == Game->GetPC()->GetPlayerShip())
+		if (Ship == Game->GetPC()->GetPlayerShip() || Ship->GetDescription()->IsDroneShip)
 		{
 			// Never intercept the player ship
 			continue;
@@ -786,7 +789,7 @@ FText UFlareFleet::GetTravelConfirmText()
 
 	for (UFlareSimulatedSpacecraft* Ship : GetShips())
 	{
-		if (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted())
+		if (!Ship->GetDescription()->IsDroneShip && (Ship->IsTrading() || Ship->GetDamageSystem()->IsStranded() || Ship->IsIntercepted()))
 		{
 			UnableToTravelShips++;
 		}

@@ -136,8 +136,13 @@ void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
 	BombData.LifeTime = 0;
 	BombData.BurnDuration = 0;
 	TargetSpacecraft = Target;
-
 	TargetSpacecraft->TrackIncomingBomb(this);
+
+	UFlareSector* ActiveSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+	if (ActiveSector)
+	{
+		ActiveSector->SignalLocalSectorUpdateSectorBattleStates = true;
+	}
 
 	// Notify player
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
@@ -194,9 +199,15 @@ void AFlareBomb::Tick(float DeltaSeconds)
 		{
 			// no fuel and 5 km and 30s auto-destroy
 			float Distance = (GetActorLocation() - PlayerShip->GetActorLocation()).Size();
+			UFlareCompany* DamageSourceCompany = NULL;
+			if (TargetSpacecraft)
+			{
+				DamageSourceCompany = TargetSpacecraft->GetCompany();
+			}
+
 			if (!IsActive() && Distance > 500000 && BombData.LifeTime > 30)
 			{
-				OnBombDetonated(NULL, NULL, FVector(), FVector());
+				OnBombDetonated(NULL, NULL, FVector(), FVector(), DamageSourceCompany);
 				//DrawDebugSphere(GetWorld(), GetActorLocation(), 1000, 32, FColor::Red, true);
 
 				// Test Player ship avoidance
@@ -209,7 +220,7 @@ void AFlareBomb::Tick(float DeltaSeconds)
 			// Parent removed destroy
 			if (!ParentWeapon || !ParentWeapon->IsValidLowLevel() || !ParentWeapon->GetSpacecraft()->IsValidLowLevel())
 			{
-				OnBombDetonated(NULL, NULL, FVector(), FVector());
+				OnBombDetonated(NULL, NULL, FVector(), FVector(), DamageSourceCompany);
 				//DrawDebugSphere(GetWorld(), GetActorLocation(), 1000, 32, FColor::Red, true);
 			}
 		}
@@ -419,6 +430,7 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 	AFlareSpacecraft* Spacecraft = Cast<AFlareSpacecraft>(Other);
 	AFlareShell* Shell = Cast<AFlareShell>(Other);
 	UFlareSpacecraftComponent* ShipComponent = Cast<UFlareSpacecraftComponent>(OtherComp);
+	UFlareCompany* DamageSourceCompany = NULL;
 
 	// Forget uninteresting hits
 	if ( !Other || (!Shell && !OtherComp) || !ParentWeapon || Other == ParentWeapon->GetSpacecraft() || BombCandidate || (BombData.AttachTarget != NAME_None))
@@ -475,6 +487,7 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 	// Process damage
 	if (Spacecraft)
 	{
+		DamageSourceCompany = Spacecraft ->GetCompany();
 		Spacecraft->Airframe->AddImpulseAtLocation(ImpulseForce * ImpulseDirection, HitLocation);
 		if(!Spacecraft->IsStation() && WeaponDescription->WeaponCharacteristics.BombCharacteristics.MaxBurnDuration == 0 && ParentWeapon->GetSpacecraft()->GetParent() == Spacecraft->GetPC()->GetPlayerShip())
 		{
@@ -506,6 +519,13 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 			SpacecraftHelper::GetWeaponDamageType(WeaponDescription->WeaponCharacteristics.DamageType),
 			ParentWeapon->GetSpacecraft()->GetParent(),
 			GetName());
+	}
+	else if (Shell)
+	{
+		if (Shell->GetParentWeapon())
+		{
+			DamageSourceCompany = Shell->GetParentWeapon()->GetSpacecraft()->GetCompany();
+		}
 	}
 
 	// Spawn impact decal
@@ -542,7 +562,7 @@ void AFlareBomb::NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Othe
 	}
 
 	// Bomb has done its job, good job bomb
-	OnBombDetonated(Spacecraft, ShipComponent, HitLocation, ImpulseDirection);
+	OnBombDetonated(Spacecraft, ShipComponent, HitLocation, ImpulseDirection, DamageSourceCompany);
 }
 
 //bomb target has signalled to the bomb that it died, destroy or add retargetting logic
@@ -568,7 +588,7 @@ void AFlareBomb::CurrentTargetDied()
 				}
 			}
 
-			OnBombDetonated(NULL, NULL, FVector(), FVector());
+			OnBombDetonated(NULL, NULL, FVector(), FVector(),TargetSpacecraft->GetCompany());
 		}
 	}
 }
@@ -620,9 +640,9 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	}
 }
 
-void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal)
+void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecraftComponent* HitComponent, FVector HitLocation, FVector InertialNormal, UFlareCompany* DamageSourceCompany)
 {
-	if (TargetSpacecraft&&TargetSpacecraft !=nullptr)
+	if (TargetSpacecraft&&TargetSpacecraft != nullptr)
 	{
 		TargetSpacecraft->UnTrackIncomingBomb(this);
 	}
@@ -643,6 +663,12 @@ void AFlareBomb::OnBombDetonated(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	}
 	else
 	{
+		UFlareSector* ActiveSector = ParentWeapon->GetSpacecraft()->GetGame()->GetActiveSector();
+		if (ActiveSector)
+		{
+			ActiveSector->SignalLocalSectorUpdateSectorBattleStates = true;
+		}
+
 		UnregisterBombMethod();
 		CombatLog::BombDestroyed(GetIdentifier());
 		SafeDestroy();
@@ -737,20 +763,9 @@ void AFlareBomb::FinishSafeDestroy()
 
 		ExplosionEffectTemplate = nullptr;
 		ExplosionEffectMaterial = nullptr;
-//		WeaponDescription = nullptr;
 		TargetSpacecraft = nullptr;
 		LocalSector = nullptr;
-/*
-		if (BombComp)
-		{
-			BombComp->SetSimulatePhysics(false);
-			BombComp->FinishSafeDestroy();
-			BombComp = NULL;
-		}
-		RootComponent = NULL;
-*/
 
-//		SafeDestroyed=Destroy();
 		Game->GetCacheSystem()->StoreCachedBomb(this);
 	}
 }

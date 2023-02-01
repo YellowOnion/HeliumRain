@@ -35,6 +35,7 @@ class UFlareDebrisField;
 class UFlareCacheSystem;
 class UFlareSectorCatalogEntry;
 class UFlareScenarioTools;
+class AFlareMenuManager;
 struct FFlarePlayerSave;
 
 
@@ -189,6 +190,8 @@ public:
 	/** Get a spacecraft name */
 	FText PickSpacecraftName(UFlareCompany* Owner, bool IsStation, FString BaseSuffix);
 
+	TArray<FString> GetModStrings() const;
+	TArray<FString>							ActiveModStrings;
 
 protected:
 
@@ -393,8 +396,6 @@ public:
 	const FFlareCompanyDescription* GetPlayerCompanyDescription() const;
 	
 	const int32 GetCompanyCatalogCount() const;
-
-//	const int32 GetDifficulty() const;
 	
 	bool IsSkirmish() const;
 

@@ -238,7 +238,7 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 	{
 		//Want war
 
-		if (Company->GetWarCount(PlayerCompany) == 0 )
+		if (Company->GetWarCount(PlayerCompany) == 0 && !IsMercenaryCompany)
 		{
 			// Don't fight if already at war
 
@@ -533,13 +533,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		DefeatAdaptation = 0.001;
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.0;
-		BudgetMilitaryWeight = 1.0;
-		BudgetStationWeight = 0.1;
-		BudgetTradeWeight = 0.1;
-*/
-
 		MaxMilitaryShipsBuildingPeace = 3;
 
 		BudgetTechnologyWeight = 0;
@@ -703,12 +696,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.55;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-*/
 		//already starts with instruments
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
@@ -718,12 +705,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		CostSafetyMarginMilitaryShip = 1.2f;
 		CostSafetyMarginTradeShip = 1.0f;
-/*
-		BudgetTechnologyWeight = 0.2;
-		BudgetMilitaryWeight = 1.0;
-		BudgetStationWeight = 0.25;
-		BudgetTradeWeight = 2.0;
-*/
 
 		BudgetTechnologyWeight = 0.01;
 		BudgetMilitaryWeight = 0.10;
@@ -745,7 +726,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildLTradeOnlyTreshhold = 40;
 		BuildTradeDiversity = 2;
 		BuildTradeDiversitySize = 4;
-		BuildEfficientTradeChance = 0.15;
+		BuildEfficientTradeChance = 0.20;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -768,12 +749,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("ch4"), 5.f);
 		}
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.5;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-*/
 		BuildEfficientMilitaryChance = 0.025;
 		BuildEfficientMilitaryChanceSmall = 0.5;
 
@@ -804,12 +779,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		ShipyardAffility = 3.0;
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.5;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-*/
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
 
@@ -846,14 +815,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		CostSafetyMarginTradeShip = 1.0f;
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.25;
-		BudgetMilitaryWeight = 0.30;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-		BudgetStationLicenseWeight = 1.0;
-*/
-
 		BudgetTechnologyWeight = 0.01;
 		BudgetMilitaryWeight = 0.05;
 		BudgetStationWeight = 0.30;
@@ -1011,6 +972,11 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		ResearchOrder.Add("instruments");
 	}
 
+	if (CompanyDescription->AI_Behaviours.IsMercenaryCompany)
+	{
+		IsMercenaryCompany = CompanyDescription->AI_Behaviours.IsMercenaryCompany;
+	}
+
 	if (CompanyDescription->AI_Behaviours.DaysUntilTryGetStationLicense)
 	{
 		DaysUntilTryGetStationLicense = CompanyDescription->AI_Behaviours.DaysUntilTryGetStationLicense;
@@ -1041,7 +1007,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		MaintenanceAffility = CompanyDescription->AI_Behaviours.MaintenanceAffility;
 	}
-
 	if (CompanyDescription->AI_Behaviours.BudgetTechnologyWeight)
 	{
 		BudgetTechnologyWeight = CompanyDescription->AI_Behaviours.BudgetTechnologyWeight;

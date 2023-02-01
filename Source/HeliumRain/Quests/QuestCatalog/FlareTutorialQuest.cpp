@@ -3623,16 +3623,45 @@ void UFlareQuestConditionTutorialHaveStation::OnEvent(FFlareBundle& Bundle)
 	}
 
 	UFlareCompany* PlayerCompany = GetGame()->GetPC()->GetCompany();
-	for(UFlareSimulatedSpacecraft* Station : PlayerCompany->GetCompanyStations())
+	TArray<UFlareSimulatedSpacecraft*> StationsArray;
+	if (TargetSector && TargetSector->GetIdentifier() != NAME_None)
+	{
+		UFlareSimulatedSector* SpecificSector = GetGame()->GetGameWorld()->FindSector(TargetSector->GetIdentifier());
+		if (SpecificSector)
+		{
+			StationsArray = PlayerCompany->GetCompanySectorStations(SpecificSector);
+		}
+		else
+		{
+			StationsArray = PlayerCompany->GetCompanyStations();
+		}
+	}
+	else
+	{
+		StationsArray = PlayerCompany->GetCompanyStations();
+	}
+
+	for (UFlareSimulatedSpacecraft* Station : StationsArray)
 	{
 		if (!Station->IsUnderConstruction() &&
-		(!TargetUpgrade || (Station->GetLevel() > 1))
+			(!TargetUpgrade || (Station->GetLevel() > 1))
 			&& (TargetSector == NULL || TargetSector->GetIdentifier() == Station->GetCurrentSector()->GetIdentifier()))
 		{
 
-			if(TargetStationIdentifier == NAME_None || TargetStationIdentifier == Station->GetDescription()->Identifier)
+			if (TargetStationIdentifier == NAME_None || TargetStationIdentifier == Station->GetDescription()->Identifier)
 			{
 				Completed = true;
+			}
+			else if (Station->IsComplex())
+			{
+				for (UFlareSimulatedSpacecraft* Child : Station->GetComplexChildren())
+				{
+					if (TargetStationIdentifier == Station->GetDescription()->Identifier)
+					{
+						Completed = true;
+						break;
+					}
+				}
 			}
 		}
 	}

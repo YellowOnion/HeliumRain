@@ -24,7 +24,7 @@ class UFlareFleet;
 class UFlareFactory;
 class UFlareSector;
 class UFlareSimulatedSector;
-
+class UFlareBattle;
 
 /** Hostility status */
 UENUM()
@@ -130,7 +130,7 @@ public:
 	/** Spawn a sector from save data */
 	UFlareSimulatedSector* LoadSector(const FFlareSectorDescription* Description, const FFlareSectorSave& SectorData, const FFlareSectorOrbitParameters& OrbitParameters);
 
-	UFlareTravel* LoadTravel(const FFlareTravelSave& TravelData);
+	UFlareTravel* LoadTravel(const FFlareTravelSave& TravelData, UFlareFleet* Fleet);
 
 	/*----------------------------------------------------
 		Gameplay
@@ -206,6 +206,9 @@ protected:
 
 	UPROPERTY()
 	UFlareSimulatedPlanetarium*			 Planetarium;
+
+	UPROPERTY()
+	UFlareBattle*						BattleSimulation;
 
 	AFlareGame*                          Game;
 

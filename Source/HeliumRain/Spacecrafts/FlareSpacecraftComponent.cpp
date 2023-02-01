@@ -212,7 +212,7 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 		// Destroyed component
 		if (Spacecraft && GetDamageRatio() <= 0 && !Spacecraft->IsPresentationMode())
 		{
-			StartDestroyedEffects();
+			StartDestroyedEffects(true);
 		}
 	}
 
@@ -529,7 +529,7 @@ float UFlareSpacecraftComponent::ApplyDamage(float Energy, EFlareDamage::Type Da
 			// Effects
 			if (GetDamageRatio() == 0)
 			{
-				StartDestroyedEffects();
+				StartDestroyedEffects(false);
 			}
 			UpdateLight();
 			UpdateHeatProduction();
@@ -683,11 +683,11 @@ void UFlareSpacecraftComponent::OnRepaired()
 	}
 }
 
-void UFlareSpacecraftComponent::StartDestroyedEffects()
+void UFlareSpacecraftComponent::StartDestroyedEffects(bool Frominitialization)
 {
 	if (IsDestroyedEffectRelevant())
 	{
-		if (!HasCreatedDestroyedDebris)
+		if (!Frominitialization && !HasCreatedDestroyedDebris)
 		{
 			if (SpacecraftPawn)
 			{

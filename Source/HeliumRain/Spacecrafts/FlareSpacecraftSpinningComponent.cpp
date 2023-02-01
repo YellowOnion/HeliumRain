@@ -5,11 +5,17 @@
 #include "Subsystems/FlareSpacecraftDamageSystem.h"
 #include "../Game/FlareGame.h"
 #include "../Game/FlarePlanetarium.h"
-
+#include "../Player/FlarePlayerController.h"
 
 /*----------------------------------------------------
 	Constructor
 ----------------------------------------------------*/
+
+#define REAL_ATTENTION_RATE 0
+#define HIGH_ATTENTION_RATE 0.0166666666666667f
+#define MODERATE_ATTENTION_RATE 0.025f
+#define LOW_ATTENTION_RATE 0.05
+#define LOWEST_ATTENTION_RATE 0.1f
 
 UFlareSpacecraftSpinningComponent::UFlareSpacecraftSpinningComponent(const class FObjectInitializer& PCIP)
 	: Super(PCIP)
@@ -54,6 +60,7 @@ void UFlareSpacecraftSpinningComponent::Initialize(FFlareSpacecraftComponentSave
 	X = FVector (1, 0, 0);
 	Y = FVector (0, 1, 0);
 	Z = FVector (0, 0, 1);
+	PrimaryComponentTick.TickInterval = HIGH_ATTENTION_RATE;
 }
 
 void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -68,6 +75,44 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 	// Update
 	if (!Ship->IsPresentationMode() && Ship->GetParent()->GetDamageSystem()->IsAlive())
 	{
+		if (Ship->GetPC())
+		{
+			AFlareSpacecraft* PlayerShipPawn = Ship->GetPC()->GetShipPawn();
+			if (PlayerShipPawn)
+			{
+				// 100 = 1.0KM
+				float Distance = (PlayerShipPawn->GetActorLocation() - GetComponentLocation()).Size() / 1000;
+				if (Distance < 5)
+				{
+					PrimaryComponentTick.TickInterval = REAL_ATTENTION_RATE;
+				}
+				else if (Distance < 100)
+				{
+					PrimaryComponentTick.TickInterval = HIGH_ATTENTION_RATE;
+				}
+				else if (Distance < 250)
+				{
+					PrimaryComponentTick.TickInterval = MODERATE_ATTENTION_RATE;
+				}
+				else if (Distance < 500)
+				{
+					PrimaryComponentTick.TickInterval = LOW_ATTENTION_RATE;
+				}
+				else
+				{
+					PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
+				}
+			}
+			else
+			{
+				PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
+			}
+		}
+		else
+		{
+			PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
+		}
+
 		// Sun-looker
 		if (LookForSun)
 		{
@@ -94,7 +139,6 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 
 				if (!LocalPlanarSunDirection.IsNearlyZero())
 				{
-					//					FVector X(1, 0, 0);
 					float Angle = 0;
 					FVector RotationAxis = X;
 					LocalPlanarSunDirection.Normalize();
@@ -107,13 +151,11 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 					else if (RotationAxisYaw)
 					{
 						Angle = -FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.X, LocalPlanarSunDirection.Y));
-						//						FVector Z(0, 0, 1);
 						RotationAxis = Z;
 					}
 					else
 					{
 						Angle = FMath::RadiansToDegrees(FMath::Atan2(LocalPlanarSunDirection.Z, LocalPlanarSunDirection.X));
-						//						FVector Y(0, 1, 0);
 						RotationAxis = Y;
 					}
 
@@ -135,11 +177,14 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 				}
 			}
 		}
-
 		// Simple spinner
 		else
 		{
 			AddLocalRotation(RotationSpeed * DeltaSeconds * Axis);
 		}
+	}
+	else
+	{
+		PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
 	}
 }

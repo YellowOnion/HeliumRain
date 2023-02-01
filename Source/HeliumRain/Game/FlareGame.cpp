@@ -44,6 +44,7 @@
 
 #include "Engine/PostProcessVolume.h"
 #include "Engine.h"
+#include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FlareGame"
 
@@ -97,9 +98,18 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	CompanyCatalog = ConstructorStatics.CompanyCatalog.Object;
 	OrbitalBodies = ConstructorStatics.OrbitalBodies.Object;
 
+	for (TSharedRef<IPlugin> Plugin : IPluginManager::Get().GetEnabledPlugins())
+	{
+		if (Plugin->GetType() == EPluginType::Mod)
+		{
+			ActiveModStrings.Add(Plugin->GetName());
+		}
+	}
+
 	// Create dynamic objects
 	SaveGameSystem = NewObject<UFlareSaveGameSystem>(this, UFlareSaveGameSystem::StaticClass(), TEXT("SaveGameSystem"));
 	SpacecraftCatalog = NewObject<UFlareSpacecraftCatalog>(this, UFlareSpacecraftCatalog::StaticClass(), TEXT("FlareSpacecraftCatalog"));
+	SpacecraftCatalog->InitialSetup(this);
 	ShipPartsCatalog = NewObject<UFlareSpacecraftComponentsCatalog>(this, UFlareSpacecraftComponentsCatalog::StaticClass(), TEXT("FlareSpacecraftComponentsCatalog"));
 	QuestCatalog = NewObject<UFlareQuestCatalog>(this, UFlareQuestCatalog::StaticClass(), TEXT("FlareQuestCatalog"));
 	ResourceCatalog = NewObject<UFlareResourceCatalog>(this, UFlareResourceCatalog::StaticClass(), TEXT("FlareResourceCatalog"));
@@ -115,12 +125,9 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		{
 			DisableTechnologies.Add(Technology);
 		}
-		else
+		else if (TechnologyData->Level > TechnologyCatalog->MaximumTechnologyLevel)	
 		{
-			if (TechnologyData->Level > TechnologyCatalog->MaximumTechnologyLevel)
-			{
-				TechnologyCatalog->MaximumTechnologyLevel = TechnologyData->Level;
-			}
+			TechnologyCatalog->MaximumTechnologyLevel = TechnologyData->Level;
 		}
 
 		if (TechnologyData->UnlockItems.Num())
@@ -130,19 +137,17 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 				FFlareSpacecraftDescription* StationShipDescription = SpacecraftCatalog->Get(UnlockName);
 				FFlareSpacecraftComponentDescription* ShipPart = ShipPartsCatalog->Get(UnlockName);
 				if (StationShipDescription)
-				{
-					
+				{				
 					StationShipDescription->RequiredTechnologies.Add(TechnologyData->Identifier);
 				}
 				if (ShipPart)
 				{
-					ShipPart->Name = FText::FromName(ShipPart->Identifier);
+//					ShipPart->Name = FText::FromName(ShipPart->Identifier);
 					ShipPart->RequiredTechnologies.Add(TechnologyData->Identifier);
 				}
 			}
 		}
 	}
-
 	for (UFlareTechnologyCatalogEntry* TechnologyEntry : DisableTechnologies)
 	{
 		TechnologyCatalog->TechnologyCatalog.Remove(TechnologyEntry);
@@ -167,6 +172,11 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		ComponentSub->Name = FText::FromName(ComponentSub->Identifier);
 	}
 */
+}
+
+TArray<FString> AFlareGame::GetModStrings() const
+{
+	return ActiveModStrings;
 }
 
 /*----------------------------------------------------
@@ -218,13 +228,51 @@ void AFlareGame::StartPlay()
 
 	// Look for sector assets
 	TArray<FAssetData> AssetList;
+	Registry.SearchAllAssets(true);
 	Registry.GetAssetsByClass(UFlareSectorCatalogEntry::StaticClass()->GetFName(), AssetList);
 	for (FAssetData AssetEntry : AssetList)
 	{
 		FLOGV("AFlareGame::StartPlay : Found sector '%s'", *AssetEntry.GetFullName());
 		UFlareSectorCatalogEntry* Sector = Cast<UFlareSectorCatalogEntry>(AssetEntry.GetAsset());
 		FCHECK(Sector);
-		SectorList.Add(Sector);
+
+		UFlareSectorCatalogEntry* OldEntry = NULL;
+		for (UFlareSectorCatalogEntry* SectorSub : SectorList)
+		{
+			if (SectorSub != Sector && SectorSub->Data.Identifier == Sector->Data.Identifier && SectorSub->Data.ModLoadPriority <= Sector->Data.ModLoadPriority)
+			{
+				OldEntry = SectorSub;
+				break;
+			}
+		}
+
+		if (OldEntry)
+		{
+			if (Sector->Data.IsDisabledOverrideStats)
+			{
+				OldEntry->Data.Name = Sector->Data.Name;
+				OldEntry->Data.Description = Sector->Data.Description;
+				OldEntry->Data.CelestialBodyIdentifier = Sector->Data.CelestialBodyIdentifier;
+				OldEntry->Data.Altitude = Sector->Data.Altitude;
+				OldEntry->Data.Phase = Sector->Data.Phase;
+				OldEntry->Data.IsIcy = Sector->Data.IsIcy;
+				OldEntry->Data.IsGeostationary = Sector->Data.IsGeostationary;
+				OldEntry->Data.IsSolarPoor = Sector->Data.IsSolarPoor;
+				OldEntry->Data.IsHiddenFromTelescopes = Sector->Data.IsHiddenFromTelescopes;
+				OldEntry->Data.IsHiddenFromMovement = Sector->Data.IsHiddenFromMovement;
+				OldEntry->Data.IsAutoDiscovered = Sector->Data.IsAutoDiscovered;
+				OldEntry->Data.TelescopeDiscoveryLevel = Sector->Data.TelescopeDiscoveryLevel;
+			}
+			else
+			{
+				SectorList.Remove(OldEntry);
+			}
+		}
+
+		if (!Sector->Data.IsDisabled)
+		{
+			SectorList.Add(Sector);
+		}
 	}
 
 	GetWorldTimerManager().SetTimer(SlowTick, this, &AFlareGame::SlowerTickFunction, 60.f, true, 60.f);
@@ -1699,7 +1747,6 @@ void AFlareGame::InitSpacecraftNameDatabase()
 /*----------------------------------------------------
 	Getters
 ----------------------------------------------------*/
-
 const FFlareCompanyDescription*  AFlareGame::GetCompanyDescription(int32 Index) const
 {
 	if (CompanyCatalog)

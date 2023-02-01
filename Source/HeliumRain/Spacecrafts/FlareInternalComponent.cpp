@@ -33,7 +33,7 @@ FFlareSpacecraftComponentSave* UFlareInternalComponent::Save()
 	return Super::Save();
 }
 
-void UFlareInternalComponent::StartDestroyedEffects()
+void UFlareInternalComponent::StartDestroyedEffects(bool Frominitialization)
 {
 	// Do nothing
 }

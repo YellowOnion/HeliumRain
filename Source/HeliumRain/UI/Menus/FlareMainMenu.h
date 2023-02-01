@@ -39,8 +39,6 @@ public:
 	/** Exit this menu */
 	void Exit();
 
-	void CheckActivePlugins();
-
 protected:
 
 	/*----------------------------------------------------

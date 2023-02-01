@@ -180,14 +180,6 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 				TimeUntilNextComponentSwitch = 10;
 				//FLOGV("%s Select new target component %s ", *Turret->GetReadableName(), *PilotTargetShipComponent->GetReadableName());
 			}
-/*
-			if (!PilotTargetShipComponent)
-			{
-				WantFire = false;
-				ClearTarget();
-				return;
-			}
-*/
 		}
 		else
 		{
@@ -333,7 +325,7 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 
 	bool CheckIndividualTarget = false;
 	UFlareFleet* CurrentFleet = Turret->GetSpacecraft()->GetParent()->GetCurrentFleet();
-	if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet &&  Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
+	if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet && Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
 	{
 		CheckIndividualTarget = true;
 	}
@@ -413,7 +405,6 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
 		PilotTarget = GetNearestHostileTarget(true, Tactic);
 	}
-
 }
 
 PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool ReachableOnly, EFlareCombatTactic::Type Tactic)

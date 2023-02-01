@@ -207,9 +207,14 @@ public:
 		return Game;
 	}
 
+	inline TEnumAsByte<EFlareSkirmishPhase::Type> GetCurrentPhase()
+	{
+		return CurrentPhase;
+	}
+
 	AFlareGame* GetGame() const;
 
-	inline FFlareSkirmishData& GetData()
+  	inline FFlareSkirmishData& GetData()
 	{
 		return Data;
 	}

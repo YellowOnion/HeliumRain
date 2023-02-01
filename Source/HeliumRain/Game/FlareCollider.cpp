@@ -17,4 +17,3 @@ AFlareCollider::AFlareCollider(const class FObjectInitializer& PCIP) : Super(PCI
 	CollisionComponent->SetStaticMesh(ColliderTemplateObj.Object);
 	RootComponent = CollisionComponent;
 }
-

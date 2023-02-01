@@ -110,7 +110,7 @@ void UFlareWorld::Load(const FFlareWorldSave& Data)
 	// Load all travels
 	for (int32 i = 0; i < WorldData.TravelData.Num(); i++)
 	{
-		LoadTravel(WorldData.TravelData[i]);
+		LoadTravel(WorldData.TravelData[i],NULL);
 	}
 
 	WorldMoneyReferenceInit = false;
@@ -154,13 +154,13 @@ UFlareSimulatedSector* UFlareWorld::LoadSector(const FFlareSectorDescription* De
 }
 
 
-UFlareTravel* UFlareWorld::LoadTravel(const FFlareTravelSave& TravelData)
+UFlareTravel* UFlareWorld::LoadTravel(const FFlareTravelSave& TravelData, UFlareFleet* Fleet)
 {
 	UFlareTravel* Travel = NULL;
 
 	// Create the new travel
 	Travel = NewObject<UFlareTravel>(this, UFlareTravel::StaticClass());
-	Travel->Load(TravelData);
+	Travel->Load(TravelData, Fleet);
 	Travels.AddUnique(Travel);
 
 	//FLOGV("UFlareWorld::LoadTravel : loaded travel for fleet '%s'", *Travel->GetFleet()->GetFleetName().ToString());
@@ -221,7 +221,7 @@ void UFlareWorld::CompanyMutualAssistance()
 
 	for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 	{
-		UFlareCompany* Company =Companies[CompanyIndex];
+		UFlareCompany* Company = Companies[CompanyIndex];
 		if (Company != PlayerCompany)
 		{
 			// 0.02 % given to others
@@ -259,7 +259,7 @@ void UFlareWorld::CompanyMutualAssistance()
 		{
 			break;
 		}
-		if (Company != GetGame()->GetScenarioTools()->AxisSupplies)
+		if (Company != GetGame()->GetScenarioTools()->AxisSupplies && Company != PlayerCompany)
 		{
 			Company->GiveMoney(PoolBonus, FFlareTransactionLogEntry::LogMutualAssistance());
 			break;
@@ -333,8 +333,7 @@ bool UFlareWorld::CheckIntegrity()
 			UFlareSimulatedSpacecraft* Ship = Company->GetCompanyShips()[ShipIndex];
 
 			UFlareSimulatedSector* ShipSector = Ship->GetCurrentSector();
-
-			if(ShipSector&&ShipSector->IsValidLowLevel())
+			if(IsValid(ShipSector) && ShipSector!=nullptr && ShipSector->IsValidLowLevel())
 			{
 				if (Ship->GetCurrentFleet() == NULL)
 				{
@@ -471,13 +470,13 @@ void UFlareWorld::Simulate()
 		{
 			UFlareCompany* Company = Companies[CompanyIndex];
 
+			FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(Company);
+
 			if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
 			{
 				// Local sector, don't check if the player want fight
 				continue;
 			}
-
-			FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
 
 			if(!BattleState.WantFight())
 			{
@@ -489,14 +488,16 @@ void UFlareWorld::Simulate()
 				  *Sector->GetSectorName().ToString());
 
 			HasBattle = true;
-			break;
 		}
 
 		if (HasBattle)
 		{
-			UFlareBattle* Battle = NewObject<UFlareBattle>(this, UFlareBattle::StaticClass());
-			Battle->Load(Sector);
-			Battle->Simulate();
+			if (!BattleSimulation || BattleSimulation == nullptr)
+			{
+				BattleSimulation = NewObject<UFlareBattle>(this, UFlareBattle::StaticClass());
+			}
+			BattleSimulation->Load(Sector);
+			BattleSimulation->Simulate();
 		}
 
 		// Remove destroyed spacecraft
@@ -762,16 +763,12 @@ void UFlareWorld::Simulate()
 		Company->Simulate();
 	}
 
-	// Clear bombs
-	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
+	// Clear bombs, Process meteorites
+//	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
+	for (UFlareSimulatedSector* Sector : Sectors)
 	{
-		Sectors[SectorIndex]->ClearBombs();
-	}
-
-
-	// Process meteorites
-	for (UFlareSimulatedSector* Sector :Sectors)
-	{
+//		Sectors[SectorIndex]->ClearBombs();
+		Sector->ClearBombs();
 		Sector->ProcessMeteorites();
 	}
 
@@ -780,7 +777,6 @@ void UFlareWorld::Simulate()
 	{
 		Sector->GenerateMeteorites();
 	}
-
 
 	CompanyMutualAssistance();
 	CheckIntegrity();
@@ -2013,7 +2009,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 		TravelData.DestinationSectorIdentifier = DestinationSector->GetIdentifier();
 		TravelData.DepartureDate = GetDate();
 		UFlareTravel::InitTravelSector(TravelData.SectorData);
-		UFlareTravel* Travel = LoadTravel(TravelData);
+		UFlareTravel* Travel = LoadTravel(TravelData, TravelingFleet);
 
 		GetGame()->GetQuestManager()->OnTravelStarted(Travel);
 
