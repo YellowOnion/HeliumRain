@@ -7,6 +7,7 @@
 
 #include "../Data/FlareCustomizationCatalog.h"
 #include "../Data/FlareSpacecraftComponentsCatalog.h"
+#include "../Data/FlareGlobalSettings.h"
 
 #include "../Game/FlareGame.h"
 
@@ -46,12 +47,6 @@ UFlareSpacecraftComponent::UFlareSpacecraftComponent(const class FObjectInitiali
 	, MaxImpactCount(3)
 	, ImpactEffectChance(0.1)
 {
-	// Fire effects
-	static ConstructorHelpers::FObjectFinder<UParticleSystem> ImpactEffectTemplateSObj(TEXT("/Game/Master/Particles/DamageEffects/PS_Fire.PS_Fire"));
-	static ConstructorHelpers::FObjectFinder<UParticleSystem> ImpactEffectTemplateLObj(TEXT("/Game/Master/Particles/DamageEffects/PS_Fire_L.PS_Fire_L"));
-	ImpactEffectTemplateS = ImpactEffectTemplateSObj.Object;
-	ImpactEffectTemplateL = ImpactEffectTemplateLObj.Object;
-
 	// Physics setup
 	PrimaryComponentTick.bCanEverTick = true;
 	SetNotifyRigidBodyCollision(true);
@@ -59,10 +54,11 @@ UFlareSpacecraftComponent::UFlareSpacecraftComponent(const class FObjectInitiali
 	bCanEverAffectNavigation = false;
 	bTraceComplexOnMove = false;
 
-	// Lighting settins
+	// Lighting settings
 	bAffectDynamicIndirectLighting = false;
 	bAffectDistanceFieldLighting = false;
 	HasFlickeringLights = true;
+	HasCreatedDestroyedDebris = false;
 }
 
 
@@ -186,6 +182,8 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 	{
 		LocalTemperature = Spacecraft->GetParent()->GetDamageSystem()->GetTemperature();
 	}
+
+	OwnerSpacecraftPawn->GetGame()->GetGlobalSettings()->GetDefaultImpactTemplates(ImpactEffectTemplateS, ImpactEffectTemplateL);
 
 	// Setup properties
 	if (Data)
@@ -691,12 +689,13 @@ void UFlareSpacecraftComponent::StartDestroyedEffects(bool Frominitialization)
 		{
 			if (SpacecraftPawn)
 			{
+				UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+
 				HasCreatedDestroyedDebris = true;
-				float DebrisProbability = FMath::FRand();
-				if (DebrisProbability <= 0.50)
+				float DebrisChanceSetting = MyGameSettings->DebrisQuantity / 10;
+				if (FMath::FRand() <= DebrisChanceSetting)
 				{
-					FVector Position = GetComponentLocation();
-					SpacecraftPawn->GetGame()->GetDebrisFieldSystem()->CreateDebris(SpacecraftPawn->GetGame()->GetActiveSector()->GetSimulatedSector(), Position, 1, 1, 1);
+					SpacecraftPawn->GetGame()->GetDebrisFieldSystem()->CreateDebris(SpacecraftPawn->GetGame()->GetActiveSector()->GetSimulatedSector(), GetComponentLocation(), 1, 1, 1, true);
 				}
 			}
 		}
@@ -752,8 +751,23 @@ void UFlareSpacecraftComponent::StartDamagedEffect(FVector Location, FRotator Ro
 	}
 
 	// Spawn
+
+	UParticleSystem* LocalDamageEffect;
+	if (ComponentDescription && ComponentDescription->DamagedEffect)
+	{
+		LocalDamageEffect = ComponentDescription->DamagedEffect;
+	}
+	else if (Size == EFlarePartSize::L)
+	{
+		LocalDamageEffect = ImpactEffectTemplateL;
+	}
+	else
+	{
+		LocalDamageEffect = ImpactEffectTemplateS;
+	}
+
 	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAttached(
-		(Size == EFlarePartSize::L) ? ImpactEffectTemplateL : ImpactEffectTemplateS,
+		LocalDamageEffect,
 		this,
 		NAME_None,	
 		Location,

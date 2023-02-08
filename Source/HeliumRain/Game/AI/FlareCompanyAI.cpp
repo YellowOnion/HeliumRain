@@ -248,24 +248,6 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 		return;
 	}
 
-	if (!WorldResourceVariation.Num())
-	{
-		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
-		WorldResourceVariation.Add(SimulatedSector, Variation);
-	}
-	else
-	{
-		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
-		WorldResourceVariation[SimulatedSector] = Variation;
-	}
-
-	SectorVariation const* ThisSectorVariation = &(WorldResourceVariation[SimulatedSector]);
-
-	if (!ThisSectorVariation)
-	{
-		return;
-	}
-
 	bool BreakOutOfLoop = false;
 
 	TArray<UFlareResourceCatalogEntry*> ResourceCatalog = Game->GetResourceCatalog()->Resources;
@@ -291,17 +273,20 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			continue;
 		}
 
-		if (BreakOutOfLoop || ThisSectorVariation == nullptr || !ThisSectorVariation)
+		if (BreakOutOfLoop)
 		{
 			break;
 		}
 
-		if (ThisSectorVariation->ResourceVariations.Num() && !ThisSectorVariation->ResourceVariations.Contains(Resource))
-		{
-			break;
-		}
+		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
 
+		const SectorVariation* ThisSectorVariation = &Variation;
 		struct ResourceVariation const* ResourceVariation = &ThisSectorVariation->ResourceVariations[Resource];
+
+//		SectorVariation const* ThisSectorVariation = &AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
+//		struct ResourceVariation const* ResourceVariation = &ThisSectorVariation->ResourceVariations[Resource];
+
+
 		if (!ResourceVariation || ResourceVariation == nullptr)
 		{
 			break;

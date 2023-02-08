@@ -252,11 +252,22 @@ float AFlareSpacecraftPawn::GetMeshScale() const
 {
 	if(MeshScaleCache < 0)
 	{
-		FBox Box = GetComponentsBoundingBox();
+		FBox Box = GetMeshBox();
 		AFlareSpacecraftPawn* UnprotectedThis = const_cast<AFlareSpacecraftPawn*>(this);
 		UnprotectedThis->MeshScaleCache = FMath::Max(Box.GetExtent().Size(), 1.0f);
 	}
 	return MeshScaleCache;
+}
+
+FBox AFlareSpacecraftPawn::GetMeshBox() const
+{
+	if (!SetMeshBox)
+	{
+		AFlareSpacecraftPawn* UnprotectedThis = const_cast<AFlareSpacecraftPawn*>(this);
+		UnprotectedThis->MeshBox = GetComponentsBoundingBox();
+		UnprotectedThis->SetMeshBox = true;
+	}
+	return MeshBox;
 }
 
 bool AFlareSpacecraftPawn::IsPlayerShip()

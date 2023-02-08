@@ -258,6 +258,7 @@ public:
 	bool IsShipyardMissingResources();
 
 	FText GetShipCost(FName ShipIdentifier);
+	FText GetShipResourceCost(FFlareSpacecraftDescription* Description);
 
 	bool IsAllowExternalOrder();
 	bool IsAllowAutoConstruction();

@@ -574,9 +574,51 @@ FText SFlareSpacecraftOrderOverlay::GetWalletText() const
 	else if (MenuManager->GetPC())
 	{
 		FCHECK(MenuManager->GetPC()->GetCompany());
+/*
+		if (SpacecraftSelector->GetNumItemsSelected() > 0)
+		{
+			FFlareSpacecraftDescription* Desc = SpacecraftSelector->GetSelectedItems()[0]->SpacecraftDescriptionPtr;
+		}
+*/
+		if (TargetShipyard)
+		{
+			if (SpacecraftSelector->GetNumItemsSelected() > 0)
+			{
+				UFlareCompany* PlayerCompany = MenuManager->GetPC()->GetCompany();
+				FFlareSpacecraftDescription* Desc = SpacecraftSelector->GetSelectedItems()[0]->SpacecraftDescriptionPtr;
+				uint32 ShipPrice;
+				FText CreditsQuantity;
+
+				if (TargetShipyard->GetCompany() != PlayerCompany)
+				{
+					ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(Desc->Identifier, TargetShipyard->GetCurrentSector(), true);
+				}
+				else
+				{
+					ShipPrice = Desc->CycleCost.ProductionCost;
+				}
+
+				if (MenuManager->GetPC()->GetCompany()->GetMoney() >= ShipPrice)
+				{
+					CreditsQuantity = FText::Format(LOCTEXT("CompanyCurrentWallet", "\u2022 {1} credits."),
+					FText::AsNumber(ShipPrice / 100),
+					FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetMoney() / 100));
+				}
+				else
+				{ // \u2022
+					CreditsQuantity = FText::Format(LOCTEXT("CompanyCurrentWallet", "\u2715 {0} / {1} credits."),
+					FText::AsNumber(ShipPrice / 100),
+					FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetMoney() / 100));
+				}
+
+				return FText::Format(LOCTEXT("OrderShipResult", "{0} {1}"),
+				CreditsQuantity,
+				TargetShipyard->GetShipResourceCost(Desc));
+			}
+		}
 
 		return FText::Format(LOCTEXT("CompanyCurrentWallet", "You have {0} credits available."),
-			FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetMoney() / 100));
+		FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetMoney() / 100));
 	}
 
 	return FText();

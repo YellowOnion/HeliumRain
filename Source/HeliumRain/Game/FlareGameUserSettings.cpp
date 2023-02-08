@@ -28,6 +28,7 @@ void UFlareGameUserSettings::SetToDefaults()
 	UseTemporalAA = true;
 	UseMotionBlur = true;
 	Gamma = 2.2f;
+	DebrisQuantity = 50;
 
 	// Gameplay
 	InvertY = false;

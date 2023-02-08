@@ -80,14 +80,14 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 		FCHECK(Spacecraft);
 
 		bool AddToCatalog = true;
-		if (!Spacecraft->Data.IsDisabledIfModNotLoaded.IsEmpty())
+		if (Spacecraft->Data.IsDisabledIfModsNotLoaded.Num())
 		{
 			if (GameMode->GetModStrings().Num())
 			{
 				bool FoundMod = false;
 				for (FString MenuModStrings : GameMode->GetModStrings())
 				{
-					if (MenuModStrings == Spacecraft->Data.IsDisabledIfModNotLoaded)
+					if (Spacecraft->Data.IsDisabledIfModsNotLoaded.Find(MenuModStrings))
 					{
 						FoundMod = true;
 						break;
@@ -101,6 +101,21 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 			else
 			{
 				AddToCatalog = false;
+			}
+		}
+
+		if (AddToCatalog && Spacecraft->Data.IsEnabledIfModsNotLoaded.Num())
+		{
+			if (GameMode->GetModStrings().Num())
+			{
+				for (FString MenuModStrings : GameMode->GetModStrings())
+				{
+					if (Spacecraft->Data.IsEnabledIfModsNotLoaded.Find(MenuModStrings))
+					{
+						AddToCatalog = false;
+						break;
+					}
+				}
 			}
 		}
 
@@ -156,6 +171,7 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 			}
 		}
 	}
+
 	for (int32 Index = 0; Index < ShipCatalog.Num(); Index++)
 	{
 		UFlareSpacecraftCatalogEntry* Spacecraft = ShipCatalog[Index];

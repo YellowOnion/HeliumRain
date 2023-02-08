@@ -960,6 +960,10 @@ void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
 */
 			if (DockStation)
 			{
+				Data->DockedTo = DockStation->GetImmatriculation();
+				Data->DockedAt = DockId;
+//Technicaly RedockTo doesn't quite calculate the proper location and either needs to be fixed or called twice in this situation. However, upon sector reload it's called again on normal Redock() anyway so "everything is fine *fire in background*"
+				Spacecraft->RedockTo(DockStation);
 				ConfirmDock(DockStation, DockId, false);
 			}
 		}

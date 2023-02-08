@@ -415,7 +415,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	CreateStations(StationResearch, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationShipyard, PlayerCompany, FirstLight, 1, 1, SpawnParameters, RandomizeStationLocations);
 	PlayerCompany->GiveResearch(999999999);
-	PlayerCompany->GiveMoney(9999999999, FFlareTransactionLogEntry::LogInitialMoney());
+	PlayerCompany->GiveMoney(99999999999, FFlareTransactionLogEntry::LogInitialMoney());
 	for (int SectorIndex = 0; SectorIndex < World->GetSectors().Num(); SectorIndex++)
 	{
 		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);

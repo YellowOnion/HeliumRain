@@ -327,8 +327,26 @@ struct FFlareSpacecraftComponentDescription
 	/** Effect used when destroyed*/
 	UPROPERTY(EditAnywhere, Category = Content) UParticleSystem* DestroyedEffect;
 
+	/** Effect used when damaged*/
+	UPROPERTY(EditAnywhere, Category = Content) UParticleSystem* DamagedEffect;
+
 	/** Part mesh preview image */
 	UPROPERTY(EditAnywhere, Category = Content) FSlateBrush MeshPreviewBrush;
+
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
+
+	/** This component is disabled but it will override the stats of an older version that was found with this version. Useful if rebalancing components that your mod doesn't have the models etc for*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
+
+	/** Disables this entry if any of the designated mods aren't detected*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsDisabledIfModsNotLoaded;
+
+	/** Enables this entry only if any mods in the array aren't detected as loaded*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsEnabledIfModsNotLoaded;
+
+
+	/** This adjusts the priority of this component being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 
 	/** General characteristic structure */
 	UPROPERTY(EditAnywhere, Category = Content) FFlareSpacecraftComponentGeneralCharacteristics GeneralCharacteristics;

@@ -72,7 +72,7 @@ protected:
 		bool SpeedCorrectionOnly;
 	};
 
-	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* TargetShip, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit, float DeltaSeconds);
+	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* TargetShip, FVector InitialVelocity, float PreventionDuration, PilotHelper::AnticollisionConfig IgnoreConfig, float DeltaSeconds);
 
 	virtual void SelectedNewLeader(AFlareSpacecraft* OldLeaderShip);
 

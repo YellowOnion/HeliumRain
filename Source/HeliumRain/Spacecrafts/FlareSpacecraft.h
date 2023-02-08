@@ -77,6 +77,8 @@ public:
 
 	virtual void Redock();
 
+	virtual void RedockTo(AFlareSpacecraft* Station);
+
 	virtual float GetSpacecraftMass() const;
 
 	void SetWantUndockInternalShips(bool Set);

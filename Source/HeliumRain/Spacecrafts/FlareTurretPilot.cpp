@@ -31,8 +31,6 @@ UFlareTurretPilot::UFlareTurretPilot(const class FObjectInitializer& PCIP)
 	TargetSelectionReactionTimeFast = FMath::FRandRange(1.0, 1.5);
 	TargetSelectionReactionTimeSlow = FMath::FRandRange(2.0, 3.0);
 	TimeUntilNextTargetSelectionReaction = 0;
-
-	FireReactionTime = FMath::FRandRange(0.1, 0.2);
 	TimeUntilFireReaction = 0;
 }
 
@@ -59,6 +57,15 @@ void UFlareTurretPilot::Initialize(const FFlareTurretPilotSave* Data, UFlareComp
 	{
 		SecurityRadius = Turret->GetDescription()->WeaponCharacteristics.AmmoExplosionRadius + Turret->GetSpacecraft()->GetMeshScale() / 100;
 		SecurityRadiusDistance = (SecurityRadius * 100);
+	}
+	
+	if (Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRate)
+	{
+		FireReactionTime = FMath::FRandRange(((Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRate / 60.f) / 2), ((Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRate / 60.f)));
+	}
+	else
+	{
+		FireReactionTime = FMath::FRandRange(0.1, 0.2);
 	}
 }
 
@@ -207,69 +214,72 @@ void UFlareTurretPilot::TickPilot(float DeltaSeconds)
 		}
 		
 		AimAxis = (PredictedFireTargetLocation - TurretLocation).GetUnsafeNormal();
-		/*FLOGV("%s Have target AimAxis=%s",*Turret->GetReadableName(),  * AimAxis.ToString());
-		FLOGV("%s AmmoIntersectionPredictedTime=%f",*Turret->GetReadableName(),  AmmoIntersectionPredictedTime);
-		FLOGV("%s AmmoVelocity=%f",*Turret->GetReadableName(),  AmmoVelocity);*/
-
-		float TargetSize = PilotTarget.GetMeshScale() / 100.f + Turret->GetAimRadius() * 2; // Radius in meters
-		FVector DeltaLocation = (PilotTargetLocation-TurretLocation) / 100.f;
-		float Distance = DeltaLocation.Size(); // Distance in meters
-
-		//FLOGV("%s Distance=%f",*Turret->GetReadableName(),  Distance);
-
-		// If at range and aligned fire on the target
-		// TODO increase tolerance if target is near
-
-		if (AmmoIntersectionPredictedTime > 0 && AmmoIntersectionPredictedTime < 10.f && TimeUntilFireReaction < 0)
+		if (TimeUntilFireReaction < 0)
 		{
-			SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Intersect);
-
 			TimeUntilFireReaction = FireReactionTime;
 			WantFire = false;
+			/*FLOGV("%s Have target AimAxis=%s",*Turret->GetReadableName(),  * AimAxis.ToString());
+			FLOGV("%s AmmoIntersectionPredictedTime=%f",*Turret->GetReadableName(),  AmmoIntersectionPredictedTime);
+			FLOGV("%s AmmoVelocity=%f",*Turret->GetReadableName(),  AmmoVelocity);*/
 
-			//FLOG("Near enough");
-			FVector FireAxis = Turret->GetFireAxis();
-			
-			for (int GunIndex = 0; GunIndex < Turret->GetGunCount(); GunIndex++)
+			float TargetSize = PilotTarget.GetMeshScale() / 100.f + Turret->GetAimRadius() * 2; // Radius in meters
+			FVector DeltaLocation = (PilotTargetLocation - TurretLocation) / 100.f;
+			float Distance = DeltaLocation.Size(); // Distance in meters
+			//Distance
+			//FLOGV("%s Distance=%f",*Turret->GetReadableName(),  Distance);
+
+			// If at range and aligned fire on the target
+			// TODO increase tolerance if target is near
+			if (Distance <= Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange && AmmoIntersectionPredictedTime > 0 && AmmoIntersectionPredictedTime < 10.f)
 			{
-				SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Intersect_Gun);
+				SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Intersect);
 
-				FVector MuzzleLocation = Turret->GetMuzzleLocation(GunIndex);
 
-				// Compute target Axis for each gun
-				FVector AmmoIntersectionLocation;
-				float AmmoIntersectionTime = SpacecraftHelper::GetIntersectionPosition(PilotTargetLocation, PilotTarget.GetLinearVelocity(), MuzzleLocation, TurretVelocity , AmmoVelocity, 0, &AmmoIntersectionLocation);
-				if (AmmoIntersectionTime < 0)
+				//FLOG("Near enough");
+				FVector FireAxis = Turret->GetFireAxis();
+
+				for (int GunIndex = 0; GunIndex < Turret->GetGunCount(); GunIndex++)
 				{
-					// No ammo intersection, don't fire
-					continue;
-				}
-				FVector FireTargetAxis = (AmmoIntersectionLocation - MuzzleLocation).GetUnsafeNormal();
-				/*FLOGV("Gun %d FireAxis=%s", GunIndex, *FireAxis.ToString());
-				FLOGV("Gun %d FireTargetAxis=%s", GunIndex, *FireTargetAxis.ToString());*/
+					SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Intersect_Gun);
 
-				float AngularPrecisionDot = FVector::DotProduct(FireTargetAxis, FireAxis);
-				float AngularPrecision = FMath::Acos(AngularPrecisionDot);
-				float AngularSize = FMath::Atan(TargetSize / Distance);
+					FVector MuzzleLocation = Turret->GetMuzzleLocation(GunIndex);
 
-				/*FLOGV("Gun %d Distance=%f", GunIndex, Distance);
-				FLOGV("Gun %d TargetSize=%f", GunIndex, TargetSize);
-				FLOGV("Gun %d AngularSize=%f", GunIndex, AngularSize);
-				FLOGV("Gun %d AngularPrecision=%f", GunIndex, AngularPrecision);*/
-				bool DangerousTarget = IsTargetDangerous(PilotTarget);
-				if (AngularPrecision < (DangerousTarget ? AngularSize * 0.25 : AngularSize * 0.2))
-				{
-					if (!PilotHelper::CheckFriendlyFire(Turret->GetSpacecraft()->GetGame()->GetActiveSector(), PlayerCompany, MuzzleLocation, TurretVelocity, AmmoVelocity, FireTargetAxis, AmmoIntersectionTime, Turret->GetAimRadius()))
+					// Compute target Axis for each gun
+					FVector AmmoIntersectionLocation;
+					float AmmoIntersectionTime = SpacecraftHelper::GetIntersectionPosition(PilotTargetLocation, PilotTarget.GetLinearVelocity(), MuzzleLocation, TurretVelocity, AmmoVelocity, 0, &AmmoIntersectionLocation);
+					if (AmmoIntersectionTime < 0)
 					{
-						FVector Location = PilotTarget.GetActorLocation();
-						FVector Velocity = PilotTarget.GetLinearVelocity() / 100;
-						Turret->SetTarget(Location, Velocity);
-						WantFire = true;
-						break;
+						// No ammo intersection, don't fire
+						continue;
 					}
-					else
+					FVector FireTargetAxis = (AmmoIntersectionLocation - MuzzleLocation).GetUnsafeNormal();
+					/*FLOGV("Gun %d FireAxis=%s", GunIndex, *FireAxis.ToString());
+					FLOGV("Gun %d FireTargetAxis=%s", GunIndex, *FireTargetAxis.ToString());*/
+
+					float AngularPrecisionDot = FVector::DotProduct(FireTargetAxis, FireAxis);
+					float AngularPrecision = FMath::Acos(AngularPrecisionDot);
+					float AngularSize = FMath::Atan(TargetSize / Distance);
+
+					/*FLOGV("Gun %d Distance=%f", GunIndex, Distance);
+					FLOGV("Gun %d TargetSize=%f", GunIndex, TargetSize);
+					FLOGV("Gun %d AngularSize=%f", GunIndex, AngularSize);
+					FLOGV("Gun %d AngularPrecision=%f", GunIndex, AngularPrecision);*/
+					bool DangerousTarget = IsTargetDangerous(PilotTarget);
+					if (AngularPrecision < (DangerousTarget ? AngularSize * 0.25 : AngularSize * 0.2))
 					{
-						//FLOG("Friendly fire avoidance");
+						//CheckFriendlyFire(UFlareSector* Sector, UFlareCompany* MyCompany, FVector FireBaseLocation, FVector FireBaseVelocity , float AmmoVelocity, FVector FireAxis, float MaxDelay, float AimRadius)
+						if (!PilotHelper::CheckFriendlyFire(Turret->GetSpacecraft()->GetGame()->GetActiveSector(), PlayerCompany, MuzzleLocation, TurretVelocity, AmmoVelocity, FireTargetAxis, AmmoIntersectionTime, Turret->GetAimRadius()))
+						{
+							FVector Location = PilotTarget.GetActorLocation();
+							FVector Velocity = PilotTarget.GetLinearVelocity() / 100;
+							Turret->SetTarget(Location, Velocity);
+							WantFire = true;
+							break;
+						}
+						else
+						{
+							//FLOG("Friendly fire avoidance");
+						}
 					}
 				}
 			}
@@ -323,23 +333,59 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 		}
 	}
 
+	SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Target);
+
 	bool CheckIndividualTarget = false;
-	UFlareFleet* CurrentFleet = Turret->GetSpacecraft()->GetParent()->GetCurrentFleet();
-	if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet && Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
+	FVector PilotLocation = Turret->GetTurretBaseLocation();
+
+	if (Turret->GetWeaponGroup()->Target)
 	{
-		CheckIndividualTarget = true;
-	}
-	else
-	{
-		PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
-		if (PilotTarget.IsValid())
+		AFlareSpacecraft* TargetCandidate = Turret->GetWeaponGroup()->Target;
+		if (TargetCandidate)
 		{
-			if (PilotTarget.SpacecraftTarget)
+			if (!TargetCandidate->GetParent()->GetDamageSystem()->IsAlive())
 			{
-				if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+				Turret->GetWeaponGroup()->Target = NULL;
+			}
+			else
+			{
+				FVector TargetAxis = (TargetCandidate->GetActorLocation() - Turret->GetTurretBaseLocation()).GetUnsafeNormal();
+				if (Turret->IsReacheableAxis(TargetAxis))
 				{
-					//the station + military check is just encase someone throws weapons on a station via third party mods
-					if ((PilotTarget.SpacecraftTarget->IsStation() && !PilotTarget.SpacecraftTarget->IsMilitary()) || !Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()) || PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable() || (PilotTarget.SpacecraftTarget->IsMilitary() && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed()))
+					float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
+					if (Distance < SecurityRadiusDistance || Distance > Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange)
+					{
+						PilotTarget = TargetCandidate;
+						CheckIndividualTarget = false;
+					}
+				}
+			}
+		}
+	}
+
+	if (!CheckIndividualTarget)
+	{
+		UFlareFleet* CurrentFleet = Turret->GetSpacecraft()->GetParent()->GetCurrentFleet();
+		if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet && Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
+		{
+			CheckIndividualTarget = true;
+		}
+		else
+		{
+			PilotTarget = Turret->GetSpacecraft()->GetCurrentTarget();
+			if (PilotTarget.IsValid())
+			{
+				if (PilotTarget.SpacecraftTarget)
+				{
+					if (PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsAlive())
+					{
+						//the station + military check is just encase someone throws weapons on a station via third party mods
+						if ((PilotTarget.SpacecraftTarget->IsStation() && !PilotTarget.SpacecraftTarget->IsMilitary()) || !Turret->GetSpacecraft()->IsHostile(PilotTarget.SpacecraftTarget->GetCompany()) || PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable() || (PilotTarget.SpacecraftTarget->IsMilitary() && PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed()))
+						{
+							CheckIndividualTarget = true;
+						}
+					}
+					else
 					{
 						CheckIndividualTarget = true;
 					}
@@ -348,54 +394,27 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 				{
 					CheckIndividualTarget = true;
 				}
+
+				if (!CheckIndividualTarget)
+				{
+					FVector TargetAxis = (PilotTarget.GetActorLocation() - PilotLocation).GetUnsafeNormal();
+					if (!Turret->IsReacheableAxis(TargetAxis))
+					{
+						CheckIndividualTarget = true;
+					}
+					else
+					{
+						float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
+						if (Distance < SecurityRadiusDistance || Distance > Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange)
+						{
+							CheckIndividualTarget = true;
+						}
+					}
+				}
 			}
 			else
 			{
 				CheckIndividualTarget = true;
-			}
-
-			if (!CheckIndividualTarget && !PilotTarget.IsEmpty())
-			{
-				FVector PilotLocation = Turret->GetTurretBaseLocation();
-				FVector TargetAxis = (PilotTarget.GetActorLocation() - PilotLocation).GetUnsafeNormal();
-				if (!Turret->IsReacheableAxis(TargetAxis))
-				{
-					CheckIndividualTarget = true;
-				}
-
-				if (!CheckIndividualTarget)
-				{
-					float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
-					if (Distance < SecurityRadiusDistance)
-					{
-						CheckIndividualTarget = true;
-					}
-				}
-			}
-		}
-		else
-		{
-			CheckIndividualTarget = true;
-		}
-	}
-
-	if (Turret->GetWeaponGroup()->Target)
-	{
-		SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Target);
-
-		AFlareSpacecraft* TargetCandidate = Turret->GetWeaponGroup()->Target;
-
-		if (!TargetCandidate->GetParent()->GetDamageSystem()->IsAlive())
-		{
-			Turret->GetWeaponGroup()->Target = NULL;
-		}
-		else if(TargetCandidate)
-		{
-			FVector TargetAxis = (TargetCandidate->GetActorLocation() - Turret->GetTurretBaseLocation()).GetUnsafeNormal();
-			if (Turret->IsReacheableAxis(TargetAxis))
-			{
-				PilotTarget = TargetCandidate;
-				CheckIndividualTarget = false;
 			}
 		}
 	}
@@ -404,6 +423,11 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 	{
 		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
 		PilotTarget = GetNearestHostileTarget(true, Tactic);
+	}
+
+	if (PilotTarget.SpacecraftTarget)
+	{
+		Turret->GetWeaponGroup()->Target = PilotTarget.SpacecraftTarget;
 	}
 }
 

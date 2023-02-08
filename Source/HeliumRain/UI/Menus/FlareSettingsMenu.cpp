@@ -821,6 +821,51 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							]
 						]
 					]
+					// Debris quantity box
+					+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+
+							// PostProcess quality text
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(LabelSize)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("DebrisQuantityLabel", "Combat Debri quantity"))
+						.TextStyle(&Theme.TextFont)
+						]
+						]
+
+					// Debris quantity slider
+					+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Center)
+						.Padding(Theme.ContentPadding)
+						[
+							SAssignNew(DebrisQuantitySlider, SSlider)
+							.Value(MyGameSettings->DebrisQuantity)
+							.Style(&Theme.SliderStyle)
+							.OnValueChanged(this, &SFlareSettingsMenu::OnDebrisSliderChanged)
+						]
+
+					// Debris label
+					+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ValueSize)
+						[
+							SAssignNew(DebrisLabel, STextBlock)
+							.TextStyle(&Theme.TextFont)
+							.Text(GetDebrisLabel(MyGameSettings->DebrisQuantity))
+						]
+						]
+					]
 				]
 			]
 		]
@@ -1129,12 +1174,16 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	// Music volume
 	int32 MusicVolume = MyGameSettings->MusicVolume;
 	int32 MasterVolume = MyGameSettings->MasterVolume;
+	int32 DebrisQuantity = MyGameSettings->DebrisQuantity;
 	ShipCountSlider->SetValue(MaxShipRatio);
 	ShipCountLabel->SetText(GetShipCountLabel(MyGameSettings->MaxShipsInSector));
 	MusicVolumeSlider->SetValue((float)MusicVolume / 10.0f);
 	MusicVolumeLabel->SetText(GetMusicVolumeLabel(MusicVolume));
 	MasterVolumeSlider->SetValue((float)MasterVolume / 10.0f);
 	MasterVolumeLabel->SetText(GetMasterVolumeLabel(MasterVolume));
+
+	DebrisQuantitySlider->SetValue((float)DebrisQuantity / 10.0f);
+	DebrisLabel->SetText(GetDebrisLabel(DebrisQuantity));
 }
 
 TSharedRef<SWidget> SFlareSettingsMenu::BuildKeyBindingBox()
@@ -1844,6 +1893,30 @@ FText SFlareSettingsMenu::GetPostProcessQualityLabel(int32 Value) const
 		default:
 			return LOCTEXT("PostProcessQualityLow", "Low");
 	}
+}
+
+void SFlareSettingsMenu::OnDebrisSliderChanged(float Value)
+{
+	int32 Step = 10;
+	int32 StepValue = FMath::RoundToInt(Step * Value);
+	DebrisQuantitySlider->SetValue((float)StepValue / (float)Step);
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	if (MyGameSettings->DebrisQuantity != StepValue)
+	{
+		MyGameSettings->DebrisQuantity = StepValue;
+		MyGameSettings->ApplySettings(false);
+		DebrisLabel->SetText(GetDebrisLabel(StepValue));
+	}
+}
+
+FText SFlareSettingsMenu::GetDebrisLabel(int32 Value) const
+{
+	if (Value == 0)
+	{
+		return LOCTEXT("Off", "Off");
+	}
+	return FText::Format(LOCTEXT("DebrisFormat", "{0}%"), FText::AsNumber(10 * Value));
 }
 
 void SFlareSettingsMenu::SetDefaultControls()

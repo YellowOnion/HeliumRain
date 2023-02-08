@@ -41,6 +41,10 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
+	void InitialSetup(AFlareGame* GameMode);
+	void SetupModArrays(TArray<UFlareSpacecraftComponentsCatalogEntry*>& PassedArray);
+	void ReplaceOldEntrySettings(FFlareSpacecraftComponentDescription* OldEntryDesc, UFlareSpacecraftComponentsCatalogEntry* Component);
+
 	/** Get a part description */
 	FFlareSpacecraftComponentDescription* Get(FName Identifier) const;
 

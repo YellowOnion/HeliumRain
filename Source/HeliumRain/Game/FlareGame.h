@@ -22,6 +22,7 @@ class UFlareCompanyCatalog;
 class UFlareResourceCatalog;
 class UFlareTechnologyCatalog;
 class UFlareScannableCatalog;
+class UFlareGlobalSettings;
 class UFlareOrbitalMap;
 
 class UFlareSkirmishManager;
@@ -305,7 +306,11 @@ protected:
 	UPROPERTY()
 	UFlareScannableCatalog*                    ScannableCatalog;
 
-	/** Default asteroid */
+	/** Reference to all scannables */
+	UPROPERTY()
+	UFlareGlobalSettings*                    GlobalSettings;
+
+		/** Default asteroid */
 	UPROPERTY()
 	UStaticMesh*                               DefaultAsteroid;
 	
@@ -459,6 +464,11 @@ public:
 	inline UFlareScannableCatalog* GetScannableCatalog() const
 	{
 		return ScannableCatalog;
+	}
+
+	inline UFlareGlobalSettings* GetGlobalSettings() const
+	{
+		return GlobalSettings;
 	}
 
 	UFlareSkirmishManager* GetSkirmishManager() const

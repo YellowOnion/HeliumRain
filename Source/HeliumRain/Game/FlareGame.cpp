@@ -25,6 +25,7 @@
 #include "../Data/FlareOrbitalMap.h"
 #include "../Data/FlareQuestCatalog.h"
 #include "../Data/FlareSectorCatalogEntry.h"
+#include "../Data/FlareGlobalSettings.h"
 
 #include "../Economy/FlareCargoBay.h"
 
@@ -111,10 +112,12 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	SpacecraftCatalog = NewObject<UFlareSpacecraftCatalog>(this, UFlareSpacecraftCatalog::StaticClass(), TEXT("FlareSpacecraftCatalog"));
 	SpacecraftCatalog->InitialSetup(this);
 	ShipPartsCatalog = NewObject<UFlareSpacecraftComponentsCatalog>(this, UFlareSpacecraftComponentsCatalog::StaticClass(), TEXT("FlareSpacecraftComponentsCatalog"));
+	ShipPartsCatalog->InitialSetup(this);
 	QuestCatalog = NewObject<UFlareQuestCatalog>(this, UFlareQuestCatalog::StaticClass(), TEXT("FlareQuestCatalog"));
 	ResourceCatalog = NewObject<UFlareResourceCatalog>(this, UFlareResourceCatalog::StaticClass(), TEXT("FlareResourceCatalog"));
 	TechnologyCatalog = NewObject<UFlareTechnologyCatalog>(this, UFlareTechnologyCatalog::StaticClass(), TEXT("FlareTechnologyCatalog"));
 	ScannableCatalog = NewObject<UFlareScannableCatalog>(this, UFlareScannableCatalog::StaticClass(), TEXT("FlareScannableCatalog"));
+	GlobalSettings = NewObject<UFlareGlobalSettings>(this, UFlareGlobalSettings::StaticClass(), TEXT("FlareGlobalSettings"));
 
 	TArray<UFlareTechnologyCatalogEntry*> DisableTechnologies;
 	for (UFlareTechnologyCatalogEntry* Technology : TechnologyCatalog->TechnologyCatalog)
@@ -153,7 +156,7 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		TechnologyCatalog->TechnologyCatalog.Remove(TechnologyEntry);
 	}
 /*
-//	TArray<FFlareSpacecraftDescription*> SpacecraftDebug;
+//	TArray<FFlareSpacecraftDescription*> SpacecraftDebug;C
 //	SpacecraftCatalog->GetSpacecraftList(SpacecraftDebug);
 //	for (FFlareSpacecraftDescription* ShipSub : SpacecraftDebug)
 //	{

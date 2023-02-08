@@ -1707,7 +1707,7 @@ bool AFlareHUD::DrawHUDDesignator(AFlareSpacecraft* Spacecraft)
 		{
 			float CornerSize = 8;
 			AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
-			FVector2D CenterPos = ScreenPosition - ObjectSize / 2;
+			FVector2D CenterPos = ScreenPosition - (ObjectSize / 2);
 			FLinearColor Color = GetHostilityColor(PC, Spacecraft);
 
 			// Draw designator corners

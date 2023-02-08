@@ -136,4 +136,8 @@ public:
 	/** Master volume */
 	UPROPERTY(Config)
 	int32                                    MasterVolume;
+
+	/** Debris quantity */
+	UPROPERTY(Config)
+	int32                                    DebrisQuantity;
 };

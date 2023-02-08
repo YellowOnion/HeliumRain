@@ -75,7 +75,8 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 	// Update
 	if (!Ship->IsPresentationMode() && Ship->GetParent()->GetDamageSystem()->IsAlive())
 	{
-		if (Ship->GetPC())
+		SpinLODCheck += DeltaSeconds;
+		if (SpinLODCheck >= 1 && Ship->GetPC())
 		{
 			AFlareSpacecraft* PlayerShipPawn = Ship->GetPC()->GetShipPawn();
 			if (PlayerShipPawn)
@@ -107,10 +108,7 @@ void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum E
 			{
 				PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
 			}
-		}
-		else
-		{
-			PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
+			SpinLODCheck = 0;
 		}
 
 		// Sun-looker

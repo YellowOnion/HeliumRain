@@ -424,8 +424,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		}
 	}
 
-//	FString InternalCompString;
-//	FString InternalCompRightString;
+	FString InternalCompString;
+	FString InternalCompRightString;
 
 	if (Desc->InternalComponentSlots.Num() > 0)
 	{
@@ -438,7 +438,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentIdentifier);
 				if (ComponentDescription)
 				{
-/*
+
 					if (InternalCompString.Len())
 					{
 						InternalCompString += "\n";
@@ -454,7 +454,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 							InternalCompRightString += FString::Printf(TEXT("%s\n"), *PoweredSlot.ToString());
 						}
 					}
-*/
+
 					HitPoints += ComponentDescription->HitPoints;
 					ArmourPoints += ComponentDescription->Armor;
 					Heatsink += ComponentDescription->GeneralCharacteristics.HeatSink;
@@ -500,7 +500,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		}
 	}
 
-//	FString TurretAngleStrings;
+	FString TurretAngleStrings = "";
 
 	if (Desc->TurretSlots.Num() > 0)
 	{
@@ -514,28 +514,20 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 				{
 					ComponentIdentifier = DefaultTurretIdentifier;
 				}
-/*
+
 				if (TurretAngleStrings.Len())
 				{
-					TurretAngleStrings += ", ";
+					TurretAngleStrings += "\n";
 				}
 
-				TurretAngleStrings += FString::Printf(TEXT("%s "), *SlotDescription->SlotIdentifier.ToString());
+				TurretAngleStrings += FString::Printf(TEXT("\n%s\n"), *SlotDescription->SlotIdentifier.ToString());
 
 				for (int32 BarrelAngles = 0; BarrelAngles < SlotDescription->TurretBarrelsAngleLimit.Num(); BarrelAngles++)
 				{
-					float Value = SlotDescription->TurretBarrelsAngleLimit[BarrelAngles];
-					if (BarrelAngles == 0)
-					{
-						
-						TurretAngleStrings += FString::Printf(TEXT("%f"), Value);
-					}
-					else
-					{
-						TurretAngleStrings += FString::Printf(TEXT(", %f"), Value);
-					}
+					float Value = SlotDescription->TurretBarrelsAngleLimit[BarrelAngles];			
+					TurretAngleStrings += FString::Printf(TEXT("%f\n"), Value);
 				}
-*/
+
 				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentIdentifier);
 				if (ComponentDescription)
 				{
@@ -579,9 +571,9 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	FText TotalAmmoCapacityText;
 	FText TotalAmmoCapacityTextRight;
 
-//	FText TurretAngles = FText::FromString(TurretAngleStrings);
-//	FText InternalCompsLeft = FText::FromString(InternalCompString);
-//	FText InternalCompsRight = FText::FromString(InternalCompRightString);
+	FText TurretAngles = FText::FromString(TurretAngleStrings);
+	FText InternalCompsLeft = FText::FromString(InternalCompString);
+	FText InternalCompsRight = FText::FromString(InternalCompRightString);
 
 	if (HitPoints > 0)
 	{
@@ -736,7 +728,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			FText::AsNumber(Desc->DroneMaximum));
 	}
 
-	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}"),
+	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}"),
 		Mass,
 		HeatCapacity,
 		Engines,
@@ -744,11 +736,11 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		AngularMaxVelocity,
 		LinearMaxVelocity,
 		DroneMax,
-		InternalComponents);
-//		InternalCompsLeft);
-//		TurretAngles);
+		InternalComponents,
+		InternalCompsLeft,
+		TurretAngles);
 
-	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}"),
+	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}{8}"),
 		MassRight,
 		HeatCapacityRight,
 		EnginesRight,
@@ -756,8 +748,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		AngularMaxVelocityRight,
 		LinearMaxVelocityRight,
 		DroneMaxRight,
-		InternalComponentsRight);
-//		InternalCompsRight);
+		InternalComponentsRight,
+		InternalCompsRight);
 }
 
 FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const

@@ -41,6 +41,7 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	CompanyShipsPerCompanyCache.Empty();
 	CompanySpacecraftsPerCompanyCache.Empty();
 
+
 	// Load asteroids
 	SectorAsteroids.Reserve(ParentSector->GetData()->AsteroidData.Num());
 	for (int i = 0 ; i < ParentSector->GetData()->AsteroidData.Num(); i++)
@@ -61,10 +62,25 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	// Load safe location spacecrafts
 	SectorSpacecrafts.Reserve(ParentSector->GetSectorSpacecrafts().Num());
 	SectorSpacecraftsCache.Reserve(ParentSector->GetSectorSpacecrafts().Num());
+	SectorStations.Reserve(ParentSector->GetSectorStations().Num());
+	SectorShips.Reserve(ParentSector->GetSectorShips().Num());
+
+	for (int i = 0; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
+		if (Spacecraft->IsStation())
+		{
+			LoadSpacecraft(Spacecraft);
+		}
+	}
 
 	for (int i = 0 ; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
+		if (Spacecraft->IsStation())
+		{
+			continue;
+		}
 		if (Spacecraft->GetData().SpawnMode == EFlareSpawnMode::Safe && (!Spacecraft->IsReserve() ||  Parent->GetGame()->GetPC()->GetPlayerShip() == Spacecraft))
 		{
 			LoadSpacecraft(Spacecraft);
@@ -77,6 +93,10 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	for (int i = 0; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
+		if (Spacecraft->IsStation())
+		{
+			continue;
+		}
 		if (Spacecraft->GetData().SpawnMode != EFlareSpawnMode::Safe && Spacecraft->GetData().SpawnMode != EFlareSpawnMode::InternalDocked && (!Spacecraft->IsReserve() ||  Parent->GetGame()->GetPC()->GetPlayerShip() == Spacecraft))
 		{
 			LoadSpacecraft(Spacecraft);
@@ -297,10 +317,15 @@ void UFlareSector::DestroySector()
 	}
 
 	// Remove spacecrafts from world
-	for (int SpacecraftIndex = 0 ; SpacecraftIndex < SectorSpacecrafts.Num(); SpacecraftIndex++)
+	for (int SpacecraftIndex = 0 ; SpacecraftIndex < SectorShips.Num(); SpacecraftIndex++)
 	{
-		SectorSpacecrafts[SpacecraftIndex]->FinishAutoPilots();
-		SectorSpacecrafts[SpacecraftIndex]->SafeDestroy();
+		SectorShips[SpacecraftIndex]->FinishAutoPilots();
+		SectorShips[SpacecraftIndex]->SafeDestroy();
+	}
+
+	for (int SpacecraftIndex = 0; SpacecraftIndex < SectorStations.Num(); SpacecraftIndex++)
+	{
+		SectorStations[SpacecraftIndex]->SafeDestroy();
 	}
 
 	for (int BombIndex = 0 ; BombIndex < SectorBombs.Num(); BombIndex++)

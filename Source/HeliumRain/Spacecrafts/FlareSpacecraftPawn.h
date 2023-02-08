@@ -119,6 +119,8 @@ public:
 	/** Get the ship size */
 	float GetMeshScale() const;
 
+	FBox GetMeshBox() const;
+
 protected:
 
 	/*----------------------------------------------------
@@ -160,12 +162,17 @@ private:
 	FName                                           PreviousCameraName;
 	FName                                           CurrentCameraName;
 
+	UPROPERTY()
+	FBox MeshBox;
+
 
 public:
 
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	bool											SetMeshBox;
 
 	UFUNCTION(BlueprintCallable, Category=Gameplay)
 	bool IsPresentationMode() const

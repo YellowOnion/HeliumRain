@@ -50,4 +50,6 @@ public:
 	FVector X;
 	FVector Y;
 	FVector Z;
+
+	float SpinLODCheck;
 };

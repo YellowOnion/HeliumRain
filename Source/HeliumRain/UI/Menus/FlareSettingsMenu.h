@@ -151,6 +151,10 @@ protected:
 	void OnPostProcessQualitySliderChanged(float Value);
 	FText GetPostProcessQualityLabel(int32 Value) const;
 
+	//Debris Quantity
+	void OnDebrisSliderChanged(float Value);
+	FText GetDebrisLabel(int32 Value) const;
+
 	// Music volume
 	void OnMusicVolumeSliderChanged(float Value);
 	FText GetMusicVolumeLabel(int32 Value) const;
@@ -234,6 +238,7 @@ protected:
 	TSharedPtr<SSlider>                         EffectsQualitySlider;
 	TSharedPtr<SSlider>                         AntiAliasingQualitySlider;
 	TSharedPtr<SSlider>                         PostProcessQualitySlider;
+	TSharedPtr<SSlider>                         DebrisQuantitySlider;
 	TSharedPtr<STextBlock>	        			FOVLabel;
 	TSharedPtr<STextBlock>	        			GammaLabel;
 	TSharedPtr<STextBlock>	        			SensitivityLabel;
@@ -241,6 +246,8 @@ protected:
 	TSharedPtr<STextBlock>	        			EffectsQualityLabel;
 	TSharedPtr<STextBlock>	        			AntiAliasingQualityLabel;
 	TSharedPtr<STextBlock>	        			PostProcessQualityLabel;
+	TSharedPtr<STextBlock>	        			DebrisLabel;
+	
 
 	// Gameplay
 	TSharedPtr<SFlareButton>                    InvertYButton;

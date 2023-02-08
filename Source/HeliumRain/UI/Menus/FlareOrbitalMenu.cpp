@@ -839,7 +839,9 @@ void SFlareOrbitalMenu::OnOpenSector(TSharedPtr<int32> Index)
 {
 	UFlareSimulatedSector* Sector = MenuManager->GetPC()->GetCompany()->GetKnownSectors()[*Index];
 	PreviouslySelectedSector = Sector;
-	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet() && OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentSector() != Sector)
+	if (ShowFleetButton->IsActive() && OrbitalFleetsInfo->GetSelectedFleet() && (
+	   (!OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentTravel() && OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentSector() != Sector) 
+	|| (OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentTravel() && OrbitalFleetsInfo->GetSelectedFleet()->GetCurrentTravel()->GetDestinationSector() != Sector)))
 	{
 		UFlareFleet* TargetFleet = OrbitalFleetsInfo->GetSelectedFleet();
 		bool Escape = TargetFleet->GetCurrentSector()->GetSectorBattleState(TargetFleet->GetFleetCompany()).HasDanger

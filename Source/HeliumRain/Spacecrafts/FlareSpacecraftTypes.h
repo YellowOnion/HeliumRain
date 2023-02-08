@@ -714,13 +714,14 @@ struct FFlareSpacecraftDescription
 	/** This ship is disabled but it will override the stats of an older version that was found with this ones. Useful if rebalancing ships that your mod doesn't have the models etc for*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
 
-	/** Disables this entry if the designated mod isn't detected*/
-	UPROPERTY(EditAnywhere, Category = Content) FString IsDisabledIfModNotLoaded;
+	/** Disables this entry if any of the designated mods aren't detected*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsDisabledIfModsNotLoaded;
+	
+	/** Enables this entry only if any mods in the array aren't detected as loaded*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsEnabledIfModsNotLoaded;
 
 	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
 	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
-
-//	HarmonicResonance
 
 	/** All required unlocked technologies to build station or ship.*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;

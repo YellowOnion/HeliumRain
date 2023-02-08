@@ -145,7 +145,7 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 {
 	TimeToStopCached = false;
 	// Main tick
-	if (!IsPresentationMode() && StateManager && !Paused)
+	if (StateManager && !Paused)
 	{
 		if(GetParent()->GetDamageSystem()->IsUncontrollable() && GetParent()->GetDamageSystem()->IsDisarmed())
 		{
@@ -855,13 +855,16 @@ void AFlareSpacecraft::ExplodingShip()
 			MaxSize = 6;
 		}
 
+		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+		float DebrisChanceSetting = MyGameSettings->DebrisQuantity / 10;
+
 		while (ExplosionsToDo > 0)
 		{
 			if (GetGame()->GetActiveSector())
 			{
 				float ScaleFactor = GetExplosionScaleFactor(DefaultWeaponFallback, false);
 				SingleProbability = FMath::FRand();
-				if (SingleProbability <= (0.75 - (0.05 * ExplosionsToDo)))
+				if (SingleProbability <= (DebrisChanceSetting - (0.05 * ExplosionsToDo)))
 				{
 					GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), ExplosionLocation, 1, MinSize, MaxSize);
 				}
@@ -931,7 +934,12 @@ void AFlareSpacecraft::SafeHide(bool ShowExplosion)
 					MaxSize = 7;
 				}
 
-				GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), GetActorLocation(), Quantity, MinSize, MaxSize);
+				UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+				float DebrisChanceSetting = MyGameSettings->DebrisQuantity;
+				if (DebrisChanceSetting > 0)
+				{
+					GetGame()->GetDebrisFieldSystem()->CreateDebris(GetGame()->GetActiveSector()->GetSimulatedSector(), GetActorLocation(), Quantity, MinSize, MaxSize);
+				}
 
 				UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 				FVector ActorScale = GetActorScale();
@@ -1154,6 +1162,8 @@ void AFlareSpacecraft::FinishAutoPilots()
 		if (NavigationSystem->IsAutoPilot())
 		{
 			NavigationSystem->ForceFinishAutoPilots();
+			GetData().Location = GetActorLocation();
+			GetData().Rotation = GetActorRotation();
 		}
 	}
 	if(GetDescription()->IsDroneShip)
@@ -1227,8 +1237,11 @@ void AFlareSpacecraft::Redock()
 					break;
 				}
 
+				RedockTo(Station);
+				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, false);
 
 				// Replace ship at docking port
+/*
 				FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
 				FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
 				FTransform DockedTransform;
@@ -1246,17 +1259,41 @@ void AFlareSpacecraft::Redock()
 
 				SetActorTransform(DockedTransform, false, nullptr, ETeleportType::TeleportPhysics);
 				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, false);
-				break;
-/*
-				FVector ShipLocalDockOffset = GetActorTransform().GetRotation().Inverse().RotateVector(DockingParameters.ShipDockOffset);
-				FRotator ShipLocalDockOffsetRotator = ShipLocalDockOffset.Rotation();
-				SetActorLocationAndRotation(DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset, ShipLocalDockOffsetRotator, false, nullptr, ETeleportType::TeleportPhysics);
-				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, false);
 */
+				break;
 			}
 		}
 	}
 }
+
+void AFlareSpacecraft::RedockTo(AFlareSpacecraft* Station)
+{
+	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
+	FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
+/*
+	FVector ShipDockPosition = GetRootComponent()->GetSocketLocation(FName("Dock"));
+	FVector ShipDockOffset =  ShipDockPosition - GetActorLocation();
+*/
+
+	FVector LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
+	FVector AxisTarget = -DockingParameters.StationDockAxis;
+	FRotator AxisRotation = AxisTarget.ToOrientationRotator();
+	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
+}
+
+/*
+	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
+	FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
+
+	FVector LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
+	FVector AxisTarget = -DockingParameters.StationDockAxis;
+	FRotator AxisRotation = AxisTarget.ToOrientationRotator();
+	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
+	LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
+	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
+*/
 
 float AFlareSpacecraft::GetSpacecraftMass() const
 {
@@ -1529,6 +1566,7 @@ bool AFlareSpacecraft::GetManualDockingProgress(AFlareSpacecraft*& OutStation, F
 void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 {
 	// Update local data
+	SetMeshBox = false;
 	Parent = ParentSpacecraft;
 	if (!IsPresentationMode())
 	{
@@ -1647,7 +1685,7 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	// Setup ship name texture target
 	if (!ShipNameTexture)
 	{
-		ShipNameTexture = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(this, UCanvasRenderTarget2D::StaticClass(), 256, 256);
+		ShipNameTexture = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(this, UCanvasRenderTarget2D::StaticClass(), 384, 384);// 256, 256);
 		FCHECK(ShipNameTexture);
 		ShipNameTexture->OnCanvasRenderTargetUpdate.AddDynamic(this, &AFlareSpacecraft::DrawShipName);
 	}
@@ -2133,12 +2171,12 @@ void AFlareSpacecraft::DrawShipName(UCanvas* TargetCanvas, int32 Width, int32 He
 		// Centering
 		float XL, YL;
 		TargetCanvas->TextSize(ShipNameFont, Text.ToString(), XL, YL);
-		float X = TargetCanvas->ClipX / 2.0f - XL / 2.0f;
-		float Y = TargetCanvas->ClipY / 2.0f - YL / 2.0f;
+		float X = (TargetCanvas->ClipX / 2.0f) - (XL / 2.0f);
+		float Y = (TargetCanvas->ClipY / 2.0f) - (YL / 2.0f);
 
 		// Drawing
 		FCanvasTextItem TextItem(FVector2D(X, Y), Text, ShipNameFont, FLinearColor::White);
-		TextItem.Scale = FVector2D(1, 1);
+		TextItem.Scale = FVector2D(0.90f, 0.90f);
 		TextItem.bOutlined = true;
 		TextItem.OutlineColor = FLinearColor::Green;
 		TargetCanvas->DrawItem(TextItem);

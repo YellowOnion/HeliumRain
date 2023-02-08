@@ -741,7 +741,7 @@ void UFlareSimulatedSpacecraft::LockResources()
 	{
 		for (UFlareFactory* Factory : Factories)
 		{
-			for (int32 ResourceIndex = 0 ; ResourceIndex < Factory->GetCycleData().InputResources.Num() ; ResourceIndex++)
+			for (int32 ResourceIndex = 0; ResourceIndex < Factory->GetCycleData().InputResources.Num(); ResourceIndex++)
 			{
 				const FFlareFactoryResource* Resource = &Factory->GetCycleData().InputResources[ResourceIndex];
 
@@ -753,7 +753,7 @@ void UFlareSimulatedSpacecraft::LockResources()
 				}*/
 			}
 
-			for (int32 ResourceIndex = 0 ; ResourceIndex < Factory->GetCycleData().OutputResources.Num() ; ResourceIndex++)
+			for (int32 ResourceIndex = 0; ResourceIndex < Factory->GetCycleData().OutputResources.Num(); ResourceIndex++)
 			{
 				const FFlareFactoryResource* Resource = &Factory->GetCycleData().OutputResources[ResourceIndex];
 
@@ -2301,6 +2301,41 @@ FText UFlareSimulatedSpacecraft::GetShipCost(FName ShipIdentifier)
 
 		ProductionCostText = FText::Format(LOCTEXT("ShipProductionResourcesFormat", "{0}{1} {2} {3}"),
 		ProductionCostText, CommaText, FText::AsNumber(Quantity), FactoryResource->Resource->Data.Acronym);
+	}
+	return ProductionCostText;
+}
+
+FText UFlareSimulatedSpacecraft::GetShipResourceCost(FFlareSpacecraftDescription* Description)
+{
+	FText ProductionCostText;
+	FText CommaTextReference = UFlareGameTools::AddLeadingSpace(LOCTEXT("Comma", "+"));
+
+	const FFlareProductionData& ProductionData = Description->CycleCost;
+	// Cycle cost in resources
+	float ShipyardfabricationBonus = GetCompany()->GetTechnologyBonus("shipyard-fabrication-bonus");
+
+	for (int ResourceIndex = 0; ResourceIndex < ProductionData.InputResources.Num(); ResourceIndex++)
+	{
+		const FFlareFactoryResource* FactoryResource = &ProductionData.InputResources[ResourceIndex];
+		FCHECK(FactoryResource);
+		int32 Quantity = FactoryResource->Quantity;
+		if (ShipyardfabricationBonus)
+		{
+			Quantity *= (1 - ShipyardfabricationBonus);
+		}
+
+		int32 StorageQuanty = GetActiveCargoBay()->GetResourceQuantitySimple(&FactoryResource->Resource->Data);
+
+		if (StorageQuanty < Quantity)
+		{
+			ProductionCostText = FText::Format(LOCTEXT("ShipProductionResourcesFormat", "{0} \u2715{1}/{2} {3}"),
+			ProductionCostText, FText::AsNumber(StorageQuanty), FText::AsNumber(Quantity), FactoryResource->Resource->Data.Acronym);
+		}
+		else
+		{
+			ProductionCostText = FText::Format(LOCTEXT("ShipProductionResourcesFormat", "{0} \u2022{1} {2}"),
+			ProductionCostText, FText::AsNumber(Quantity), FactoryResource->Resource->Data.Acronym);
+		}
 	}
 
 	return ProductionCostText;
