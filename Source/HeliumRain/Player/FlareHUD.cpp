@@ -1695,16 +1695,16 @@ bool AFlareHUD::DrawHUDDesignator(AFlareSpacecraft* Spacecraft)
 	{
 		ScreenPositionValid = true;
 
-		// Compute apparent size in screenspace
-		float ShipSize = 2 * Spacecraft->GetMeshScale();
-		float Distance = (TargetLocation - PlayerLocation).Size();
-		float ApparentAngle = FMath::RadiansToDegrees(FMath::Atan(ShipSize / Distance));
-		float Size = (ApparentAngle / PC->PlayerCameraManager->GetFOVAngle()) * CurrentViewportSize.X;
-		FVector2D ObjectSize = FMath::Min(0.66f * Size, 300.0f) * FVector2D(1, 1);
-
 		// Draw the HUD designator
 		if (Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 		{
+			// Compute apparent size in screenspace
+			float ShipSize = 2 * Spacecraft->GetMeshScale();
+			float Distance = (TargetLocation - PlayerLocation).Size();
+			float ApparentAngle = FMath::RadiansToDegrees(FMath::Atan(ShipSize / Distance));
+			float Size = (ApparentAngle / PC->PlayerCameraManager->GetFOVAngle()) * CurrentViewportSize.X;
+			FVector2D ObjectSize = FMath::Min(0.66f * Size, 300.0f) * FVector2D(1, 1);
+
 			float CornerSize = 8;
 			AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
 			FVector2D CenterPos = ScreenPosition - (ObjectSize / 2);
@@ -1712,7 +1712,8 @@ bool AFlareHUD::DrawHUDDesignator(AFlareSpacecraft* Spacecraft)
 
 			// Draw designator corners
 			bool Highlighted = (PlayerShip && PlayerShip->GetCurrentTarget().Is(Spacecraft));
-			bool Dangerous = PilotHelper::IsTargetDangerous(PilotHelper::PilotTarget(Spacecraft));
+			bool Dangerous = Spacecraft->GetParent()->IsMilitary() && !Spacecraft->GetParent()->GetDamageSystem()->IsDisarmed();
+			
 			DrawHUDDesignatorCorner(ScreenPosition, ObjectSize, CornerSize, FVector2D(-1, -1), 0,     Color, Dangerous, Highlighted);
 			DrawHUDDesignatorCorner(ScreenPosition, ObjectSize, CornerSize, FVector2D(-1, +1), -90,   Color, Dangerous, Highlighted);
 			DrawHUDDesignatorCorner(ScreenPosition, ObjectSize, CornerSize, FVector2D(+1, +1), -180,  Color, Dangerous, Highlighted);

@@ -480,11 +480,11 @@ struct FFlareCompanyAIDescription
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** How strongly an faction wants to build stations that produce this resource */
+	/** How strongly the faction wants to build stations that produce this resource */
 	UPROPERTY(EditAnywhere, Category = Company)
 	TMap<FName, float> ResourceAffilities;
 
-	/** How strongly an faction wants to build their stations in this sector */
+	/** How strongly the faction wants to build their stations in this sector or moon*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	TMap<FName, float>		SectorAffilities;
 
@@ -591,6 +591,30 @@ struct FFlareCompanyAIDescription
 	/** When building a station faction must have station cost * CostSafetyMarginStation money to build. Default: 1.1*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float CostSafetyMarginStation;
+
+	/** How many ships a company owns before considering scrapping. Default 60.*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int	Scrap_Minimum_Ships;
+
+	/** Minimum amount of S Cargo ships to keep when scrapping. Default 10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int	Scrap_Min_S_Cargo;
+
+	/** Minimum amount of S Military ships to keep when scrapping. Default 10*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int	Scrap_Min_S_Military;
+
+	/** When building a new station, company considers the station cost as multiplied by this value. Default 1.2.*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildStationWorthMultiplier;
+
+	/** Maximum amount of shipyards this company can build. Default 5.*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	int	Station_Shipyard_Maximum;
+
+	/** When considering buying a military ship, how much is each Drone slot worth to the company in Combat Points. Default 3.*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BuildDroneCombatWorth;
 
 	/** How many ships should faction own before switching to building L sized ships exclusively. Default: 50*/
 	UPROPERTY(EditAnywhere, Category = Company)

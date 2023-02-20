@@ -488,6 +488,13 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	BuildEfficientTradeChance = 0.10;
 	BuildEfficientTradeChanceSmall = 0.30;
 
+	BuildStationWorthMultiplier = 1.2;
+	Station_Shipyard_Maximum = 5;
+	Scrap_Minimum_Ships = 60;
+	Scrap_Min_S_Cargo = 10;
+	Scrap_Min_S_Military = 10;
+	BuildDroneCombatWorth = 3;
+
 	if((Company && Company == ST->Pirates) || (CompanyDescription && CompanyDescription->ShortName==FName("PIR")))
 	{
 		// Pirates
@@ -934,10 +941,20 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			{
 				FName CurrentSectorID = Keys[ROIndex];
 				UFlareSimulatedSector* RealSector = World->FindSector(CurrentSectorID);
+
 				if (RealSector != NULL)
 				{
 					float Value = CompanyDescription->AI_Behaviours.SectorAffilities[CurrentSectorID];
 					SetSectorAffility(RealSector, Value);
+				}
+				else
+				{
+					FFlareCelestialBody* CelestialBody = World->GetPlanerarium()->FindCelestialBody(CurrentSectorID);
+					if (CelestialBody)
+					{
+						float Value = CompanyDescription->AI_Behaviours.SectorAffilities[CurrentSectorID];
+						SetSectorAffilitiesByMoon(CelestialBody, Value);
+					}
 				}
 			}
 		}
@@ -1185,6 +1202,31 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	if (CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerLRatio)
 	{
 		UpgradeMilitarySalvagerLRatio = CompanyDescription->AI_Behaviours.UpgradeMilitarySalvagerLRatio;
+	}
+
+	if (CompanyDescription->AI_Behaviours.BuildStationWorthMultiplier)
+	{
+		BuildStationWorthMultiplier = CompanyDescription->AI_Behaviours.BuildStationWorthMultiplier;
+	}
+	if (CompanyDescription->AI_Behaviours.Station_Shipyard_Maximum)
+	{
+		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Station_Shipyard_Maximum;
+	}
+	if (CompanyDescription->AI_Behaviours.Scrap_Minimum_Ships)
+	{
+		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Minimum_Ships;
+	}
+	if (CompanyDescription->AI_Behaviours.Scrap_Min_S_Cargo)
+	{
+		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Min_S_Cargo;
+	}
+	if (CompanyDescription->AI_Behaviours.Scrap_Min_S_Military)
+	{
+		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Min_S_Military;
+	}
+	if (CompanyDescription->AI_Behaviours.BuildDroneCombatWorth)
+	{
+		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.BuildDroneCombatWorth;
 	}
 }
 

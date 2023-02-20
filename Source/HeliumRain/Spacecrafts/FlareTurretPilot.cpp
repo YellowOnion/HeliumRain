@@ -336,34 +336,40 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 	SCOPE_CYCLE_COUNTER(STAT_FlareTurretPilot_Target);
 
 	bool CheckIndividualTarget = false;
+	bool DoTargetChecks = true;
 	FVector PilotLocation = Turret->GetTurretBaseLocation();
-
-	if (Turret->GetWeaponGroup()->Target)
+/*
+	AFlareSpacecraft* WeaponGroupCandidate = Turret->GetWeaponGroup()->Target;
+	if (WeaponGroupCandidate)
 	{
-		AFlareSpacecraft* TargetCandidate = Turret->GetWeaponGroup()->Target;
-		if (TargetCandidate)
+		if (WeaponGroupCandidate->GetParent()->GetDamageSystem()->IsAlive())
 		{
-			if (!TargetCandidate->GetParent()->GetDamageSystem()->IsAlive())
+			Turret->GetWeaponGroup()->Target = NULL;
+		}
+		else
+		{
+			FVector TargetAxis = (WeaponGroupCandidate->GetActorLocation() - PilotLocation).GetUnsafeNormal();
+			if (Turret->IsReacheableAxis(TargetAxis))
 			{
-				Turret->GetWeaponGroup()->Target = NULL;
+				float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
+				if (Distance < SecurityRadiusDistance || Distance > Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange)
+				{
+					PilotTarget = WeaponGroupCandidate;
+					DoTargetChecks = false;
+				}
+				else
+				{
+					Turret->GetWeaponGroup()->Target = NULL;
+				}
 			}
 			else
 			{
-				FVector TargetAxis = (TargetCandidate->GetActorLocation() - Turret->GetTurretBaseLocation()).GetUnsafeNormal();
-				if (Turret->IsReacheableAxis(TargetAxis))
-				{
-					float Distance = (PilotLocation - PilotTarget.GetActorLocation()).Size();
-					if (Distance < SecurityRadiusDistance || Distance > Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange)
-					{
-						PilotTarget = TargetCandidate;
-						CheckIndividualTarget = false;
-					}
-				}
+				Turret->GetWeaponGroup()->Target = NULL;
 			}
 		}
 	}
-
-	if (!CheckIndividualTarget)
+*/
+	if (DoTargetChecks)
 	{
 		UFlareFleet* CurrentFleet = Turret->GetSpacecraft()->GetParent()->GetCurrentFleet();
 		if ((CurrentFleet && CurrentFleet->GetIncomingBombs().Num() > 0) || (!CurrentFleet && Turret->GetSpacecraft()->GetIncomingBombs().Num() > 0) || Turret->GetSpacecraft()->GetGame()->GetActiveSector()->GetMeteorites().Num() > 0)
@@ -423,11 +429,11 @@ void UFlareTurretPilot::ProcessTurretTargetSelection()
 	{
 		EFlareCombatTactic::Type Tactic = Turret->GetSpacecraft()->GetParent()->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(EFlareCombatGroup::Capitals);
 		PilotTarget = GetNearestHostileTarget(true, Tactic);
-	}
-
-	if (PilotTarget.SpacecraftTarget)
-	{
-		Turret->GetWeaponGroup()->Target = PilotTarget.SpacecraftTarget;
+/*		if (PilotTarget.SpacecraftTarget)
+		{
+			Turret->GetWeaponGroup()->Target = PilotTarget.SpacecraftTarget;
+		}
+*/
 	}
 }
 

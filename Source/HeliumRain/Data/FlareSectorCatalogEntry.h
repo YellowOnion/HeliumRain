@@ -20,5 +20,4 @@ public:
 	/** Sector data */
 	UPROPERTY(EditAnywhere, Category = Content)
 	FFlareSectorDescription Data;
-
 };

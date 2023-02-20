@@ -344,7 +344,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 			Company->GiveResearch(StartingResearchPoints);
 		}
 
-		if (StartingSectorKnowledge.Num()>0)
+		if (StartingSectorKnowledge.Num() > 0)
 		{
 			for (int KnowIndex = 0; KnowIndex < StartingSectorKnowledge.Num(); KnowIndex++)
 			{
@@ -353,6 +353,21 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 				if (RealSector != NULL)
 				{
 					Company->DiscoverSector(RealSector, true);
+				}
+				else
+				{
+					FFlareCelestialBody* CelestialBody = World->GetPlanerarium()->FindCelestialBody(CurrentSectorID);
+					if (CelestialBody)
+					{
+						for (int32 SectorIndex = 0; SectorIndex < Game->GetGameWorld()->GetSectors().Num(); SectorIndex++)
+						{
+							UFlareSimulatedSector* Sector = Game->GetGameWorld()->GetSectors()[SectorIndex];
+							if (Sector->GetOrbitParameters()->CelestialBodyIdentifier == CelestialBody->Identifier)
+							{
+								Company->DiscoverSector(Sector, true);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -421,7 +436,8 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		PlayerCompany->DiscoverSector(World->GetSectors()[SectorIndex],true);
 	}
 	//for testing
-*/
+	*/
+
 	// Give technology
 	IonLane->UnlockTechnology("stations", false, true);
 	IonLane->UnlockTechnology("chemicals", false, true);

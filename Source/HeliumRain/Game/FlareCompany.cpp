@@ -2412,13 +2412,11 @@ void UFlareCompany::CheckStationLicenseStateStation(UFlareSimulatedSpacecraft* S
 
 void UFlareCompany::ChangeStationLicenseState(UFlareSimulatedSector* BuyingSector, bool NewState)
 {
-// TODO
 	for (UFlareSimulatedSpacecraft* Station : GetCompanySectorStations(BuyingSector))
-//	for (UFlareSimulatedSpacecraft* Station : BuyingSector->GetSectorStations())
 	{
 		if(Station->GetCompany() == this)
 		{
-		ChangeStationLicenseStateAction(Station, NewState);
+			ChangeStationLicenseStateAction(Station, NewState);
 		}
 	}
 }

@@ -1145,9 +1145,10 @@ FText SFlareSectorMenu::GetSectorName() const
 		}
 		else
 		{
+//			FText IdentifierFText = FText::FromName(TargetSector->GetData()->Identifier);
 			Result = FText::Format(LOCTEXT("CurrentSectorFormat", "Sector : {0} ({1})"),
-				TargetSector->GetSectorName(),
-				TargetSector->GetSectorFriendlynessText(MenuManager->GetPC()->GetCompany()));
+			TargetSector->GetSectorName(),
+			TargetSector->GetSectorFriendlynessText(MenuManager->GetPC()->GetCompany()));
 		}
 	}
 

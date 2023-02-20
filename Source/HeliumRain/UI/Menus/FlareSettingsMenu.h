@@ -135,6 +135,10 @@ protected:
 	void OnSensitivitySliderChanged(float Value);
 	FText GetSensitivityLabel(float Value) const;
 
+	//Debris Quantity
+	void OnScreenPercentageChanged(float Value);
+	FText GetScreenPercentageLabel(int32 Value) const;
+
 	// Texture quality
 	void OnTextureQualitySliderChanged(float Value);
 	FText GetTextureQualityLabel(int32 Value) const;
@@ -146,6 +150,10 @@ protected:
 	// AA quality
 	void OnAntiAliasingQualitySliderChanged(float Value);
 	FText GetAntiAliasingQualityLabel(int32 Value) const;
+
+	// Shadow quality
+	void OnShadowQualitySliderChanged(float Value);
+	FText GetShadowQualityLabel(int32 Value) const;
 
 	// Post-process quality
 	void OnPostProcessQualitySliderChanged(float Value);
@@ -176,7 +184,7 @@ protected:
 	void OnVSyncToggle();
 	void OnMotionBlurToggle();
 	void OnTemporalAAToggle();
-	void OnSupersamplingToggle();	
+//	void OnSupersamplingToggle();	
 	void OnInvertYToggle();
 	void OnDisableMouseToggle();
 	void OnAnticollisionToggle();
@@ -230,21 +238,27 @@ protected:
 	TSharedPtr<SFlareButton>                    VSyncButton;
 	TSharedPtr<SFlareButton>                    MotionBlurButton;
 	TSharedPtr<SFlareButton>                    TemporalAAButton;
-	TSharedPtr<SFlareButton>                    SupersamplingButton;
+//	TSharedPtr<SFlareButton>                    SupersamplingButton;
 	TSharedPtr<SSlider>                         FOVSlider;
 	TSharedPtr<SSlider>                         GammaSlider;
 	TSharedPtr<SSlider>                         SensitivitySlider;
+
+	TSharedPtr<SSlider>                         ScreenPercentageSlider;
 	TSharedPtr<SSlider>                         TextureQualitySlider;
 	TSharedPtr<SSlider>                         EffectsQualitySlider;
 	TSharedPtr<SSlider>                         AntiAliasingQualitySlider;
+	TSharedPtr<SSlider>                         ShadowQualitySlider;
+
 	TSharedPtr<SSlider>                         PostProcessQualitySlider;
 	TSharedPtr<SSlider>                         DebrisQuantitySlider;
 	TSharedPtr<STextBlock>	        			FOVLabel;
 	TSharedPtr<STextBlock>	        			GammaLabel;
 	TSharedPtr<STextBlock>	        			SensitivityLabel;
+	TSharedPtr<STextBlock>	        			ScreenPercentageLabel;
 	TSharedPtr<STextBlock>	        			TextureQualityLabel;
 	TSharedPtr<STextBlock>	        			EffectsQualityLabel;
 	TSharedPtr<STextBlock>	        			AntiAliasingQualityLabel;
+	TSharedPtr<STextBlock>	        			ShadowQualityLabel;
 	TSharedPtr<STextBlock>	        			PostProcessQualityLabel;
 	TSharedPtr<STextBlock>	        			DebrisLabel;
 	

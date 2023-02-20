@@ -233,12 +233,18 @@ void AFlareGame::StartPlay()
 	TArray<FAssetData> AssetList;
 	Registry.SearchAllAssets(true);
 	Registry.GetAssetsByClass(UFlareSectorCatalogEntry::StaticClass()->GetFName(), AssetList);
+
 	for (FAssetData AssetEntry : AssetList)
 	{
 		FLOGV("AFlareGame::StartPlay : Found sector '%s'", *AssetEntry.GetFullName());
 		UFlareSectorCatalogEntry* Sector = Cast<UFlareSectorCatalogEntry>(AssetEntry.GetAsset());
 		FCHECK(Sector);
+		SectorList.Add(Sector);
+	}
 
+	for (int32 Index = 0; Index < SectorList.Num(); Index++)
+	{
+		UFlareSectorCatalogEntry* Sector = SectorList[Index];
 		UFlareSectorCatalogEntry* OldEntry = NULL;
 		for (UFlareSectorCatalogEntry* SectorSub : SectorList)
 		{
@@ -268,16 +274,20 @@ void AFlareGame::StartPlay()
 			}
 			else
 			{
-				SectorList.Remove(OldEntry);
+				if (SectorList.Remove(OldEntry))
+				{
+					Index = FMath::Min(0, Index -= 1);
+				}
 			}
 		}
-
-		if (!Sector->Data.IsDisabled)
+		if (Sector->Data.IsDisabled)
 		{
-			SectorList.Add(Sector);
+			if (SectorList.Remove(Sector))
+			{
+				Index = FMath::Min(0, Index -= 1);
+			}
 		}
 	}
-
 	GetWorldTimerManager().SetTimer(SlowTick, this, &AFlareGame::SlowerTickFunction, 60.f, true, 60.f);
 }
 

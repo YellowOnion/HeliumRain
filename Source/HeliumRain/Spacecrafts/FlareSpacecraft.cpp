@@ -2225,6 +2225,9 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		PC->NotifyDockingComplete(DockStation, TellUser);
 	}
 
+	GetData().Location = GetActorLocation();
+	GetData().Rotation = GetActorRotation();
+
 	if (TransactionNewPartDesc&&TransactionNewPartWeaponGroupIndex>=0)
 		// this ship was told to do an insector upgrade
 	{

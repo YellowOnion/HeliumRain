@@ -1590,6 +1590,8 @@ Companies are the factions which control the entire environment in Helium Rain. 
 (Performance) Spacecraft Damage System no longer checks controllable / alive / recovery every tick, instead triggered when damaged\n\
 (Performance) The spacecraft used for display previews can be reused rather than recreated / deleted each time\n\
 (Performance) GetSectorBattleState() can now remember the last result on a per company basis and will only do a full refresh at specific points.\n\
+(Performance) Added Shadow quality setting in graphics options.\n\
+(Performance) Replaced 2X Supersampling toggle with a resolution render slider which ranges from 30%-200%.\n\
 \n\
 (Modding) Technology, Resource, Ships / Stations with duplicate identifiers can have 'newer' versions remove the older one from the game.This means modifications packed as a DLC can be used to override default entities without duplicates.\n\
 (Modding) Added in UnlockItems to FFlareTechnologyDescription.Array of what this technology unlocks when researched.Hooks into the already existing RequiredTechnologies arrays for Ships / Stations and ship components.\n\

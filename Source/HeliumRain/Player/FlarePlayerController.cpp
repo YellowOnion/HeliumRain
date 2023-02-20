@@ -1173,14 +1173,14 @@ void AFlarePlayerController::GetPlayerShipThreatStatus(bool& IsTargeted, bool& I
 			float ShipDistance = (Ship->GetActorLocation() - GetShipPawn()->GetActorLocation()).Size();
 			
 			// Small ship
-			if (ShipDistance < MaxSDangerDistance && Ship->GetDescription()->Size == EFlarePartSize::S)
+			if (Ship->GetDescription()->Size == EFlarePartSize::S && ShipDistance < MaxSDangerDistance)
 			{
 				IsDangerous = (Ship->GetPilot()->GetPilotTarget().Is(GetShipPawn()));
 				IsFiring = IsDangerous && Ship->GetPilot()->IsWantFire();
 			}
 
 			// Large ship
-			else if (ShipDistance < MaxLDangerDistance && Ship->GetDescription()->Size == EFlarePartSize::L)
+			else if (Ship->GetDescription()->Size == EFlarePartSize::L && ShipDistance < MaxLDangerDistance)
 			{
 				for (auto Weapon : Ship->GetWeaponsSystem()->GetWeaponList())
 				{

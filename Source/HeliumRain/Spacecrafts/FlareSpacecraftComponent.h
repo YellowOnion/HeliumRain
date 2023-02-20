@@ -344,7 +344,6 @@ struct FFlareSpacecraftComponentDescription
 	/** Enables this entry only if any mods in the array aren't detected as loaded*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsEnabledIfModsNotLoaded;
 
-
 	/** This adjusts the priority of this component being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
 	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 

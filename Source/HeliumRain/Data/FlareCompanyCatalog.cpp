@@ -22,24 +22,48 @@ UFlareCompanyCatalog::UFlareCompanyCatalog(const class FObjectInitializer& PCIP)
 
 		UFlareCompanyCatalogEntry* CompanyEntry = Cast<UFlareCompanyCatalogEntry>(AssetList[Index].GetAsset());
 		FCHECK(CompanyEntry);
-
-		UFlareCompanyCatalogEntry* OldEntry = NULL;
-		for (UFlareCompanyCatalogEntry* CompanySub : CompanyCatalog)
-		{
-			if (CompanySub != CompanyEntry && CompanySub->Data.ShortName == CompanyEntry->Data.ShortName && CompanySub->Data.ModLoadPriority <= CompanyEntry->Data.ModLoadPriority)
-			{
-				OldEntry = CompanySub;
-				break;
-			}
-		}
-		
-		if (OldEntry)
-		{
-			CompanyCatalog.Remove(OldEntry);
-		}
 		CompanyCatalog.Add(CompanyEntry);
 	}
 
+	if (CompanyCatalog.Num() > 0)
+	{
+		for (int32 i = 0; i < Companies.Num(); i++)
+		{
+			FFlareCompanyDescription& Candidate = Companies[i];
+			UFlareCompanyCatalogEntry* CompanyEntry = NewObject<UFlareCompanyCatalogEntry>(this, UFlareCompanyCatalogEntry::StaticClass());
+			FCHECK(CompanyEntry);
+			CompanyCatalog.Add(CompanyEntry);
+		}
+
+		for (int32 Index = 0; Index < CompanyCatalog.Num(); Index++)
+		{
+			UFlareCompanyCatalogEntry* CompanyEntry = CompanyCatalog[Index];
+			UFlareCompanyCatalogEntry* OldEntry = NULL;
+			for (UFlareCompanyCatalogEntry* CompanySub : CompanyCatalog)
+			{
+				if (CompanySub != CompanyEntry && CompanySub->Data.ShortName == CompanyEntry->Data.ShortName && CompanySub->Data.ModLoadPriority <= CompanyEntry->Data.ModLoadPriority)
+				{
+					OldEntry = CompanySub;
+					break;
+				}
+			}
+			if (OldEntry)
+			{
+				CompanyCatalog.Remove(OldEntry);
+			}
+		}
+	}
+
+	struct FSortByName
+	{
+
+		FORCEINLINE bool operator()(const UFlareCompanyCatalogEntry& A, const UFlareCompanyCatalogEntry& B) const
+		{
+			return A.Data.Name.ToString() < B.Data.Name.ToString();
+		}
+	};
+
+	CompanyCatalog.Sort(FSortByName());
 }
 
 const void UFlareCompanyCatalog::GetCompanyList(TArray<FFlareCompanyDescription*>& OutData)

@@ -23,6 +23,11 @@
 
 #define MIN_MAX_SHIPS 20
 #define MAX_MAX_SHIPS 100
+
+#define STEP_RESOLUTIONSCALE 10
+#define MIN_RESOLUTIONSCALE 30
+#define MAX_RESOLUTIONSCALE 200
+
 #define STEP_MAX_SHIPS 5
 
 #define MIN_GAMMA 1.5f
@@ -54,6 +59,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	float CurrentTextureQualityRatio = MyGameSettings->ScalabilityQuality.TextureQuality / 3.f;
 	float CurrentEffectsQualityRatio = MyGameSettings->ScalabilityQuality.EffectsQuality / 3.f;
 	float CurrentAntiAliasingQualityRatio = MyGameSettings->ScalabilityQuality.AntiAliasingQuality / 2.f;
+	float CurrentShadowQualityRatio = MyGameSettings->ScalabilityQuality.ShadowQuality / 3.f;
 	float CurrentPostProcessQualityRatio = MyGameSettings->ScalabilityQuality.PostProcessQuality / 3.f;
 	//FLOGV("MyGameSettings->ScalabilityQuality.TextureQuality=%d CurrentTextureQualityRatio=%f", MyGameSettings->ScalabilityQuality.TextureQuality, CurrentTextureQualityRatio);
 	//FLOGV("MyGameSettings->ScalabilityQuality.EffectsQuality=%d CurrentEffectsQualityRatio=%f", MyGameSettings->ScalabilityQuality.EffectsQuality, CurrentEffectsQualityRatio);
@@ -624,7 +630,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Toggle(true)
 							.OnClicked(this, &SFlareSettingsMenu::OnTemporalAAToggle)
 						]
-
+/*
 						// Supersampling
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
@@ -636,7 +642,54 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Toggle(true)
 							.OnClicked(this, &SFlareSettingsMenu::OnSupersamplingToggle)
 						]
+*/
 					]
+
+					// Screen Percentage box
+					+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+
+							// Screen Percentage text
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(LabelSize)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("ScreenPercentageLabel", "Render Resolution"))
+						.TextStyle(&Theme.TextFont)
+						]
+						]
+
+					// Screen quantity slider
+					+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Center)
+						.Padding(Theme.ContentPadding)
+						[
+							SAssignNew(ScreenPercentageSlider, SSlider)
+							.Value(MyGameSettings->ScreenPercentage)
+							.Style(&Theme.SliderStyle)
+							.OnValueChanged(this, &SFlareSettingsMenu::OnScreenPercentageChanged)
+						]
+
+					// Screen label
+					+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ValueSize)
+						[
+							SAssignNew(ScreenPercentageLabel, STextBlock)
+							.TextStyle(&Theme.TextFont)
+							.Text(GetScreenPercentageLabel(MyGameSettings->ScreenPercentage))
+						]
+						]
+						]
 
 					// Texture quality box
 					+ SVerticalBox::Slot()
@@ -729,6 +782,52 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							]
 						]
 					]
+
+					// Shadow quality box
+					+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+
+							// Shadow aliasing quality text
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(LabelSize)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("ShadowsLabel", "Shadow quality"))
+						.TextStyle(&Theme.TextFont)
+						]
+						]
+
+					// Shadow quality slider
+					+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Center)
+						.Padding(Theme.ContentPadding)
+						[
+							SAssignNew(ShadowQualitySlider, SSlider)
+							.Value(CurrentShadowQualityRatio)
+							.Style(&Theme.SliderStyle)
+							.OnValueChanged(this, &SFlareSettingsMenu::OnShadowQualitySliderChanged)
+						]
+
+					// Shadow quality label
+					+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ValueSize)
+						[
+							SAssignNew(ShadowQualityLabel, STextBlock)
+							.TextStyle(&Theme.TextFont)
+							.Text(GetShadowQualityLabel(MyGameSettings->ScalabilityQuality.ShadowQuality))
+						]
+						]
+						]
 
 					// AntiAliasing quality box
 					+ SVerticalBox::Slot()
@@ -827,7 +926,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 						[
 							SNew(SHorizontalBox)
 
-							// PostProcess quality text
+							// Debris quality text
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
 						.Padding(Theme.ContentPadding)
@@ -1158,7 +1257,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	MotionBlurButton->SetActive(MyGameSettings->UseMotionBlur);
 	TemporalAAButton->SetActive(MyGameSettings->UseTemporalAA);
 	FullscreenButton->SetActive(MyGameSettings->GetFullscreenMode() == EWindowMode::Fullscreen);
-	SupersamplingButton->SetActive(MyGameSettings->ScreenPercentage > 100);
+//	SupersamplingButton->SetActive(MyGameSettings->ScreenPercentage > 100);
 
 	// Gameplay defaults
 	InvertYButton->SetActive(MyGameSettings->InvertY);
@@ -1170,11 +1269,16 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	AnticollisionButton->SetActive(MyGameSettings->UseAnticollision);
 
 	float MaxShipRatio = ((float) MyGameSettings->MaxShipsInSector - MIN_MAX_SHIPS) / ((float) MAX_MAX_SHIPS - MIN_MAX_SHIPS);
+	float ResolutionRatio = ((float)MyGameSettings->ScreenPercentage - MIN_RESOLUTIONSCALE) / ((float)MAX_RESOLUTIONSCALE - MIN_RESOLUTIONSCALE);
 
 	// Music volume
 	int32 MusicVolume = MyGameSettings->MusicVolume;
 	int32 MasterVolume = MyGameSettings->MasterVolume;
 	int32 DebrisQuantity = MyGameSettings->DebrisQuantity;
+
+	ScreenPercentageSlider->SetValue(ResolutionRatio);
+	ScreenPercentageLabel->SetText(GetScreenPercentageLabel(MyGameSettings->ScreenPercentage));
+
 	ShipCountSlider->SetValue(MaxShipRatio);
 	ShipCountLabel->SetText(GetShipCountLabel(MyGameSettings->MaxShipsInSector));
 	MusicVolumeSlider->SetValue((float)MusicVolume / 10.0f);
@@ -1862,6 +1966,40 @@ FText SFlareSettingsMenu::GetAntiAliasingQualityLabel(int32 Value) const
 	}
 }
 
+void SFlareSettingsMenu::OnShadowQualitySliderChanged(float Value)
+{
+	int32 Step = 3;
+	int32 StepValue = FMath::RoundToInt(Step * Value);
+	ShadowQualitySlider->SetValue((float)StepValue / (float)Step);
+
+	int32 ShadowValue = StepValue;
+	UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
+
+	if (MyGameSettings->ScalabilityQuality.ShadowQuality != ShadowValue)
+	{
+		FLOGV("SFlareSettingsMenu::OnShadowQualitySliderChanged : set Shadow quality to %d (current is %d)", ShadowValue, MyGameSettings->ScalabilityQuality.AntiAliasingQuality);
+		MyGameSettings->ScalabilityQuality.ShadowQuality = ShadowValue;
+		MyGameSettings->ApplySettings(false);
+		ShadowQualityLabel->SetText(GetShadowQualityLabel(ShadowValue));
+	}
+}
+
+FText SFlareSettingsMenu::GetShadowQualityLabel(int32 Value) const
+{
+	switch (Value)
+	{
+	case 1:
+		return LOCTEXT("ShadowQualityMedium", "Medium");
+	case 2:
+		return LOCTEXT("ShadowQualityHigh", "High");
+	case 3:
+		return LOCTEXT("ShadowQualityUltra", "Ultra");
+	case 0:
+	default:
+		return LOCTEXT("ShadowQualityOff", "Off");
+	}
+}
+
 void SFlareSettingsMenu::OnPostProcessQualitySliderChanged(float Value)
 {
 	int32 Step = 3;
@@ -1893,6 +2031,27 @@ FText SFlareSettingsMenu::GetPostProcessQualityLabel(int32 Value) const
 		default:
 			return LOCTEXT("PostProcessQualityLow", "Low");
 	}
+}
+
+void SFlareSettingsMenu::OnScreenPercentageChanged(float Value)
+{
+
+	float NotSteppedValue = Value * (MAX_RESOLUTIONSCALE - MIN_RESOLUTIONSCALE) + MIN_RESOLUTIONSCALE;
+	int32 NewResolutionValue = FMath::RoundToInt(NotSteppedValue / STEP_RESOLUTIONSCALE) * STEP_RESOLUTIONSCALE;
+	float SteppedRatio = ((float)NewResolutionValue - MIN_RESOLUTIONSCALE) / ((float)MAX_RESOLUTIONSCALE - MIN_RESOLUTIONSCALE);
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	if (MyGameSettings->ScreenPercentage != NewResolutionValue)
+	{
+		MyGameSettings->ScreenPercentage = NewResolutionValue;
+		MyGameSettings->ApplySettings(false);
+		ScreenPercentageLabel->SetText(GetScreenPercentageLabel(NewResolutionValue));
+	}
+}
+
+FText SFlareSettingsMenu::GetScreenPercentageLabel(int32 Value) const
+{
+	return FText::Format(LOCTEXT("ScreenPercentageFormat", "{0}%"), FText::AsNumber(Value));
 }
 
 void SFlareSettingsMenu::OnDebrisSliderChanged(float Value)
@@ -2073,7 +2232,7 @@ void SFlareSettingsMenu::OnTemporalAAToggle()
 	MyGameSettings->SetUseTemporalAA(TemporalAAButton->IsActive());
 	MyGameSettings->ApplySettings(false);
 }
-
+/*
 void SFlareSettingsMenu::OnSupersamplingToggle()
 {
 	if (SupersamplingButton->IsActive())
@@ -2090,7 +2249,7 @@ void SFlareSettingsMenu::OnSupersamplingToggle()
 	MyGameSettings->ApplySettings(false);
 
 }
-
+*/
 void SFlareSettingsMenu::OnFullscreenToggle()
 {
 	UpdateResolution(true);

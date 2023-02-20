@@ -376,6 +376,9 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 	{
 		FText SectorStatus = Sector->GetSectorFriendlynessText(PlayerCompany);
 		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), Sector->GetSectorName(), SectorStatus);
+
+//		FText IdentifierFText = FText::FromName(Sector->GetData()->Identifier);
+///		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), IdentifierFText, SectorStatus);
 		FText SectorInfoText = Sector->GetSectorDescription();
 
 		// Get local fleets

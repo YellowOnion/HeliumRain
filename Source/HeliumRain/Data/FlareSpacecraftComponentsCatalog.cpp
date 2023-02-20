@@ -141,6 +141,7 @@ void UFlareSpacecraftComponentsCatalog::SetupModArrays(TArray<UFlareSpacecraftCo
 				break;
 			}
 		}
+
 		if (OldEntry)
 		{
 			if (ComponentEntry->Data.IsDisabledOverrideStats)
@@ -149,16 +150,12 @@ void UFlareSpacecraftComponentsCatalog::SetupModArrays(TArray<UFlareSpacecraftCo
 				if (OldEntryDesc)
 				{
 					ReplaceOldEntrySettings(OldEntryDesc, ComponentEntry);
+					if (PassedArray.Remove(OldEntry))
+					{
+						Index = FMath::Min(0, Index -= 1);
+					}
 				}
 			}
-			else
-			{
-				if (PassedArray.Remove(OldEntry))
-				{
-					Index = FMath::Min(0, Index -= 1);
-				}
-			}
-
 		}
 
 		if (ComponentEntry->Data.IsDisabled)

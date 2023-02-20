@@ -119,6 +119,15 @@ public:
 	float CostSafetyMarginTradeShip;
 	float CostSafetyMarginStation;
 
+
+	float BuildStationWorthMultiplier;
+	int	Station_Shipyard_Maximum;
+	int	Scrap_Minimum_Ships;
+	int	Scrap_Min_S_Cargo;
+	int	Scrap_Min_S_Military;
+	float BuildDroneCombatWorth;
+
+
 	//once past this level of ships switch to only building L sized
 	int32 BuildLTradeOnlyTreshhold;
 	int32 BuildLMilitaryOnlyTreshhold;
