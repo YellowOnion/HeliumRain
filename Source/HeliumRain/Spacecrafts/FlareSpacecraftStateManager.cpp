@@ -88,7 +88,7 @@ void UFlareSpacecraftStateManager::Tick(float DeltaSeconds)
 	float MaxVelocity = Spacecraft->GetNavigationSystem()->GetLinearMaxVelocity();
 	
 	// Do not tick the pilot if a player has disable the pilot
-	if (Spacecraft->GetParent()->GetDamageSystem()->IsAlive() && IsPiloted)
+	if (IsPiloted && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 	{
 		Spacecraft->GetPilot()->TickPilot(DeltaSeconds);
 

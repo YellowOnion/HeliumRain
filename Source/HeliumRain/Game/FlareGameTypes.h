@@ -468,11 +468,16 @@ struct FFlareCompanyStartingShips
 	FName SpawnSector;
 	UPROPERTY(EditAnywhere, Category = Company)
 	int32 Quantity = 1;
+
+	/** If this is a station what level is it? */
 	UPROPERTY(EditAnywhere, Category = Company)
 	uint32 Level = 1;
 	UPROPERTY(EditAnywhere, Category = Company)
 	bool IsStation = false;
 
+	/** For starting scenarios, is this the player ship? At least one entry must be set to "true"*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	bool IsPlayerShip = false;
 };
 
 USTRUCT()

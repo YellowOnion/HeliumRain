@@ -536,7 +536,7 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 		}
 
 		float Distance = (PilotLocation - NearestHostileTarget.GetActorLocation()).Size();
-		if (Distance < SecurityRadiusDistance)
+		if (Distance < SecurityRadiusDistance || Distance > Turret->GetDescription()->WeaponCharacteristics.GunCharacteristics.AmmoRange)
 		{
 			TargetPreferences.IgnoreList.Add(NearestHostileTarget);
 			continue;

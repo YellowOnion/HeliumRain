@@ -215,7 +215,7 @@ public:
 	int32 GetResearchValue() const;
 
 	/** Unlock a technology */
-	void UnlockTechnology(FName Identifier, bool FromSave = false, bool Force = false);
+	void UnlockTechnology(FName Identifier, bool FromSave = false, bool Force = false, bool HideMessage = false);
 
 	bool HasStationTechnologyUnlocked() const;
 

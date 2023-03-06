@@ -1581,6 +1581,9 @@ Companies are the factions which control the entire environment in Helium Rain. 
 (UI) Fleet menu Remove&Add button can now remove the last ship of a fleet\n\
 (UI) Skirmish components helptext now shows the description of the component\n\
 \n\
+(New Game Menu) Added in Starting Scenarios to the New Game screen.By default there are two basic ones included, the Trader start and the Fighter start.Helium Rain workshop mods can expand further with their own game start options.\n\
+(New Game Menu) Added in 'AI Cheats' toggle to new game menu.Used to enable / disable some artificial cheats the AI can receive on difficulties above or equal to Hard\n\
+\n\
 (Performance) Moved sector Shell cache to a more generic cache system.Added in Bomb, Debris and Asteroid cache.\n\
 (Performance) Shells, Bomb, Asteroid, ShipPilot, TurretAI tick speeds have been reduced.Optimisations to some of their processes\n\
 (Performance) Set EPSCPoolMethod::AutoRelease for various types of particles, enabling UE to automatically pool / fetch them\n\
@@ -1610,6 +1613,7 @@ Fixed(HRFanMod): Fixed simulation crash in UpdateReserveShips() routine\n\
 Fixed(HRFanMod): Player owned fighters would not properly select targets to engage\n\
 Fixed(HRFanMod): External Info Configuration / Allow External orders buttons weren't properly hiding themselves when looking at a player ship after looking at a shipyard\n\
 Fixed(HRFanMod): If reentering a sector quickly(such as skipping a single day) Shipyards could collide with their previous counterpart which hadn't yet been deleted and gain collision damage along with spinning out of control\n\
+Fixed(HRFanMod): Sometimes the auto-docking system would fail.\n\
 Fixed(Vanilla): Station menu 'Docked Ships' section can now see the ships docked within attached complex elements\n\
 Fixed(Vanilla): sudden frame rate drop in situations when turrets are trying to target during a battle where bombs are involved\n\
 Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry.Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\

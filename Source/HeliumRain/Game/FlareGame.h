@@ -23,6 +23,7 @@ class UFlareResourceCatalog;
 class UFlareTechnologyCatalog;
 class UFlareScannableCatalog;
 class UFlareGlobalSettings;
+class UFlareStartingScenarioCatalog;
 class UFlareOrbitalMap;
 
 class UFlareSkirmishManager;
@@ -132,7 +133,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Create a new sandbox game */
-	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations);
+	virtual void CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations, bool AICheats);
 
 	/** Create a new skirmish game */
 	void CreateSkirmishGame(UFlareSkirmishManager* Skirmish);
@@ -306,9 +307,13 @@ protected:
 	UPROPERTY()
 	UFlareScannableCatalog*                    ScannableCatalog;
 
-	/** Reference to all scannables */
+	/** Reference to the global modifiers */
 	UPROPERTY()
 	UFlareGlobalSettings*                    GlobalSettings;
+
+	/** Reference to starting scenarios*/
+	UPROPERTY()
+	UFlareStartingScenarioCatalog*                StartingScenarioCatalog;
 
 		/** Default asteroid */
 	UPROPERTY()
@@ -470,6 +475,11 @@ public:
 	{
 		return GlobalSettings;
 	}
+
+	inline UFlareStartingScenarioCatalog* GetStartingScenarios() const
+	{
+		return StartingScenarioCatalog;
+	}	
 
 	UFlareSkirmishManager* GetSkirmishManager() const
 	{

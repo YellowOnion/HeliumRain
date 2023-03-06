@@ -156,6 +156,13 @@ void UFlareSpacecraftComponentsCatalog::SetupModArrays(TArray<UFlareSpacecraftCo
 					}
 				}
 			}
+			else
+			{
+				if (PassedArray.Remove(OldEntry))
+				{
+					Index = FMath::Min(0, Index -= 1);
+				}
+			}
 		}
 
 		if (ComponentEntry->Data.IsDisabled)

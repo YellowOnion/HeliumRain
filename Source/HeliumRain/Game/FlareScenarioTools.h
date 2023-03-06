@@ -31,8 +31,11 @@ public:
 	void GenerateEmptyScenario(bool RandomizeStationLocations = false, int32 EconomyIndex = 0);
 	void GenerateFighterScenario(bool RandomizeStationLocations = false, int32 EconomyIndex = 0);
 	void GenerateFreighterScenario(bool RandomizeStationLocations = false, int32 EconomyIndex = 0);
+	void GenerateCustomScenario(int32 ScenarioIndex, bool RandomizeStationLocations = false, int32 EconomyIndex = 0);
 	void GenerateDebugScenario(bool RandomizeStationLocations = false, int32 EconomyIndex = 0);
-	
+	void GeneratePlayerStartingResearch();
+	void GeneratePlayerStartingSectorKnowledge();
+
 	/** Add a new player ship */
 	UFlareSimulatedSpacecraft* CreateRecoveryPlayerShip();
 
@@ -66,7 +69,7 @@ public:
 	void CreateAsteroids(UFlareSimulatedSector* Sector, int32 Count = 50, FVector DistributionShape = FVector(2, 50, 1));
 		
 	/** Create a ship */
-	void CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count);
+	UFlareSimulatedSpacecraft* CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count);
 
 	/** Create a station and fill its input */
 	void CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level = 1, FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), bool RandomLocation = false);

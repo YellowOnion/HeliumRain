@@ -48,7 +48,7 @@ protected:
 	virtual void CargoPilot(float DeltaSeconds);
 
 	virtual bool DockAtStation(float DeltaSeconds);
-	void GetRandomFriendlyStation(bool CanDock);
+	void GetRandomFriendlyStation();
 
 	virtual void FighterPilot(float DeltaSeconds);
 
@@ -105,7 +105,7 @@ public:
 	virtual AFlareSpacecraft* GetNearestAvailableStation(bool RealStation) const;
 
 	/** Return all friendly station in the sector */
-	virtual TArray<AFlareSpacecraft*> GetFriendlyStations(bool CanDock) const;
+	virtual TArray<AFlareSpacecraft*> GetFriendlyStations() const;
 
 	/**
 	 * Return the angular velocity need to align the local ship axis to the target axis
@@ -167,6 +167,7 @@ protected:
 	FVector                                      PilotTargetLocation;
 	float								         DockWaitTime;
 	float								         CurrentWaitTime;
+	float										 TotalTimeAutoPiloting;
 
 	FVector                                      PreviousAntiCollisionVector;
 	float										 LastNewCollisionVector;

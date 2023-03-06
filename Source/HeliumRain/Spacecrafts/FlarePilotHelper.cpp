@@ -111,7 +111,7 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Select dangerous asteroids
-	Candidates.Reserve(Candidates.Num() + ActiveSector->GetAsteroids().Num());
+//	Candidates.Reserve(Candidates.Num() + ActiveSector->GetAsteroids().Num());
 	for (auto AsteroidCandidate : ActiveSector->GetAsteroids())
 	{
 		Candidate.Key = AsteroidCandidate;
@@ -120,7 +120,7 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Select dangerous meteorites
-	Candidates.Reserve(Candidates.Num() + ActiveSector->GetMeteorites().Num());
+//	Candidates.Reserve(Candidates.Num() + ActiveSector->GetMeteorites().Num());
 	for (auto MeteoriteCandidate : ActiveSector->GetMeteorites())
 	{
 		if(!MeteoriteCandidate->IsBroken())
@@ -134,7 +134,7 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	// Select dangerous colliders
 	TArray<AActor*> ColliderActorList;
 	UGameplayStatics::GetAllActorsOfClass(Ship->GetWorld(), AFlareCollider::StaticClass(), ColliderActorList);
-	Candidates.Reserve(Candidates.Num() + ColliderActorList.Num());
+//	Candidates.Reserve(Candidates.Num() + ColliderActorList.Num());
 	for (auto ColliderCandidate : ColliderActorList)
 	{
 		Candidate.Key = Cast<AFlareCollider>(ColliderCandidate);
@@ -149,7 +149,8 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Input data for danger processing
-	FBox ShipBox = Ship->GetMeshBox();
+	FBox ShipBox = Ship->GetComponentsBoundingBox();
+//	FBox ShipBox = Ship->GetMeshBox();
 	FVector CurrentVelocity = Ship->GetLinearVelocity() * 100;
 	FVector CurrentLocation = (ShipBox.Max + ShipBox.Min) / 2.0;
 	float CurrentSize = FMath::Max(ShipBox.GetExtent().Size(), 1.0f);
@@ -215,6 +216,7 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 		SCOPE_CYCLE_COUNTER(STAT_PilotHelper_AnticollisionCorrection_Avoidance);
 
 		FBox ShipBox = Ship->GetComponentsBoundingBox();
+//		FBox ShipBox = Ship->GetMeshBox();
 		FVector CurrentLocation = (ShipBox.Max + ShipBox.Min) / 2.0;
 
 		if (MostDangerousTimeToHit > 0)
@@ -857,6 +859,7 @@ bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor,
 	{
 		CandidateSize = Cast<UStaticMeshComponent>(CandidateActor->GetRootComponent())->Bounds.SphereRadius;
 	}
+/*
 	else if (CandidateActor->IsA(AFlareSpacecraft::StaticClass()))
 	{
 		AFlareSpacecraft* CandidateSpacecraft = Cast<AFlareSpacecraft>(CandidateActor);
@@ -864,6 +867,7 @@ bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor,
 		CandidateSize = CandidateSpacecraft->GetMeshScale();
 		CandidateLocation = (CandidateBox.Max + CandidateBox.Min) / 2.0;
 	}
+*/
 	else
 	{
 		FBox CandidateBox = CandidateActor->GetComponentsBoundingBox();

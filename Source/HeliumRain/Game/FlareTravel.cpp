@@ -469,55 +469,58 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 		TravelDuration = (UFlareGameTools::SECONDS_IN_DAY/2 + ComputeAltitudeTravelDuration(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody, DestinationAltitude)) / UFlareGameTools::SECONDS_IN_DAY;
 	}
 
-	int32 GameDifficulty = -1;
-	GameDifficulty = World->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
-	if (Company == World->GetGame()->GetPC()->GetCompany())
+	bool AICheats = World->GetGame()->GetPC()->GetPlayerData()->AICheats;
+	if (AICheats)
 	{
-		switch (GameDifficulty)
+		int32 GameDifficulty = -1;
+		GameDifficulty = World->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+		if (Company == World->GetGame()->GetPC()->GetCompany())
 		{
-		case -1: // Easy
-			TravelDuration *= 0.95;
-			break;
-		case 0: // Normal
-			break;
-		case 1: // Hard
-			TravelDuration *= 1.05;
-			break;
-		case 2: // Very Hard
-			TravelDuration *= 1.10;
-			break;
-		case 3: // Expert
-			TravelDuration *= 1.15;
-			break;
-		case 4: // Unfair
-			TravelDuration *= 1.20;
-			break;
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				TravelDuration *= 0.95;
+				break;
+			case 0: // Normal
+				break;
+			case 1: // Hard
+				TravelDuration *= 1.05;
+				break;
+			case 2: // Very Hard
+				TravelDuration *= 1.10;
+				break;
+			case 3: // Expert
+				TravelDuration *= 1.15;
+				break;
+			case 4: // Unfair
+				TravelDuration *= 1.20;
+				break;
+			}
+		}
+		else
+		{
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				TravelDuration *= 1.05;
+				break;
+			case 0: // Normal
+				break;
+			case 1: // Hard
+				TravelDuration *= 0.95;
+				break;
+			case 2: // Very Hard
+				TravelDuration *= 0.90;
+				break;
+			case 3: // Expert
+				TravelDuration *= 0.85;
+				break;
+			case 4: // Unfair
+				TravelDuration *= 0.80;
+				break;
+			}
 		}
 	}
-	else
-	{
-		switch (GameDifficulty)
-		{
-		case -1: // Easy
-			TravelDuration *= 1.05;
-			break;
-		case 0: // Normal
-			break;
-		case 1: // Hard
-			TravelDuration *= 0.95;
-			break;
-		case 2: // Very Hard
-			TravelDuration *= 0.90;
-			break;
-		case 3: // Expert
-			TravelDuration *= 0.85;
-			break;
-		case 4: // Unfair
-			TravelDuration *= 0.80;
-			break;
-		}
-	}
-
 
 	if(Company)//Company->IsTechnologyUnlocked("fast-travel"))
 	{

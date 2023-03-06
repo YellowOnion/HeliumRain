@@ -708,7 +708,6 @@ void SFlareCompanyMenu::Exit()
 	ShipList->Reset();
 	ShipList->SetVisibility(EVisibility::Collapsed);
 
-//	DifficultyPicker->ClearItems();
 	EmblemPicker->ClearItems();
 	TradeRouteInfo->Clear();
 	AutomatedFleetsInfo->Clear();

@@ -107,6 +107,7 @@ struct FFlareMenuParameterData
 	int32										EconomyIndex;
 	int32                                       PlayerEmblemIndex;
 	bool										RandomizeStations;
+	bool										AICheats;
 	bool                                        PlayTutorial;
 	bool										PlayStory;
 	bool                                        OrderForPlayer;

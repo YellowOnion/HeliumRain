@@ -26,6 +26,7 @@
 #include "../Data/FlareQuestCatalog.h"
 #include "../Data/FlareSectorCatalogEntry.h"
 #include "../Data/FlareGlobalSettings.h"
+#include "../Data/FlareStartingScenarioCatalog.h"
 
 #include "../Economy/FlareCargoBay.h"
 
@@ -118,6 +119,7 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	TechnologyCatalog = NewObject<UFlareTechnologyCatalog>(this, UFlareTechnologyCatalog::StaticClass(), TEXT("FlareTechnologyCatalog"));
 	ScannableCatalog = NewObject<UFlareScannableCatalog>(this, UFlareScannableCatalog::StaticClass(), TEXT("FlareScannableCatalog"));
 	GlobalSettings = NewObject<UFlareGlobalSettings>(this, UFlareGlobalSettings::StaticClass(), TEXT("FlareGlobalSettings"));
+	StartingScenarioCatalog = NewObject<UFlareStartingScenarioCatalog>(this, UFlareStartingScenarioCatalog::StaticClass(), TEXT("FlareStartingScenarioCatalog"));
 
 	TArray<UFlareTechnologyCatalogEntry*> DisableTechnologies;
 	for (UFlareTechnologyCatalogEntry* Technology : TechnologyCatalog->TechnologyCatalog)
@@ -175,6 +177,11 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		ComponentSub->Name = FText::FromName(ComponentSub->Identifier);
 	}
 */
+
+	PrimaryActorTick.bStartWithTickEnabled = true;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickGroup = TG_PrePhysics;
+
 }
 
 TArray<FString> AFlareGame::GetModStrings() const
@@ -771,7 +778,7 @@ bool AFlareGame::DeleteSaveSlot(int32 Index)
 	Save
 ----------------------------------------------------*/
 
-void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations)
+void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 ScenarioIndex, int32 DifficultyIndex, int32 EconomyIndex, int32 PlayerEmblemIndex, bool PlayTutorial, bool PlayStory, bool RandomizeStationLocations, bool AICheats)
 {
 	// Clean up
 	PlayerController = Cast<AFlarePlayerController>(GetWorld()->GetFirstPlayerController());
@@ -798,6 +805,7 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 	PlayerDataL.UUID = FName(*FGuid::NewGuid().ToString());
 	PlayerDataL.ScenarioId = ScenarioIndex;
 	PlayerDataL.DifficultyId = DifficultyIndex - 1;
+	PlayerDataL.AICheats = AICheats;
 	// -1 difficulty index so old games without it saved will read as "normal"
 	PlayerDataL.PlayerEmblemIndex = PlayerEmblemIndex;
 	PlayerDataL.QuestData.PlayTutorial = PlayTutorial;
@@ -820,22 +828,22 @@ void AFlareGame::CreateGame(FFlareCompanyDescription CompanyData, int32 Scenario
 		}
 	}
 
-
 	// Create scenario
-	switch (ScenarioIndex)
+	if (ScenarioIndex == -1)
 	{
-		case -1: // Empty
-			ScenarioTools->GenerateEmptyScenario(RandomizeStationLocations, EconomyIndex);
-		break;
-		case 0: // Freighter
-			ScenarioTools->GenerateFreighterScenario(RandomizeStationLocations, EconomyIndex);
-		break;
-		case 1: // Fighter
-			ScenarioTools->GenerateFighterScenario(RandomizeStationLocations, EconomyIndex);
-		break;
-		case 2: // Debug
-			ScenarioTools->GenerateDebugScenario(RandomizeStationLocations, EconomyIndex);
-		break;
+		ScenarioTools->GenerateEmptyScenario(RandomizeStationLocations, EconomyIndex);
+	}
+	else if (ScenarioIndex == 0)
+	{
+		ScenarioTools->GenerateFreighterScenario(RandomizeStationLocations, EconomyIndex);
+	}
+	else if (ScenarioIndex == 1)
+	{
+		ScenarioTools->GenerateFighterScenario(RandomizeStationLocations, EconomyIndex);
+	}
+	else
+	{
+		ScenarioTools->GenerateCustomScenario(ScenarioIndex,RandomizeStationLocations, EconomyIndex);
 	}
 
 	// Load

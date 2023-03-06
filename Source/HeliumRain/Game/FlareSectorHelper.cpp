@@ -391,8 +391,7 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 
 		UFlareCompany* PlayerCompany = SourceSpacecraft->GetGame()->GetPC()->GetCompany();
 
-		int32 GameDifficulty = -2;
-		GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
+		int32 GameDifficulty = GameDifficulty = SourceSpacecraft->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
 		float ReputationGain = 0.01f;
 		switch (GameDifficulty)
 		{
@@ -439,14 +438,23 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 		UFlareFleet* PlayerFleet = PC->GetPlayerFleet();
 		FCHECK(PC);
 
-		if (SourceSpacecraft->GetCurrentFleet() != PlayerFleet && !SourceSpacecraft->IsStation())
+		bool SetTrading = true;
+		if (SourceSpacecraft->GetGame()->GetActiveSector() && SourceSpacecraft->GetGame()->GetActiveSector()->GetSimulatedSector() == SourceSpacecraft->GetCurrentSector())
 		{
-			SourceSpacecraft->SetTrading(true, TradeReason);
+			SetTrading = false;
 		}
 
-		if (DestinationSpacecraft->GetCurrentFleet() != PlayerFleet && !DestinationSpacecraft->IsStation())
+		if (SetTrading)
 		{
-			DestinationSpacecraft->SetTrading(true, TradeReason);
+			if (SourceSpacecraft->GetCurrentFleet() != PlayerFleet && !SourceSpacecraft->IsStation())
+			{
+				SourceSpacecraft->SetTrading(true, TradeReason);
+			}
+
+			if (DestinationSpacecraft->GetCurrentFleet() != PlayerFleet && !DestinationSpacecraft->IsStation())
+			{
+				DestinationSpacecraft->SetTrading(true, TradeReason);
+			}
 		}
 
 		if(PC->GetPlayerShip() == SourceSpacecraft || PC->GetPlayerShip() == DestinationSpacecraft)

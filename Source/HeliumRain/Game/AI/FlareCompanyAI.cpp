@@ -169,21 +169,44 @@ void UFlareCompanyAI::SimulateActiveAI()
 			UFlareSimulatedSector* SimulatedSector = ActiveSector->GetSimulatedSector();
 			if (SimulatedSector)
 			{
-				TArray<AFlareSpacecraft*> CompanyShips = ActiveSector->GetCompanyShips(Company);
-				if (CompanyShips.Num())
+				if (!SimulatedSector->IsInDangerousBattle(Company))
 				{
-					int32 ShipIndex = FMath::RandRange(0, CompanyShips.Num() - 1);
-					AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
-					if (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
+					TArray<AFlareSpacecraft*> CompanyShips = ActiveSector->GetCompanyShips(Company);
+					int32 GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+					int ActivityAttempts = 1;
+					switch (GameDifficulty)
 					{
-						return;
+						case -1: // Easy
+							ActivityAttempts = 1;
+							break;
+						case 0: // Normal
+							ActivityAttempts = 1;
+							break;
+						case 1: // Hard
+							ActivityAttempts = 2;
+							break;
+						case 2: // Very Hard
+							ActivityAttempts = 3;
+							break;
+						case 3: // Expert
+							ActivityAttempts = 4;
+							break;
+						case 4: // Unfair
+							ActivityAttempts = 5;
+							break;
 					}
 
-					if (SimulatedSector->IsInDangerousBattle(Company))
+					while (ActivityAttempts > 0 && CompanyShips.Num() > 0)
 					{
-					}
-					else
-					{
+						ActivityAttempts--;
+						int32 ShipIndex = FMath::RandRange(0, CompanyShips.Num() - 1);
+						AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
+						CompanyShips.RemoveSwap(Ship);
+						if (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
+						{
+							continue;
+						}
+
 						if (Ship->IsMilitary())
 						{
 							if (Ship->GetParent()->GetActiveCargoBay()->GetCapacity() > 0)
@@ -191,6 +214,7 @@ void UFlareCompanyAI::SimulateActiveAI()
 								if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
 								{
 									SimulateActiveTradeShip(Ship);
+									break;
 								}
 							}
 							else
@@ -205,16 +229,18 @@ void UFlareCompanyAI::SimulateActiveAI()
 								if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
 								{
 									SimulateActiveTradeShip(Ship);
+									break;
 								}
 							}
 						}
 					}
-				}
-				if (ActiveAIDesireRepairs)
-				{
-					SectorHelper::RepairFleets(SimulatedSector, Company);
-					SectorHelper::RefillFleets(SimulatedSector, Company);
-					ActiveAIDesireRepairs = false;
+
+					if (ActiveAIDesireRepairs)
+					{
+						SectorHelper::RepairFleets(SimulatedSector, Company);
+						SectorHelper::RefillFleets(SimulatedSector, Company);
+						ActiveAIDesireRepairs = false;
+					}
 				}
 			}
 		}
@@ -240,6 +266,7 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 	bool BreakOutOfLoop = false;
 
 	TArray<UFlareResourceCatalogEntry*> ResourceCatalog = Game->GetResourceCatalog()->Resources;
+
 	while (ResourceCatalog.Num())
 	{
 		if (ActiveSector)
@@ -254,6 +281,11 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			break;
 		}
 
+		if (BreakOutOfLoop)
+		{
+			break;
+		}
+
 		int32 ResourceIndex = FMath::RandRange(0, ResourceCatalog.Num() - 1);
 		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
 		ResourceCatalog.RemoveAtSwap(ResourceIndex);
@@ -262,150 +294,72 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			continue;
 		}
 
-		if (BreakOutOfLoop)
-		{
-			break;
-		}
-
-		SectorVariation Variation = AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
-
-		const SectorVariation* ThisSectorVariation = &Variation;
-		struct ResourceVariation const* ResourceVariation = &ThisSectorVariation->ResourceVariations[Resource];
-
-//		SectorVariation const* ThisSectorVariation = &AITradeHelper::ComputeSectorResourceVariation(Company, SimulatedSector, true, false);
-//		struct ResourceVariation const* ResourceVariation = &ThisSectorVariation->ResourceVariations[Resource];
-
-
-		if (!ResourceVariation || ResourceVariation == nullptr)
-		{
-			break;
-		}
-
 		int32 InitialQuantity = Ship->GetParent()->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
 		int32 FreeSpace = Ship->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
+		TArray<AFlareSpacecraft*> LocalStations = ActiveSector->GetStations();
 
-		int32 PotentialStock = ResourceVariation->OwnedStock + ResourceVariation->FactoryStock + ResourceVariation->StorageStock;
-		int32 CanBuyQuantity = FMath::Min(FreeSpace, PotentialStock);
-
-		// Affordable quantity
-		CanBuyQuantity = FMath::Min(CanBuyQuantity, (int32)(Company->GetMoney() / SimulatedSector->GetResourcePrice(Resource, EFlareResourcePriceContext::FactoryInput)));
-		int32 TotalSellQuantity = CanBuyQuantity + InitialQuantity;
-		if (TotalSellQuantity > 0)
+		while (LocalStations.Num())
 		{
-			TArray<AFlareSpacecraft*> LocalStations = ActiveSector->GetStations();
-			while (LocalStations.Num())
+			if (ActiveSector)
 			{
-				if (ActiveSector)
+				if (ActiveSector->GetIsDestroyingSector())
 				{
-					if (ActiveSector->GetIsDestroyingSector())
-					{
-						BreakOutOfLoop = true;
-						break;
-					}
-				}
-				else
-				{
+					BreakOutOfLoop = true;
 					break;
 				}
+			}
+			else
+			{
+				break;
+			}
 
-				int32 StationIndex = FMath::RandRange(0, LocalStations.Num() - 1);
-				AFlareSpacecraft* Station = LocalStations[StationIndex];
-				LocalStations.RemoveAtSwap(StationIndex);
-				if (!Station)
-				{
-					continue;
-				}
+			int32 StationIndex = FMath::RandRange(0, LocalStations.Num() - 1);
+			AFlareSpacecraft* Station = LocalStations[StationIndex];
+			LocalStations.RemoveAtSwap(StationIndex);
+			if (!Station)
+			{
+				continue;
+			}
 
-				if (BreakOutOfLoop)
+			//station wants to buy this resource, so we could potentially sell what the ship has
+			if (Station->GetParent()->GetActiveCargoBay()->WantBuy(Resource, Ship->GetCompany()))
+			{
+				//we already have cargo
+				if (InitialQuantity > 0)
 				{
-					break;
-				}
-
-				//station wants to buy this resource, so we could potentially sell what the ship has
-				if (Station->GetParent()->GetActiveCargoBay()->WantBuy(Resource, Ship->GetCompany()))
-				{
-					//we already have cargo
-					if (InitialQuantity > 0)
+					int32 StationFreeSpace = Station->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
+					if (StationFreeSpace > 0)
 					{
-						int32 StationFreeSpace = Station->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
-						if (StationFreeSpace > 0)
-						{
-							int32 StationMaxAffordableQuantity = 0;
-							int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Station->GetParent(), Ship->GetParent(), Resource);
-
-							if (Station->GetCompany() == Ship->GetCompany())
-							{
-								StationMaxAffordableQuantity = INT_MAX;
-							}
-							else
-							{
-								StationMaxAffordableQuantity = FMath::Max(int64(0), Station->GetCompany()->GetMoney()) / ResourcePrice;
-							}
-
-							StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, InitialQuantity);
-							StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, StationMaxAffordableQuantity);
-
-							// found a station willing to buy, we'll sell!
-							if (StationMaxAffordableQuantity > 0)
-							{
-								//chance has it we're already docked, sell immediately
-								if (Station->GetDockingSystem()->IsDockedShip(Ship))
-								{
-									SectorHelper::Trade(Ship->GetParent(),
-										Station->GetParent(),
-										Resource,
-										StationMaxAffordableQuantity);
-									BreakOutOfLoop = true;
-								}
-								else
-								{
-									bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, StationMaxAffordableQuantity, Ship->GetParent(), Station->GetParent(), false);
-									if (DockingConfirmed)
-									{
-										BreakOutOfLoop = true;
-									}
-								}
-								break;
-							}
-						}
-					}
-				}
-				//station wants to sell this resource, so we could potentially buy what the station has
-				else if (FreeSpace > 0 && Station->GetParent()->GetActiveCargoBay()->WantSell(Resource, Ship->GetCompany()))
-				{
-					int32 StationQuantity = Station->GetParent()->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
-					if (StationQuantity > 0)
-					{
-						int32 ShipMaxAffordableQuantity = 0;
-						int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Ship->GetParent(), Station->GetParent(), Resource);
+						int32 StationMaxAffordableQuantity = 0;
 
 						if (Station->GetCompany() == Ship->GetCompany())
 						{
-							ShipMaxAffordableQuantity = INT_MAX;
+							StationMaxAffordableQuantity = INT_MAX;
 						}
 						else
 						{
-							ShipMaxAffordableQuantity = FMath::Max(int64(0), Ship->GetCompany()->GetMoney()) / ResourcePrice;
+							int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Station->GetParent(), Ship->GetParent(), Resource);
+							StationMaxAffordableQuantity = FMath::Max(int64(0), Station->GetCompany()->GetMoney()) / ResourcePrice;
 						}
 
-						ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, StationQuantity);
-						ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, FreeSpace);
+						StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, InitialQuantity);
+						StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, StationMaxAffordableQuantity);
 
-						// found a station willing to sell, we'll buy!
-						if (ShipMaxAffordableQuantity > 0)
+						// found a station willing to buy, we'll sell!
+						if (StationMaxAffordableQuantity > 0)
 						{
 							//chance has it we're already docked, sell immediately
 							if (Station->GetDockingSystem()->IsDockedShip(Ship))
 							{
-								SectorHelper::Trade(Station->GetParent(),
-									Ship->GetParent(),
+								SectorHelper::Trade(Ship->GetParent(),
+									Station->GetParent(),
 									Resource,
-									ShipMaxAffordableQuantity);
+									StationMaxAffordableQuantity);
 								BreakOutOfLoop = true;
 							}
 							else
 							{
-								bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, ShipMaxAffordableQuantity, Station->GetParent(), Ship->GetParent(), false);
+								bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, StationMaxAffordableQuantity, Ship->GetParent(), Station->GetParent(), false);
 								if (DockingConfirmed)
 								{
 									BreakOutOfLoop = true;
@@ -413,6 +367,51 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 							}
 							break;
 						}
+					}
+				}
+			}
+			//station wants to sell this resource, so we could potentially buy what the station has
+			if (FreeSpace > 0 && Station->GetParent()->GetActiveCargoBay()->WantSell(Resource, Ship->GetCompany()))
+			{
+				int32 StationQuantity = Station->GetParent()->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
+				if (StationQuantity > 0)
+				{
+					int32 ShipMaxAffordableQuantity = 0;
+
+					if (Station->GetCompany() == Ship->GetCompany())
+					{
+						ShipMaxAffordableQuantity = INT_MAX;
+					}
+					else
+					{
+						int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Ship->GetParent(), Station->GetParent(), Resource);
+						ShipMaxAffordableQuantity = FMath::Max(int64(0), Ship->GetCompany()->GetMoney()) / ResourcePrice;
+					}
+
+					ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, StationQuantity);
+					ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, FreeSpace);
+
+					// found a station willing to sell, we'll buy!
+					if (ShipMaxAffordableQuantity > 0)
+					{
+						//chance has it we're already docked, sell immediately
+						if (Station->GetDockingSystem()->IsDockedShip(Ship))
+						{
+							SectorHelper::Trade(Station->GetParent(),
+								Ship->GetParent(),
+								Resource,
+								ShipMaxAffordableQuantity);
+							BreakOutOfLoop = true;
+						}
+						else
+						{
+							bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, ShipMaxAffordableQuantity, Station->GetParent(), Ship->GetParent(), false);
+							if (DockingConfirmed)
+							{
+								BreakOutOfLoop = true;
+							}
+						}
+						break;
 					}
 				}
 			}

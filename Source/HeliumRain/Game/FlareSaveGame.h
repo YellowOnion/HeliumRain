@@ -96,6 +96,9 @@ struct FFlarePlayerSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 DifficultyId;
 
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool AICheats;
+
     /** Identifier of the company */
     UPROPERTY(EditAnywhere, Category = Save)
     FName CompanyIdentifier;

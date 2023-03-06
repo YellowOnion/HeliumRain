@@ -441,13 +441,13 @@ bool UFlareSpacecraftNavigationSystem::Undock()
 		// Leave
 		if (Spacecraft->IsPlayerShip())
 		{
-			FVector UndockDestination = 1000 * FVector(-1, 0, 0);
-			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination));
+			FVector UndockDestination = 5000 * FVector(-1, 0, 0);
+			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination),false, DockStation);
 		}
 		else
 		{
 			FVector UndockDestination = 10000 * FVector(-1, 0, 0) + 5000 * FMath::VRand();
-			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination));
+			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination),false, DockStation);
 		}
 
 		// Hack for bug #195: for ue4 to reweld all.
@@ -878,41 +878,41 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 
 	switch (DockingParameters.DockingPhase)
 	{
-		case EFlareDockingPhase::RendezVous:
-		case EFlareDockingPhase::Distant:
-			// Rendez-vous
-			MaxVelocity = LinearMaxVelocity * 100;
-			LocationTarget += DockingParameters.StationDockAxis * (ApproachDockToDockDistanceLimit / 2);
-			if (DockingParameters.DockToDockDistance > ApproachDockToDockDistanceLimit)
-			{
-				AxisTarget = LocationTarget - DockingParameters.ShipDockLocation;
-				AngularVelocityTarget = FVector::ZeroVector;
-			}
+	case EFlareDockingPhase::RendezVous:
+	case EFlareDockingPhase::Distant:
+		// Rendez-vous
+		MaxVelocity = LinearMaxVelocity * 100;
+		LocationTarget += DockingParameters.StationDockAxis * (ApproachDockToDockDistanceLimit / 2);
+		if (DockingParameters.DockToDockDistance > ApproachDockToDockDistanceLimit)
+		{
+			AxisTarget = LocationTarget - DockingParameters.ShipDockLocation;
+			AngularVelocityTarget = FVector::ZeroVector;
+		}
 
-			//FLOGV("Anticollision test ignore FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis)=%f", FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis));
+		//FLOGV("Anticollision test ignore FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis)=%f", FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis));
 
-			// During rendez-vous avoid the station if not in axis
-			if (FVector::DotProduct(DockingParameters.DockToDockDeltaLocation.GetUnsafeNormal(), DockingParameters.StationDockAxis) > -0.9)
-			{
-				AnticollisionDockStation = NULL;
-			}
-			Anticollision = true;
+		// During rendez-vous avoid the station if not in axis
+		if (FVector::DotProduct(DockingParameters.DockToDockDeltaLocation.GetUnsafeNormal(), DockingParameters.StationDockAxis) > -0.9)
+		{
+			AnticollisionDockStation = NULL;
+		}
+		Anticollision = true;
 		break;
-		case EFlareDockingPhase::Approach:
-			MaxVelocity = GetApproachVelocityLimit(DockingParameters.DockToDockDistance) /*/ 200*/ ;
-			LocationTarget += DockingParameters.StationDockAxis * (FinalApproachDockToDockDistanceLimit / 2);
+	case EFlareDockingPhase::Approach:
+		MaxVelocity = GetApproachVelocityLimit(DockingParameters.DockToDockDistance) /*/ 200*/;
+		LocationTarget += DockingParameters.StationDockAxis * (FinalApproachDockToDockDistanceLimit / 2);
 		break;
 
-		case EFlareDockingPhase::FinalApproach:
-			MaxVelocity = DockingVelocityLimit / 200;
+	case EFlareDockingPhase::FinalApproach:
+		MaxVelocity = DockingVelocityLimit / 200;
 		break;
-		case EFlareDockingPhase::Dockable:
-			ConfirmDock(DockStation, DockId);
-			return;
+	case EFlareDockingPhase::Dockable:
+		ConfirmDock(DockStation, DockId);
+		return;
 		break;
-		case EFlareDockingPhase::Docked:
-		case EFlareDockingPhase::Locked:
-		default:
+	case EFlareDockingPhase::Docked:
+	case EFlareDockingPhase::Locked:
+	default:
 		// Do nothink
 		LinearEngineTarget.SetVelocity(FVector::ZeroVector);
 		AngularTargetVelocity = FVector::ZeroVector;
@@ -920,8 +920,8 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	}
 
 	// Not in approach, just go to the docking entrance point
-	UpdateLinearAttitudeAuto(DeltaSeconds, LocationTarget, VelocityTarget/100, MaxVelocity, 0.1);
-	AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1,0,0), AxisTarget, AngularVelocityTarget, DeltaSeconds);
+	UpdateLinearAttitudeAuto(DeltaSeconds, LocationTarget, VelocityTarget / 100, MaxVelocity, 0.1);
+	AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1, 0, 0), AxisTarget, AngularVelocityTarget, DeltaSeconds);
 
 	if (Anticollision)
 	{
@@ -937,6 +937,8 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 		LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(GlobalFixed));
 	}
 }
+
+
 
 
 void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
@@ -1066,10 +1068,11 @@ void UFlareSpacecraftNavigationSystem::PushCommandAngularBrake()
 	PushCommand(Command);
 }
 
-void UFlareSpacecraftNavigationSystem::PushCommandLocation(const FVector& Location, bool Precise)
+void UFlareSpacecraftNavigationSystem::PushCommandLocation(const FVector& Location, bool Precise, AFlareSpacecraft* NewActionTarget)
 {
 	FFlareShipCommandData Command;
 	Command.Type = EFlareCommandDataType::CDT_Location;
+	Command.ActionTarget = NewActionTarget;
 	Command.LocationTarget = Location;
 	Command.PreciseApproach = Precise;
 	PushCommand(Command);
@@ -1164,6 +1167,7 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands()
 	TransactionDestination = NULL;
 	TransactionDestinationDock = NULL;
 	TransactionDonation = NULL;
+
 }
 
 FVector UFlareSpacecraftNavigationSystem::GetDockLocation()

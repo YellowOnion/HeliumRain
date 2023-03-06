@@ -15,9 +15,10 @@
 
 #include "../Spacecrafts/FlareSimulatedSpacecraft.h"
 #include "../Data/FlareSpacecraftCatalog.h"
+#include "../Data/FlareStartingScenarioCatalogEntry.h"
 
 #define LOCTEXT_NAMESPACE "FlareScenarioToolsInfo"
-
+#define DEFAULT_PLAYER_MONEY 750000
 
 /*----------------------------------------------------
 	Public API
@@ -167,26 +168,82 @@ void UFlareScenarioTools::GenerateEmptyScenario(bool RandomizeStationLocations, 
 void UFlareScenarioTools::GenerateFighterScenario(bool RandomizeStationLocations, int32 EconomyIndex)
 {
 	FLOG("UFlareScenarioTools::GenerateFighterScenario");
+	FFlareCompanyDescription* UnprotectedPlayerCompanyDescription = const_cast<FFlareCompanyDescription*>(PlayerCompany->GetDescription());
+	UnprotectedPlayerCompanyDescription->StartingMoney += DEFAULT_PLAYER_MONEY;
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
 	CreatePlayerShip(FirstLight, "ship-ghoul");
+	GeneratePlayerStartingResearch();
 }
 
 void UFlareScenarioTools::GenerateFreighterScenario(bool RandomizeStationLocations, int32 EconomyIndex)
 {
 	FLOG("UFlareScenarioTools::GenerateFreighterScenario");
+	FFlareCompanyDescription* UnprotectedPlayerCompanyDescription = const_cast<FFlareCompanyDescription*>(PlayerCompany->GetDescription());
+	UnprotectedPlayerCompanyDescription->StartingMoney += DEFAULT_PLAYER_MONEY;
+
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
+	GeneratePlayerStartingSectorKnowledge();
 	CreatePlayerShip(FirstLight, "ship-solen");
-	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID("auto-docking");
-	if (AutoPilotCost)
+	GeneratePlayerStartingResearch();
+}
+
+void UFlareScenarioTools::GenerateCustomScenario(int32 ScenarioIndex, bool RandomizeStationLocations, int32 EconomyIndex)
+{
+	FLOG("UFlareScenarioTools::GenerateCustomScenario");
+
+	UFlareStartingScenarioCatalog* StartingScenarios = Game->GetStartingScenarios();
+	TArray<UFlareStartingScenarioCatalogEntry*> ScenariosArray = StartingScenarios->GetStartingScenarios();
+	UFlareStartingScenarioCatalogEntry* CurrentScenario = ScenariosArray[ScenarioIndex - 2];
+	FFlareCompanyDescription* UnprotectedPlayerCompanyDescription = const_cast<FFlareCompanyDescription*>(PlayerCompany->GetDescription());
+
+	if (CurrentScenario)
 	{
-		PlayerCompany->GiveResearch(AutoPilotCost);
+		UnprotectedPlayerCompanyDescription->StartingMoney += CurrentScenario->StartingMoney;
+
+		if (CurrentScenario->StartingResearchPoints >= 0)
+		{
+			UnprotectedPlayerCompanyDescription->StartingResearchPoints += CurrentScenario->StartingResearchPoints;
+		}
+		else
+		{
+			GeneratePlayerStartingResearch();
+		}
+
+		if (CurrentScenario->StartingSectorKnowledge.Num() > 0)
+		{
+			for (int KnowIndex = 0; KnowIndex < CurrentScenario->StartingSectorKnowledge.Num(); KnowIndex++)
+			{
+				FName CurrentSectorID = CurrentScenario->StartingSectorKnowledge[KnowIndex];
+				UnprotectedPlayerCompanyDescription->StartingSectorKnowledge.Add(CurrentSectorID);
+			}
+		}
+		else
+		{
+			GeneratePlayerStartingSectorKnowledge();
+		}
+
+		for (int KnowIndex = 0; KnowIndex < CurrentScenario->StartingTechnology.Num(); KnowIndex++)
+		{
+			FName CurrentTech = CurrentScenario->StartingTechnology[KnowIndex];
+			UnprotectedPlayerCompanyDescription->StartingTechnology.Add(CurrentTech);
+		}
+
+		for (int ShipIndex = 0; ShipIndex < CurrentScenario->StartingShips.Num(); ShipIndex++)
+		{
+			FFlareCompanyStartingShips CurrentShips = CurrentScenario->StartingShips[ShipIndex];
+			UnprotectedPlayerCompanyDescription->StartingShips.Add(CurrentShips);
+		}
 	}
 	else
 	{
-		PlayerCompany->GiveResearch(20);
+		UnprotectedPlayerCompanyDescription->StartingMoney += DEFAULT_PLAYER_MONEY;
+		GeneratePlayerStartingSectorKnowledge();
+		CreatePlayerShip(FirstLight, "ship-solen");
+		GeneratePlayerStartingResearch();
 	}
+	SetupWorld(RandomizeStationLocations, EconomyIndex);
 }
 
 void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, int32 EconomyIndex)
@@ -212,6 +269,32 @@ void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, 
 	CreateStations(StationIceMine, PlayerCompany, MinersHome, 1,1, SpawnParameters, RandomizeStationLocations);
 }
 
+void UFlareScenarioTools::GeneratePlayerStartingResearch()
+{
+	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID("auto-docking");
+	if (AutoPilotCost)
+	{
+		PlayerCompany->GiveResearch(AutoPilotCost);
+	}
+	else
+	{
+		PlayerCompany->GiveResearch(20);
+	}
+}
+
+void UFlareScenarioTools::GeneratePlayerStartingSectorKnowledge()
+{
+	// Setup player sector knowledge
+	PlayerCompany->DiscoverSector(TheDepths);
+	PlayerCompany->DiscoverSector(BlueHeart);
+	PlayerCompany->DiscoverSector(TheSpire);
+	PlayerCompany->DiscoverSector(Outpost);
+	PlayerCompany->DiscoverSector(MinersHome);
+	PlayerCompany->DiscoverSector(NightsHome);
+	PlayerCompany->DiscoverSector(TheFarm);
+	PlayerCompany->DiscoverSector(Lighthouse);
+}
+
 UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateRecoveryPlayerShip()
 {
 	return CreatePlayerShip(FirstLight, "ship-solen");
@@ -225,16 +308,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 {
 	// Setup common stuff
 	SetupAsteroids();
-
-	// Setup player sector knowledge
-	PlayerCompany->DiscoverSector(TheDepths);
-	PlayerCompany->DiscoverSector(BlueHeart);
-	PlayerCompany->DiscoverSector(TheSpire);
-	PlayerCompany->DiscoverSector(Outpost);
-	PlayerCompany->DiscoverSector(MinersHome);
-	PlayerCompany->DiscoverSector(NightsHome);
-	PlayerCompany->DiscoverSector(TheFarm);
-	PlayerCompany->DiscoverSector(Lighthouse);
 
 	if (PlayerData->QuestData.PlayStory == 0)
 	{
@@ -315,7 +388,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	NemaHeavyWorks->GiveMoney(100000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 
 	// Company setup secondary
-	PlayerCompany->GiveMoney(750000 * Playermoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
+//	PlayerCompany->GiveMoney(750000 * Playermoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 	Pirates->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 	BrokenMoon->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
 	InfiniteOrbit->GiveMoney(1000000 * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
@@ -329,14 +402,21 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
 		int64 StartingMoney = Company->GetDescription()->StartingMoney;
 		int32 StartingResearchPoints = Company->GetDescription()->StartingResearchPoints;
-		
+
 		TArray<FName> StartingSectorKnowledge = Company->GetDescription()->StartingSectorKnowledge;
 		TArray<FName> StartingTechnology = Company->GetDescription()->StartingTechnology;
 		TArray<FFlareCompanyStartingShips> StartingShips = Company->GetDescription()->StartingShips;
 
 		if (StartingMoney)
 		{
-			Company->GiveMoney(StartingMoney * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
+			if (Company == PlayerCompany)
+			{
+				Company->GiveMoney(StartingMoney * Playermoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
+			}
+			else
+			{
+				Company->GiveMoney(StartingMoney * Companymoneymultiplier, FFlareTransactionLogEntry::LogInitialMoney());
+			}
 		}
 
 		if (StartingResearchPoints)
@@ -377,7 +457,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 			for (int KnowIndex = 0; KnowIndex < StartingTechnology.Num(); KnowIndex++)
 			{
 				FName CurrentTech = StartingTechnology[KnowIndex];
-				Company->UnlockTechnology(CurrentTech, false, true);
+				Company->UnlockTechnology(CurrentTech, false, true, true);
 			}
 		}
 
@@ -395,7 +475,12 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 					}
 					else
 					{
-						CreateShips(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity);
+						UFlareSimulatedSpacecraft* InitialShip = CreateShips(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity);
+						if (CurrentShips.IsPlayerShip && Company == PlayerCompany && InitialShip)
+						{
+							PlayerData->LastFlownShipIdentifier = InitialShip->GetImmatriculation();
+							PlayerData->PlayerFleetIdentifier = InitialShip->GetCurrentFleet()->GetIdentifier();
+						}
 					}
 				}
 			}
@@ -858,16 +943,41 @@ void UFlareScenarioTools::CreateAsteroids(UFlareSimulatedSector* Sector, int32 C
 	}
 }
 
-void UFlareScenarioTools::CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count)
+UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count)
 {
+	UFlareSimulatedSpacecraft* InitialShip = nullptr;
 	if (Sector && Company)
 	{
 		for (uint32 Index = 0; Index < Count; Index++)
 		{
-			Sector->CreateSpacecraft(ShipClass, Company, FVector::ZeroVector);
+			if (InitialShip == nullptr)
+			{
+				InitialShip = Sector->CreateSpacecraft(ShipClass, Company, FVector::ZeroVector);
+			}
+			else
+			{
+				Sector->CreateSpacecraft(ShipClass, Company, FVector::ZeroVector);
+			}
 		}
 	}
+	return InitialShip;
 }
+
+/*
+UFlareSimulatedSpacecraft* UFlareScenarioTools::CreatePlayerShip(UFlareSimulatedSector* Sector, FName Class)
+{
+	UFlareSimulatedSpacecraft* InitialShip = nullptr;
+
+	if (Sector)
+	{
+		InitialShip = Sector->CreateSpacecraft(Class, PlayerCompany, FVector::ZeroVector);
+		PlayerData->LastFlownShipIdentifier = InitialShip->GetImmatriculation();
+		PlayerData->PlayerFleetIdentifier = InitialShip->GetCurrentFleet()->GetIdentifier();
+	}
+
+	return InitialShip;
+}
+*/
 
 TArray<UFlareSimulatedSector*> UFlareScenarioTools::GetRandomAllowedSectors(FName StationClass, UFlareCompany* Company) const
 {
@@ -942,7 +1052,14 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				continue;
 			}
 
-			Station->GetData().Level = Level;
+			if (Level <= Station->GetDescription()->MaxLevel)
+			{
+				Station->GetData().Level = Level;
+			}
+			else
+			{
+				Station->GetData().Level = Station->GetDescription()->MaxLevel;
+			}
 
 			if (Station->GetFactories().Num() > 0)
 			{

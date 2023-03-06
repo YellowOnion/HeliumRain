@@ -365,7 +365,6 @@ void UFlareSector::DestroySector()
 	CompanyShipsPerCompanyCache.Empty();
 	CompanySpacecraftsPerCompanyCache.Empty();
 	SectorSpacecraftsCache.Empty();
-
 }
 
 /*----------------------------------------------------

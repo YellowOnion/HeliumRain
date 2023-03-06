@@ -61,10 +61,12 @@ protected:
 	/** Generate a combo box line */
 	TSharedRef<SWidget> OnGenerateComboLine(TSharedPtr<FText> Item);
 	/** Combo line selection changed */
-	void OnComboLineSelectionChanged(TSharedPtr<FString> StringItem, ESelectInfo::Type SelectInfo);
+	void OnComboLineSelectionChanged(TSharedPtr<FText> StringItem, ESelectInfo::Type SelectInfo);
 
 	/** Emblem picked */
 	void OnEmblemPicked(int32 Index);
+
+	void UpdateStartingScenarioDescriptionText();
 
 protected:
 
@@ -86,13 +88,16 @@ protected:
 	TSharedPtr<SFlareButton>                    TutorialButton;
 	TSharedPtr<SFlareButton>                    StoryButton;
 	TSharedPtr<SFlareButton>                    RandomizeStationButton;
+	TSharedPtr<SFlareButton>                    AICheatsButton;
 	TSharedPtr<SFlareDropList<int32>>           EmblemPicker;
 
 	// Scenario data
-	TSharedPtr<SFlareDropList<TSharedPtr<FString> >> ScenarioSelector;
+	TSharedPtr<STextBlock>	        			StartingScenarioDescriptionText;
+
+	TSharedPtr<SFlareDropList<TSharedPtr<FText> >> ScenarioSelector;
 	TSharedPtr<SFlareDropList<TSharedPtr<FText> >> DifficultySelector;
 	TSharedPtr<SFlareDropList<TSharedPtr<FText> >> EconomySelector;
-	TArray<TSharedPtr<FString>>                 ScenarioList;
+	TArray<TSharedPtr<FText>>			        ScenarioList;
 	TArray<TSharedPtr<FText>>                   DifficultyList;
 	TArray<TSharedPtr<FText>>                   EconomyList;
 };

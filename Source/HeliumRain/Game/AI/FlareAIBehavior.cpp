@@ -357,13 +357,13 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 						Skipchance = 0.30f;
 						break;
 					case 2: // Very Hard
-						Skipchance = 0.40f;
+						Skipchance = 0.45f;
 						break;
 					case 3: // Expert
-						Skipchance = 0.50f;
+						Skipchance = 0.60f;
 						break;
 					case 4: // Unfair
-						Skipchance = 0.60f;
+						Skipchance = 0.75f;
 						break;
 					}
 

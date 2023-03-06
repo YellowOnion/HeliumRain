@@ -1143,8 +1143,8 @@ void SFlareTradeMenu::OnResourceQuantityEntered(const FText& TextValue)
 
 void SFlareTradeMenu::OnConfirmTransaction()
 {
-	bool ResetVariables = 1;
-	bool Donation = 0;
+	bool ResetVariables = true;
+	bool Donation = false;
 
 	if(TransactionSourceSpacecraft && TransactionDestinationSpacecraft)
 	{
@@ -1154,7 +1154,7 @@ void SFlareTradeMenu::OnConfirmTransaction()
 			{
 				if (TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
 				{
-					Donation = 1;
+					Donation = true;
 				}
 			}
 		}
@@ -1182,7 +1182,7 @@ void SFlareTradeMenu::OnConfirmTransaction()
 				bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAtAndTrade(PhysicalSpacecraftDock, TransactionResource, TransactionQuantity, TransactionSourceSpacecraft, TransactionDestinationSpacecraft, Donation);
 				if (!DockingConfirmed)
 				{
-					ResetVariables = 0;
+					ResetVariables = false;
 				}
 				else if (PhysicalSpacecraft->IsPlayerShip())
 				{
@@ -1212,7 +1212,7 @@ void SFlareTradeMenu::OnConfirmTransaction()
 	}
 
 	// Reset menus
-	PreviousTradeDirection = 1;
+	PreviousTradeDirection = true;
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->InfoSound);

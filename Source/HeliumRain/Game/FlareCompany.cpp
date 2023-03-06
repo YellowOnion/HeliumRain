@@ -1223,34 +1223,41 @@ void UFlareCompany::GiveResearch(int64 Amount)
 	}
 	else
 	{
-		// non-player company gains a research bonus
-		int32 GameDifficulty = -1;
-		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
-		float Multiplier = 1.00f;
-		switch (GameDifficulty)
+		bool AICheats = Game->GetPC()->GetPlayerData()->AICheats;
+		if (AICheats)
 		{
-		case -1: // Easy
-			Multiplier = 1.00f;
-			break;
-		case 0: // Normal
-			Multiplier = 1.00f;
-			break;
-		case 1: // Hard
-			Multiplier = 1.15f;
-			break;
-		case 2: // Very Hard
-			Multiplier = 1.30f;
-			break;
-		case 3: // Expert
-			Multiplier = 1.50f;
-			break;
-		case 4: // Unfair
-			Multiplier = 1.75f;
-			break;
+			// non-player company gains a research bonus
+			int32 GameDifficulty = -1;
+			GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+			float Multiplier = 1.00f;
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				Multiplier = 1.00f;
+				break;
+			case 0: // Normal
+				Multiplier = 1.00f;
+				break;
+			case 1: // Hard
+				Multiplier = 1.10f;
+				break;
+			case 2: // Very Hard
+				Multiplier = 1.25f;
+				break;
+			case 3: // Expert
+				Multiplier = 1.40f;
+				break;
+			case 4: // Unfair
+				Multiplier = 1.55f;
+				break;
+			}
+
+			CompanyData.ResearchAmount += Amount * Multiplier;
 		}
-
-		CompanyData.ResearchAmount += Amount * Multiplier;
-
+		else
+		{
+			CompanyData.ResearchAmount += Amount;
+		}
 	}
 
 }
@@ -1968,7 +1975,7 @@ bool UFlareCompany::IsTechnologyAvailable(FName Identifier, FText& Reason, bool 
 
 	if (GetTechnologyLevel() < Technology->Level)
 	{
-		Reason = LOCTEXT("CantUnlockTechLevel", "You don't have the technology level to research this technology");
+		Reason = LOCTEXT("CantUnlockTechLevel", "You don't have the technology level required to research this technology");
 		return false;
 	}
 	else if (!IgnoreCost && GetResearchAmount() < GetTechnologyCost(Technology))
@@ -2510,7 +2517,7 @@ int64 UFlareCompany::GetStationLicenseCost(UFlareSimulatedSector* BuyingSector)
 	return LicenseCost;
 }
 
-void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force)
+void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force, bool HideMessage)
 {
 	FFlareTechnologyDescription* Technology = GetGame()->GetTechnologyCatalog()->Get(Identifier);
 	FText Unused;
@@ -2543,13 +2550,16 @@ void UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 
 			if (this == Game->GetPC()->GetCompany())
 			{
-				FString UniqueId = "technology-unlocked-" + Identifier.ToString();
-				Game->GetPC()->Notify(LOCTEXT("CompanyUnlockTechnology", "Technology unlocked"),
-					FText::Format(LOCTEXT("CompanyUnlockTechnologyFormat", "You have researched {0} for your company !"), Technology->Name),
-					FName(*UniqueId),
-					EFlareNotification::NT_Info,
-					false);
-				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("unlock-technology").PutName("technology", Identifier).PutInt32("level", Technology->Level));
+				if (!HideMessage)
+				{
+					FString UniqueId = "technology-unlocked-" + Identifier.ToString();
+					Game->GetPC()->Notify(LOCTEXT("CompanyUnlockTechnology", "Technology unlocked"),
+						FText::Format(LOCTEXT("CompanyUnlockTechnologyFormat", "You have researched {0} for your company !"), Technology->Name),
+						FName(*UniqueId),
+						EFlareNotification::NT_Info,
+						false);
+					GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("unlock-technology").PutName("technology", Identifier).PutInt32("level", Technology->Level));
+				}
 
 				GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_ONE_TECHNOLOGY", 1);
 				if(UnlockedTechnologies.Num() >= GetGame()->GetTechnologyCatalog()->TechnologyCatalog.Num())

@@ -415,45 +415,50 @@ double UFlarePeople::GetDifficultyModifier(UFlareCompany* Company)
 		return 1;
 	}
 
-	int32 GameDifficulty = -1;
-	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
-	if (Company == Game->GetPC()->GetCompany())
+	bool AICheats = Game->GetPC()->GetPlayerData()->AICheats;
+	if (AICheats)
 	{
-		//AI gets more money from population while the player gets less
-		switch (GameDifficulty)
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+		if (Company == Game->GetPC()->GetCompany())
 		{
-		case -1: // Easy
-			return 1.05;
-		case 0: // Normal
-			return 1;
-		case 1: // Hard
-			return 0.96;
-		case 2: // Very Hard
-			return 0.92;
-		case 3: // Expert
-			return 0.88;
-		case 4: // Unfair
-			return 0.84;
+			//AI gets more money from population while the player gets less
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				return 1.05;
+			case 0: // Normal
+				return 1;
+			case 1: // Hard
+				return 0.96;
+			case 2: // Very Hard
+				return 0.92;
+			case 3: // Expert
+				return 0.88;
+			case 4: // Unfair
+				return 0.84;
+			}
+		}
+		else
+		{
+			switch (GameDifficulty)
+			{
+			case -1: // Easy
+				return 0.95;
+			case 0: // Normal
+				return 1;
+			case 1: // Hard
+				return 1.04;
+			case 2: // Very Hard
+				return 1.08;
+			case 3: // Expert
+				return 1.12;
+			case 4: // Unfair
+				return 1.16;
+			}
 		}
 	}
-	else
-	{
-		switch (GameDifficulty)
-		{
-		case -1: // Easy
-			return 0.95;
-		case 0: // Normal
-			return 1;
-		case 1: // Hard
-			return 1.04;
-		case 2: // Very Hard
-			return 1.08;
-		case 3: // Expert
-			return 1.12;
-		case 4: // Unfair
-			return 1.16;
-		}
-	}
+
 	return 1;
 }
 

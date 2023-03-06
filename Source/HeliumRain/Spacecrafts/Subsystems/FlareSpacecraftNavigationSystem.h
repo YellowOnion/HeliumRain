@@ -197,7 +197,7 @@ public:
 	void PushCommandAngularBrake();
 
 	/** Go there */
-	void PushCommandLocation(const FVector& Location, bool Precise = false);
+	void PushCommandLocation(const FVector& Location, bool Precise = false, AFlareSpacecraft* NewActionTarget = nullptr);
 
 	/** Turn this way */
 	void PushCommandRotation(const FVector& RotationTarget, const FVector& LocalShipAxis);

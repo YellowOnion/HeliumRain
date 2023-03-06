@@ -2981,6 +2981,10 @@ FText AFlareSpacecraft::GetShipStatus() const
 	{
 		ActionInfo = LOCTEXT("AutoPilotModeInfo", "Auto-piloted");
 	}
+	else if (Command.Type == EFlareCommandDataType::CDT_Location && Command.ActionTarget)
+	{
+		ActionInfo = LOCTEXT("UndockingFrom", "Undocking");
+	}
 	else
 	{
 		ActionInfo = GetWeaponsSystem()->GetWeaponModeInfo();
@@ -3000,10 +3004,22 @@ FText AFlareSpacecraft::GetShipStatus() const
 	else if (Command.Type == EFlareCommandDataType::CDT_Dock)
 	{
 		AFlareSpacecraft* Target = Command.ActionTarget;
-
+/*
+		FFlareDockingInfo StationDockInfo = Command.ActionTarget->GetDockingSystem()->GetDockInfo(Command.ActionTargetParam);
+		FFlareDockingParameters DockingParameters = Nav->GetDockingParameters(StationDockInfo, FVector::ZeroVector);
+		FText DockingPhase = Nav->GetDockingPhaseName(DockingParameters.DockingPhase);
+*/
 		ModeText = FText::Format(LOCTEXT("DockingAtFormat", "Docking at {0}"),
-			UFlareGameTools::DisplaySpacecraftName(Target->GetParent(), true));
+		UFlareGameTools::DisplaySpacecraftName(Target->GetParent(), true));
 	}
+/*
+	else if (Command.Type == EFlareCommandDataType::CDT_Location && Command.ActionTarget)
+	{
+	//too many characters
+		ModeText = FText::Format(LOCTEXT("UndockingFrom", "Undocking from {0}"),
+		UFlareGameTools::DisplaySpacecraftName(Command.ActionTarget->GetParent(), true));
+	}
+*/
 	else if (!Paused)
 	{
 		int32 Speed = GetLinearVelocity().Size();

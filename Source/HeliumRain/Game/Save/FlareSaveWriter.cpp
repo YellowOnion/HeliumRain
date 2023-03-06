@@ -44,6 +44,8 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SavePlayer(FFlarePlayerSave* Data)
 	JsonObject->SetStringField("UUID", Data->UUID.ToString());
 	JsonObject->SetStringField("ScenarioId", FormatInt32(Data->ScenarioId));
 	JsonObject->SetStringField("DifficultyId", FormatInt32(Data->DifficultyId));
+	JsonObject->SetBoolField("AICheats", Data->AICheats);
+
 	JsonObject->SetStringField("PlayerEmblemIndex", FormatInt32(Data->PlayerEmblemIndex));
 	JsonObject->SetStringField("CompanyIdentifier", Data->CompanyIdentifier.ToString());
 	JsonObject->SetStringField("PlayerFleetIdentifier", Data->PlayerFleetIdentifier.ToString());
