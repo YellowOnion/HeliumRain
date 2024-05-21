@@ -45,7 +45,7 @@ public:
 	/** Exit this menu */
 	void Exit();
 
-	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
+//	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 
 protected:
 
@@ -63,10 +63,14 @@ protected:
 	EVisibility GetConstructionInfosVisibility() const;
 
 	/** Is the "back to selection" visible or not */
-	EVisibility GetBackToSelectionVisibility() const;
+	EVisibility GetBackToSelectionLeftVisibility() const;
+	EVisibility GetBackToSelectionRightVisibility() const;
 
 	/** Is the undock button visible or not */
 	EVisibility GetUndockVisibility() const;
+
+	/** Is the select docked button visible or not */
+	EVisibility GetSelectDockedVisibility() const;
 
 	/** Are the transaction details visible ? */
 	EVisibility GetTransactionDetailsVisibility() const;
@@ -93,13 +97,16 @@ protected:
 	FText GetRightcraftInfo() const;
 
 	/** Get the transaction invalid details */
-	FText GetTransactionInvalidDetails() const;
+	void SetTransactionInvalidDetails(bool DockingConfirmed = true);
 
 	/** Get the resource prices */
 	FText GetResourcePriceInfo(FFlareResourceDescription* Resource) const;
 	
 	/** A spacecraft has been selected, hide the list and show the cargo */
-	void OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+	void OnSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+	void OnSpacecraftSelectedRight(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+
+	void SelectSpacecraftRight(UFlareSimulatedSpacecraft* Spacecraft);
 
 	void OnUndock();
 
@@ -121,11 +128,17 @@ protected:
 	/** Cancel a transaction */
 	void OnCancelTransaction();
 
+	void OnSelectDockedSelection();
+
 	/** Go back to choosing a ship to trade with */
-	void OnBackToSelection();
+	void OnBackToSelectionLeft();
+	void OnBackToSelectionRight();
 
 	/** Update price on confirm button */
 	void UpdatePrice();
+	
+	/** Update which ships appear in the left ships menu*/
+	void UpdateLeftShips();
 
 	/** Return true if the transaction is valid*/
 	bool IsTransactionValid(FText& Reason) const;
@@ -153,7 +166,8 @@ protected:
 	TWeakObjectPtr<class AFlareMenuManager>         MenuManager;
 
 	// Menu components
-	TSharedPtr<SFlareList>                          ShipList;
+	TSharedPtr<SFlareList>                          LeftShipList;
+	TSharedPtr<SFlareList>                          RightShipList;
 	TSharedPtr<SHorizontalBox>                      LeftCargoBay1;
 	TSharedPtr<SHorizontalBox>                      LeftCargoBay2;
 	TSharedPtr<SHorizontalBox>                      RightCargoBay1;
@@ -164,10 +178,13 @@ protected:
 	TSharedPtr<SFlareButton>						DonationButton;
 	TSharedPtr<SFlareCompanyFlag>				    CompanyFlag;
 
+	TSharedPtr<STextBlock>						    InvalidTransaction;
+
 	// Data
 	UFlareSimulatedSector*                          TargetSector;
 	UFlareSimulatedSpacecraft*                      TargetLeftSpacecraft;
 	UFlareSimulatedSpacecraft*                      TargetRightSpacecraft;
+	UFlareSimulatedSpacecraft*						FirstShipCandidateLeft;
 
 	// Current transaction
 	UFlareSimulatedSpacecraft*                      TransactionSourceSpacecraft;
@@ -177,6 +194,7 @@ protected:
 	uint32											PreviousTradeDirection;
 
 	bool											WasActiveSector;
+	bool											MultipleOwnedShipsOrFleets;
 
 public:
 
@@ -191,7 +209,7 @@ public:
 
 	UFlareSimulatedSpacecraft* GetTargetRightShip()
 	{
-		return TargetLeftSpacecraft;
+		return TargetRightSpacecraft;
 	}
 
 	UFlareSimulatedSpacecraft* GetTransactionSourceSpacecraft()

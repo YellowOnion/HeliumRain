@@ -1255,18 +1255,26 @@ void UFlareSimulatedSector::SaveResourcePrices()
 
 FText UFlareSimulatedSector::GetSectorName()
 {
-	if (!SectorData.GivenName.IsEmptyOrWhitespace() && SectorData.GivenName.ToString().Len())
+//if (this) statement suppresses a rare crash bug when viewing previous contracts, in particular VIP ones, apparently?
+//crash stack trace from FText UFlareQuestConditionDockAt::GetInitialLabel(), final return statement
+
+	if (this)
 	{
-		return SectorData.GivenName;
+		if (!SectorData.GivenName.IsEmptyOrWhitespace() && SectorData.GivenName.ToString().Len())
+		{
+			return SectorData.GivenName;
+		}
+
+		else if (SectorDescription->Name.ToString().Len())
+		{
+			return SectorDescription->Name;
+		}
+		else
+		{
+			return FText::FromString(GetSectorCode());
+		}
 	}
-	else if (SectorDescription->Name.ToString().Len())
-	{
-		return SectorDescription->Name;
-	}
-	else
-	{
-		return FText::FromString(GetSectorCode());
-	}
+	return FText();
 }
 
 FString UFlareSimulatedSector::GetSectorCode()

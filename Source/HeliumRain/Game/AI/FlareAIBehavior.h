@@ -112,6 +112,15 @@ public:
 	float PacifismDecrementRate;
 	float PacifismAfterTribute;
 
+	float WarDeclared_StationBudgetFactor;
+	float WarDeclared_TechnologyBudgetFactor;
+	float WarDeclared_TradeBudgetFactor;
+	float WarDeclared_TransferToMilitaryBudgetFactor;
+
+	float WarDeclared_TransferToMilitaryBudgetStationPercent;
+	float WarDeclared_TransferToMilitaryBudgetTechnologyPercent;
+	float WarDeclared_TransferToMilitaryBudgetTradePercent;
+
 	float DailyProductionCostSensitivityMilitary;
 	float DailyProductionCostSensitivityEconomic;
 

@@ -338,6 +338,8 @@ protected:
 	int32                                      CurrentStreamingLevelIndex;
 	bool                                       IsLoadingStreamingLevel;
 
+	bool									   IsLoggingOut;
+
 	UPROPERTY()
 	TArray<FFlareSaveSlotInfo>                 SaveSlots;
 
@@ -530,6 +532,12 @@ public:
 	{
 		return IsLoadingStreamingLevel;
 	}
+
+	bool IsLoggingoff() const
+	{
+		return IsLoggingOut;
+	}
+
 
 	FText GetBuildDate() const;
 

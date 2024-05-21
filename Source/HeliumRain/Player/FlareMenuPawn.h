@@ -45,7 +45,7 @@ public:
 	void UpdateCustomization();
 
 	/** Remove all parts and go back to the original setup */
-	void ResetContent(bool Unsafe = false);
+	void ResetContent(bool Unsafe = false, bool DeleteSpacecraft = false);
 
 	/** Move the camera */
 	void SetCameraOffset(FVector2D Offset);

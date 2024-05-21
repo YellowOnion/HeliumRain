@@ -2875,12 +2875,12 @@ TSharedRef<ITableRow> SFlareHelpMenu::OnGenerateSpacecraftLine(TSharedPtr<FInter
 		[
 			SNew(SFlareSpaceCraftOverlayInfo)
 			.MenuManager(MenuManager)
-		.Desc(Desc)
-		.VerboseInformation(true)
-		.OrderIsShip(OrderIsShipValue)
-		.TargetShipyard(NULL)
-		.TargetSkirmish(NULL)
-		.TargetSector(NULL)
+			.Desc(Desc)
+			.VerboseInformation(true)
+			.OrderIsShip(OrderIsShipValue)
+			.TargetShipyard(NULL)
+			.TargetSkirmish(NULL)
+			.TargetSector(NULL)
 		];
 }
 

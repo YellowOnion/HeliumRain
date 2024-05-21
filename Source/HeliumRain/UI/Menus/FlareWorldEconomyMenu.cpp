@@ -689,6 +689,52 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 			+ SScrollBox::Slot()
 			.Padding(Theme.ContentPadding)
 			[
+				SNew(SHorizontalBox)
+
+				+ SHorizontalBox::Slot()
+				.MaxWidth(128)
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(FText(LOCTEXT("PopulationInfosFirst", "\n\n\u2022Population\n\u2022Money\n\u2022Wealth\n\u2022Happiness")))
+					.WrapTextAt(Theme.ContentWidth / 2)
+				]
+				+ SHorizontalBox::Slot()
+				.MaxWidth(128)
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareWorldEconomyMenu::GetPopulationInfosAverages)
+					.WrapTextAt(Theme.ContentWidth / 2)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(STextBlock)
+					.TextStyle(&Theme.TextFont)
+					.Text(this, &SFlareWorldEconomyMenu::GetPopulationInfosTotals)
+					.WrapTextAt(Theme.ContentWidth / 2)
+				]
+			]
+
+			/*
+			// Resource info
+			+ SScrollBox::Slot()
+			.Padding(Theme.ContentPadding)
+			[
+				SNew(STextBlock)
+				.TextStyle(&Theme.TextFont)
+				.Text(this, &SFlareWorldEconomyMenu::GetResourceInfo)
+				.WrapTextAt(Theme.ContentWidth / 2)
+			]
+			*/
+
+			+ SScrollBox::Slot()
+			.Padding(Theme.ContentPadding)
+			[
 				SNew(SBox)
 				.WidthOverride(ECONOMY_TABLE_WIDTH_FULL * Theme.ContentWidth)
 				.Padding(FMargin(0))
@@ -892,14 +938,12 @@ void SFlareWorldEconomyMenu::OnStationShip()
 	if (StationShipMode)
 	{
 		StationShipMode = false;
-		StationList->SetTitle(LOCTEXT("Stations", "Stations"));
 		StationShipsButton->SetText(LOCTEXT("StationsUpper", "STATIONS"));
 		StationShipsButton->SetHelpText(LOCTEXT("StationsHelp", "Filtering by stations"));
 	}
 	else
 	{
 		StationShipMode = true;
-		StationList->SetTitle(LOCTEXT("Ships", "Ships"));
 		StationShipsButton->SetText(LOCTEXT("ShipsUpper", "SHIPS"));
 		StationShipsButton->SetHelpText(LOCTEXT("ShipsHelp", "Filtering by ships"));
 
@@ -923,6 +967,7 @@ void SFlareWorldEconomyMenu::OnInputOutput()
 	}
 	RefreshStationList();
 }
+
 
 
 void SFlareWorldEconomyMenu::GenerateStationList()
@@ -1228,7 +1273,20 @@ void SFlareWorldEconomyMenu::RefreshStationList()
 		}
 	}
 
+	FString FormattedNumber = FString::FormatAsNumber(StationList->GetItemCount());
+	if (!StationShipMode)
+	{
+		StationList->SetTitle(FText::Format(LOCTEXT("StationsHeader", "Stations ({0})"),
+		FText::FromString(FormattedNumber)));
+	}
+	else
+	{
+		StationList->SetTitle(FText::Format(LOCTEXT("ShipsHeader", "Ships ({0})"),
+		FText::FromString(FormattedNumber)));
+	}
+
 	StationList->RefreshList(DisableDefaultSorting);
+
 }
 
 void SFlareWorldEconomyMenu::Setup()
@@ -1298,6 +1356,11 @@ void SFlareWorldEconomyMenu::GenerateSectorPopList()
 	// Get the sector list
 	TArray<UFlareSimulatedSector*>& Sectors = MenuManager->GetPC()->GetCompany()->GetVisitedSectors();
 
+	KnownPopulationTotal = 0;
+	KnownPopulationMoney = 0;
+	KnownPopulationWealth = 0.f;
+	KnownPopulationHappiness = 0.f;
+
 	// Apply the current sort
 	Sectors.Sort([this](UFlareSimulatedSector& S1, UFlareSimulatedSector& S2)
 	{
@@ -1339,6 +1402,26 @@ void SFlareWorldEconomyMenu::GenerateSectorPopList()
 	for (int32 SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Sectors[SectorIndex];
+
+		if (Sector->GetPeople()->GetPopulation())
+		{
+			KnownPopulationTotal = KnownPopulationTotal + Sector->GetPeople()->GetPopulation();
+		}
+
+		if (Sector->GetPeople()->GetMoney())
+		{
+			KnownPopulationMoney = KnownPopulationMoney + (Sector->GetPeople()->GetMoney() / 100.0f);
+		}
+
+		if (Sector->GetPeople()->GetWealth())
+		{
+			KnownPopulationWealth = KnownPopulationWealth + (Sector->GetPeople()->GetWealth() / 100.0f);
+		}
+
+		if (Sector->GetPeople()->GetHappiness())
+		{
+			KnownPopulationHappiness = KnownPopulationHappiness + (FMath::Abs((Sector->GetPeople()->GetHappiness()) * 100.0f) / 2);
+		}
 
 		SectorPopList->AddSlot()
 		.Padding(FMargin(0))
@@ -1809,6 +1892,40 @@ const FSlateBrush* SFlareWorldEconomyMenu::GetResourceIcon() const
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	return &Theme.ResourceBackground;
+}
+
+FText SFlareWorldEconomyMenu::GetPopulationInfosAverages() const
+{
+	TArray<UFlareSimulatedSector*>& Sectors = MenuManager->GetPC()->GetCompany()->GetVisitedSectors();
+
+	FNumberFormattingOptions WealthFormat;
+	WealthFormat.MaximumFractionalDigits = 0;
+
+	FNumberFormattingOptions HapinessFormat;
+	HapinessFormat.MaximumFractionalDigits = 2;
+
+	return FText::Format(LOCTEXT("PopulationInfosAverages","Average\n\n{0}\n{1}\n{2}\n{3}%"),
+		KnownPopulationTotal / Sectors.Num(),
+		KnownPopulationMoney / Sectors.Num(),
+		FText::AsNumber(KnownPopulationWealth / Sectors.Num(), &HapinessFormat),
+		FText::AsNumber(KnownPopulationHappiness / Sectors.Num(),&HapinessFormat)
+		);
+}
+
+FText SFlareWorldEconomyMenu::GetPopulationInfosTotals() const
+{
+	FNumberFormattingOptions WealthFormat;
+	WealthFormat.MaximumFractionalDigits = 0;
+
+	FNumberFormattingOptions HapinessFormat;
+	HapinessFormat.MaximumFractionalDigits = 2;
+
+	return FText::Format(LOCTEXT("PopulationInfosTotals", "Total\n\n{0}\n{1}\n{2}\n{3}%"),
+		KnownPopulationTotal,
+		KnownPopulationMoney,
+		FText::AsNumber(KnownPopulationWealth, &HapinessFormat),
+		FText::AsNumber(KnownPopulationHappiness, &HapinessFormat)
+	);
 }
 
 FText SFlareWorldEconomyMenu::GetResourceInfo() const

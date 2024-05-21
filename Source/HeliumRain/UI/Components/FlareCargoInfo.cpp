@@ -43,7 +43,6 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 			.Toggle(true)
 			.Small(true)
 			.Text(this, &SFlareCargoInfo::GetPermissionButtonText)
-//			.Text(LOCTEXT("PermissionButton", "Trade"))
 			.HelpText(LOCTEXT("PermissionButtonHelp", "Set whether resources in this cargo slot can be traded with other companies"))
 			.OnClicked(this, &SFlareCargoInfo::OnPermissionClicked)
 			.Visibility(this, &SFlareCargoInfo::GetPermissionVisibility)
@@ -66,8 +65,8 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 				.BorderImage(this, &SFlareCargoInfo::GetResourceIcon)
 				[
 					SNew(SBox)
-					.WidthOverride(Theme.ResourceWidth)
-					.HeightOverride(Theme.ResourceHeight)
+					.WidthOverride(1.05 * Theme.ResourceWidth)
+					.HeightOverride(1.05 * Theme.ResourceHeight)
 					.Padding(FMargin(0))
 					[
 						SNew(SVerticalBox)
@@ -75,16 +74,29 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 						// Resource name
 						+ SVerticalBox::Slot()
 						.Padding(Theme.SmallContentPadding)
+						.VAlign(VAlign_Top)
+						.HAlign(HAlign_Left)
 						[
 							SNew(STextBlock)
 							.TextStyle(&Theme.TextFont)
 							.Text(this, &SFlareCargoInfo::GetResourceAcronym)
 						]
 
+						// Resource mode
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(3.f, 3.f, 3.f, 0.5f))
+						.VAlign(VAlign_Bottom)
+						.HAlign(HAlign_Center)
+						[
+							SAssignNew(ResourceMode,STextBlock)
+							.TextStyle(&Theme.SmallFont)
+						]
+
 						// Resource quantity
 						+ SVerticalBox::Slot()
 						.AutoHeight()
-						.Padding(Theme.SmallContentPadding)
+						.Padding(FMargin(3.f,0.5f,3.f,3.f))
 						.VAlign(VAlign_Bottom)
 						.HAlign(HAlign_Right)
 						[
@@ -96,7 +108,6 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 				]
 			]
 		]
-
 		// Dump
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -224,45 +235,43 @@ FText SFlareCargoInfo::GetResourceQuantity() const
 
 	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
 	FCHECK(Cargo);
-	
+	// Format the current capacity info
+	int32 Capacity = TargetSpacecraft->GetActiveCargoBay()->GetSlotCapacity();
+
 	// Print IO text if any
 	FText LockText;
 	if (Cargo->Lock == EFlareResourceLock::Output)
 	{
-		LockText = LOCTEXT("OutputCargoFormat", "(Output)\n");
+		LockText = LOCTEXT("OutputCargoFormat", "(Output)");
 	}
 	else if (Cargo->Lock == EFlareResourceLock::Input)
 	{
-		LockText = LOCTEXT("InputCargoFormat", "(Input)\n");
+		LockText = LOCTEXT("InputCargoFormat", "(Input)");
 	}
 	else if (Cargo->Lock == EFlareResourceLock::Trade)
 	{
-		LockText = LOCTEXT("TradeCargoFormat", "(Trade)\n");
+		LockText = LOCTEXT("TradeCargoFormat", "(Trade)");
 	}
 	else if (Cargo->Lock == EFlareResourceLock::Hidden)
 	{
-		LockText = LOCTEXT("HiddenCargoFormat", "(Overflow)\n");
+		LockText = LOCTEXT("HiddenCargoFormat", "(Overflow)");
 	}
-	
-	// Format the current capacity info
-	int32 Capacity = TargetSpacecraft->GetActiveCargoBay()->GetSlotCapacity();
+
+	ResourceMode->SetText(LockText);
 
 	if (Capacity > 999)
 	{
 		FNumberFormattingOptions CargoFormat;
 		CargoFormat.MaximumFractionalDigits = 1;
-
-		return FText::Format(FText::FromString("{0} {1}/{2}k"),
-			LockText,
-			FText::AsNumber(Cargo->Quantity, &CargoFormat),
-			FText::AsNumber(Capacity / 1000.0f, &CargoFormat));
+		return FText::Format(FText::FromString("{0}/{1}k"),
+		FText::AsNumber(Cargo->Quantity, &CargoFormat),
+		FText::AsNumber(Capacity / 1000.0f, &CargoFormat));
 	}
 	else
 	{
-		return FText::Format(FText::FromString("{0} {1}/{2}"),
-			LockText,
-			FText::AsNumber(Cargo->Quantity),
-			FText::AsNumber(Capacity));
+		return FText::Format(FText::FromString("{0}/{1}"),
+		FText::AsNumber(Cargo->Quantity),
+		FText::AsNumber(Capacity));
 	}
 }
 

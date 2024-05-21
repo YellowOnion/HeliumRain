@@ -197,6 +197,10 @@ void UFlareQuest::UpdateState()
 			}
 
 			UpdateObjectiveTracker();
+			if (QuestManager->GetGame()->GetPC()->GetMenuManager()->IsMenuOpen() && QuestManager->GetGame()->GetPC()->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Quest)
+			{
+				QuestManager->GetGame()->GetPC()->GetMenuManager()->OpenMenu(EFlareMenu::MENU_Quest, FFlareMenuParameterData(), false, true, false);
+			}
 			break;
 		}
 	}
@@ -234,7 +238,7 @@ void UFlareQuest::NextStep(bool Silent)
 	}
 	else
 	{
-		for(UFlareQuestStep* Step : Steps)
+		for (UFlareQuestStep* Step : Steps)
 		{
 			if (!SuccessfullSteps.Contains(Step))
 			{

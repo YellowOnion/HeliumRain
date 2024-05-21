@@ -119,7 +119,7 @@ void SFlareSpacecraftOrderOverlay::Construct(const FArguments& InArgs)
 						[
 							SAssignNew(ConfirmButton, SFlareButton)
 							.Text(LOCTEXT("Confirm", "Confirm"))
-							.HelpText(LOCTEXT("Con`firmInfo", "Confirm the choice and start production"))
+							.HelpText(LOCTEXT("ConfirmInfo", "Confirm the choice and start production"))
 							.Icon(this, &SFlareSpacecraftOrderOverlay::GetConfirmIcon)
 							.OnClicked(this, &SFlareSpacecraftOrderOverlay::OnConfirmed)
 							.Visibility(this, &SFlareSpacecraftOrderOverlay::GetConfirmVisibility)
@@ -495,6 +495,7 @@ void SFlareSpacecraftOrderOverlay::Tick(const FGeometry& AllottedGeometry, const
 			{
 				// No rules
 				CanBuild = true;
+				ConfirmButton->SetHelpText(LOCTEXT("ConfirmInfoSkirmish", "Confirm the ship choice"));
 			}
 
 			// Sector mode (stations, complex stations)
@@ -651,6 +652,7 @@ TSharedRef<ITableRow> SFlareSpacecraftOrderOverlay::OnGenerateSpacecraftLine(TSh
 		.TargetShipyard(TargetShipyard)
 		.TargetSkirmish(TargetSkirmish)
 		.OrderIsConfig(OrderIsConfig)
+		.VerboseInformation(false)
 		.TargetSector(TargetSector)
 		.MenuManager(MenuManager)
 	];

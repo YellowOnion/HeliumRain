@@ -196,42 +196,40 @@ void UFlareCompanyAI::SimulateActiveAI()
 							break;
 					}
 
+					for (AFlareSpacecraft* Ship : CompanyShips)
+					{
+						if (Ship)
+						{
+							if (!Ship->GetParent()->GetActiveCargoBay()->GetCapacity())
+							{
+								CompanyShips.RemoveSwap(Ship);
+							}
+/*
+							else if(Ship->IsMilitary)
+							{
+								Addship to military array
+								"do military stuff"?
+							}
+*/
+						}
+					}
+
 					while (ActivityAttempts > 0 && CompanyShips.Num() > 0)
 					{
 						ActivityAttempts--;
 						int32 ShipIndex = FMath::RandRange(0, CompanyShips.Num() - 1);
 						AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
 						CompanyShips.RemoveSwap(Ship);
-						if (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
+
+						if (Ship && (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable()))
 						{
 							continue;
 						}
 
-						if (Ship->IsMilitary())
+						if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
 						{
-							if (Ship->GetParent()->GetActiveCargoBay()->GetCapacity() > 0)
-							{
-								if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
-								{
-									SimulateActiveTradeShip(Ship);
-									break;
-								}
-							}
-							else
-							{
-								// Military "peaceful" behaviour?
-							}
-						}
-						else
-						{
-							if (Ship->GetParent()->GetActiveCargoBay()->GetCapacity() > 0)
-							{
-								if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
-								{
-									SimulateActiveTradeShip(Ship);
-									break;
-								}
-							}
+							SimulateActiveTradeShip(Ship);
+							break;
 						}
 					}
 
@@ -501,23 +499,32 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 			AIData.Pacifism += Behavior->PacifismIncrementRate;
 			if (!WasAtWar)
 			{
-				int64 TotalBudgets = GetTotalBudgets();
 				int64 WarBudget = GetBudget(EFlareBudget::Military);
-				if (TotalBudgets * 0.50 > WarBudget)
+				int64 StationBudget = GetBudget(EFlareBudget::Station);
+				int64 TechnologyBudget = GetBudget(EFlareBudget::Technology);
+				int64 TradeBudget = GetBudget(EFlareBudget::Trade);
+
+//each time a new set of wars are entered check to see if we should relocate xx% of other funds towards military funding
+
+				if (WarBudget < ((TradeBudget * Behavior->WarDeclared_TradeBudgetFactor) * Behavior->WarDeclared_TransferToMilitaryBudgetFactor))
 				{
-					//each time a new set of wars are entered, relocate 5% of all other funds towards military funding
-					//requires warbudget being lower than 50% of the absolute total of their budgets before transferring in
-					RedistributeBudgetTowards(EFlareBudget::Military, 0.05);
+					RedistributeBudgetTowards(EFlareBudget::Military, EFlareBudget::Trade, Behavior->WarDeclared_TransferToMilitaryBudgetTradePercent);
 				}
+				if (WarBudget < ((StationBudget * Behavior->WarDeclared_StationBudgetFactor) * Behavior->WarDeclared_TransferToMilitaryBudgetFactor))
+				{
+					RedistributeBudgetTowards(EFlareBudget::Military, EFlareBudget::Station, Behavior->WarDeclared_TransferToMilitaryBudgetStationPercent);
+				}
+				if (WarBudget < ((TechnologyBudget * Behavior->WarDeclared_TechnologyBudgetFactor) * Behavior->WarDeclared_TransferToMilitaryBudgetFactor))
+				{
+					RedistributeBudgetTowards(EFlareBudget::Military, EFlareBudget::Technology, Behavior->WarDeclared_TransferToMilitaryBudgetTechnologyPercent);
+				}
+
 				WasAtWar = true;
 			}
 		}
 		else
 		{
-			if (WasAtWar)
-			{
-				WasAtWar = false;
-			}
+			WasAtWar = false;
 
 			float Multiplier = 1.f;
 			if (CompanyCombatCurrent > 0 && TotalValue.ArmyCurrentCombatPoints >= (TotalValue.ArmyTotalCombatPoints * 0.75))
@@ -571,16 +578,14 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		}
 
 		MinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic));
-		int32 PacifismMinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic)/2);
-
 		if (Company->GetMoney() < MinimumMoney)
 		{
-			AIData.Pacifism += Behavior->PacifismIncrementRate / 3;
+			AIData.Pacifism += Behavior->PacifismIncrementRate * 0.33;
 		}
 
 		if(IdleCargoCapacity == 0)
 		{
-			AIData.Pacifism += Behavior->PacifismIncrementRate / 3;
+			AIData.Pacifism += Behavior->PacifismIncrementRate * 0.33;
 		}
 
 		for(UFlareSimulatedSpacecraft* Spacecraft : Company->GetCompanySpacecrafts())
@@ -755,7 +760,7 @@ bool UFlareCompanyAI::PurchaseSectorStationLicense(EFlareBudget::Type BudgetType
 			if (!(Company->IsSectorStationLicenseUnlocked(Sector->GetDescription()->Identifier)))
 			{
 				++SectorsRemaining;
-				if (Behavior->GetSectorAffility(Sector) > 0)
+				if (Behavior->GetSectorAffility(Sector) > 0 || Company->GetCompanySectorStationsCount(Sector,false) > 0)
 				{
 					PrioritySectorCandidates.Add(Sector);
 				}
@@ -908,7 +913,6 @@ void UFlareCompanyAI::PurchaseResearch()
 					{
 						AIData.ResearchProject = TechnologyName;
 						FoundResearchOrder = true;
-//						Behavior->ResearchOrder.Remove(TechnologyName);
 						Behavior->ResearchOrder.RemoveAt(TechIndex);
 						break;
 					}
@@ -1076,7 +1080,7 @@ void UFlareCompanyAI::AddIncomeToBudgets()
 	}
 }
 
-void UFlareCompanyAI::RedistributeBudgetTowards(EFlareBudget::Type Type, float Ratio)
+void UFlareCompanyAI::RedistributeBudgetTowards(EFlareBudget::Type Type, EFlareBudget::Type FromBudget, float Ratio)
 {
 	for (EFlareBudget::Type Budget : AllBudgets)
 	{
@@ -1084,6 +1088,12 @@ void UFlareCompanyAI::RedistributeBudgetTowards(EFlareBudget::Type Type, float R
 		{
 			continue;
 		}
+
+		if (FromBudget != EFlareBudget::None && FromBudget != Budget)
+		{
+			continue;
+		}
+
 		int64 BudgetRedistAmount = GetBudget(Budget) * Ratio;
 		SpendBudget(Budget, BudgetRedistAmount);
 		ModifyBudget(Type, BudgetRedistAmount);

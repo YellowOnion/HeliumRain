@@ -656,23 +656,23 @@ FText SFlareSectorMenu::GetBuildStationText() const
 FText SFlareSectorMenu::GetBuildStationHelpText() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
+	if (!PC || !TargetSector)
+	{
+		return FText();
+	}
+	else if (TargetSector->IsTravelSector())
+	{
+		return LOCTEXT("CantBuildStationTravelInfo", "Can't build stations during travels");
+	}
 
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
 		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
 		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
 
-		if (!PC || !TargetSector)
-		{
-			return FText();
-		}
-		else if (!PC->GetCompany()->HasStationTechnologyUnlocked())
+		if (!PC->GetCompany()->HasStationTechnologyUnlocked())
 		{
 			return LOCTEXT("CantBuildStationTechInfo", "You need to unlock station technology first");
-		}
-		else if (TargetSector->IsTravelSector())
-		{
-			return LOCTEXT("CantBuildStationTravelInfo", "Can't build stations during travels");
 		}
 		else if (!PC->GetCompany()->HasVisitedSector(TargetSector))
 		{
@@ -704,6 +704,16 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
+	if (TargetSector->IsTravelSector())
+	{
+		return true;
+	}
+
+	if (!PC->GetCompany()->HasVisitedSector(TargetSector))
+	{
+		return true;
+	}
+
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
 		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
@@ -713,7 +723,7 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 		{
 			return true;
 		}
-		if (TargetSector && PC->GetCompany()->HasVisitedSector(TargetSector) && OwnedStationCount < MaxStationCount)
+		if (TargetSector && OwnedStationCount < MaxStationCount)
 		{
 			return false;
 		}
@@ -721,7 +731,6 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 		{
 			return true;
 		}
-
 	}
 	else
 	{
@@ -735,6 +744,7 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 			return true;
 		}
 	}
+	return true;
 }
 
 TSharedRef<SWidget> SFlareSectorMenu::OnGenerateFleetComboLine(UFlareFleet* Item)

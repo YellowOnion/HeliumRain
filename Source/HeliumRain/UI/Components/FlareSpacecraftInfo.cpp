@@ -86,11 +86,31 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
 						.VAlign(VAlign_Center)
-//							.Padding(FMargin(5, 0, 0, 0))
 						[
 							SNew(SImage)
 							.Image(FFlareStyleSet::GetIcon("Build"))
 							.Visibility(this, &SFlareSpacecraftInfo::GetBuildVisibility)
+						]
+
+						// Capturing Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SAssignNew(CapturingIcon, SImage)
+							.Image(FFlareStyleSet::GetIcon("Capture"))
+							.Visibility(EVisibility::Collapsed)
+						]
+
+						// Unlicenced Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SAssignNew(UnlicencedIcon, SImage)
+							.Image(FFlareStyleSet::GetIcon("Delete"))
+							.Visibility(EVisibility::Collapsed)
+
 						]
 
 						// Ship name
@@ -514,7 +534,8 @@ void SFlareSpacecraftInfo::Show()
 		bool IsOutsidePlayerFleet = (TargetSpacecraft->GetCurrentFleet() != PlayerShip->GetCurrentFleet()) || !ActiveTargetSpacecraft;
 		bool IsDocked = ActiveTargetSpacecraft && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(PlayerShip->GetActive()));
 		bool IsStation = TargetSpacecraft->IsStation();
-		bool IsCargo = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
+		bool IsCargoShip = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
+		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned;
 		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking");
 
 		// Permissions
@@ -522,8 +543,7 @@ void SFlareSpacecraftInfo::Show()
 		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector() && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
 		bool CanUpgradeDocked = ActiveTargetSpacecraft && DockedStation && DockedStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade);
 		bool CanUpgrade = !TargetSpacecraft->IsStation() && (CanUpgradeDistant || CanUpgradeDocked);
-//		bool CanTrade = IsCargo && 1;//(IsDocked || IsOutsidePlayerFleet);
-		bool CanTrade = IsCargo && (IsDocked || IsOutsidePlayerFleet || IsAutoDocking);
+		bool CanTrade = (IsCargoShip || IsCargoStation) && (IsDocked || IsOutsidePlayerFleet || IsAutoDocking);
 		
 		bool CanScrapStation = TargetSpacecraft->IsStation() && TargetSpacecraft->CanScrapStation();
 		bool CanScrap =    OwnedAndNotSelf && (CanUpgrade || CanScrapStation);
@@ -531,19 +551,27 @@ void SFlareSpacecraftInfo::Show()
 		// Is a battle in progress ?
 		if (TargetSpacecraft->GetCurrentSector())
 		{
-			if (TargetSpacecraft->GetCurrentSector()->IsPlayerBattleInProgress())
+			if (TargetSpacecraft->GetCurrentSector()->IsTravelSector())
 			{
 				CanTrade = false;
 				CanUpgrade = false;
 				CanScrap = false;
 			}
-			if (TargetSpacecraft->GetDamageSystem()->IsUncontrollable())
-			{
-				CanTrade = false;
-				CanUpgrade = false;
+			else
+				{
+				if (TargetSpacecraft->GetCurrentSector()->IsPlayerBattleInProgress())
+				{
+					CanTrade = false;
+					CanUpgrade = false;
+					CanScrap = false;
+				}
+				if (TargetSpacecraft->GetDamageSystem()->IsUncontrollable())
+				{
+					CanTrade = false;
+					CanUpgrade = false;
+				}
 			}
 		}
-		FLOGV("SFlareSpacecraftInfo::Show : CanDock = %d CanUpgrade = %d CanTrade = %d CanScrap = %d", CanDock, CanUpgrade, CanTrade, CanScrap);
 
 		// Button states : hide stuff that can never make sense (flying stations etc), disable other states after that
 
@@ -555,7 +583,10 @@ void SFlareSpacecraftInfo::Show()
 		UpgradeButton->SetVisibility(Owned && !IsStation ? EVisibility::Visible : EVisibility::Collapsed);
 		FlyButton->SetVisibility(!Owned || IsStation ?     EVisibility::Collapsed : EVisibility::Visible);
 		TargetButton->SetVisibility(TargetSpacecraft->IsActive() ? EVisibility::Visible : EVisibility::Collapsed);
-		TradeButton->SetVisibility(Owned && IsCargo ?                            EVisibility::Visible : EVisibility::Collapsed);
+
+//		TradeButton->SetVisibility(Owned && IsCargoShip ?                            EVisibility::Visible : EVisibility::Collapsed);
+		TradeButton->SetVisibility((Owned && IsCargoShip) || IsCargoStation ?                            EVisibility::Visible : EVisibility::Collapsed);
+
 		DockButton->SetVisibility(CanDock ?                                      EVisibility::Visible : EVisibility::Collapsed);
 		UndockButton->SetVisibility(Owned && IsDocked && !IsOutsidePlayerFleet ? EVisibility::Visible : EVisibility::Collapsed);
 		ScrapButton->SetVisibility(Owned ?                                       EVisibility::Visible : EVisibility::Collapsed);
@@ -567,7 +598,6 @@ void SFlareSpacecraftInfo::Show()
 			FlyButton->SetVisibility(EVisibility::Collapsed);
 			DockButton->SetVisibility(EVisibility::Collapsed);
 			UndockButton->SetVisibility(EVisibility::Collapsed);
-//			ScrapButton->SetVisibility(EVisibility::Collapsed);
 		}
 
 		// Flyable ships : disable when not flyable
@@ -614,21 +644,54 @@ void SFlareSpacecraftInfo::Show()
 			UndockButton->SetDisabled(false);
 		}
 
-		// Disable trade while flying unless docked
-		if (CanTrade && !TargetSpacecraft->IsTrading())
+		if (IsCargoStation)
 		{
-			TradeButton->SetHelpText(LOCTEXT("TradeInfo", "Trade with this spacecraft"));
-			TradeButton->SetDisabled(false);
-		}
-		else if (CanTrade && TargetSpacecraft->IsTrading())
-		{
-			TradeButton->SetHelpText(LOCTEXT("CantTradeInProgressInfo", "Trading in progress"));
-			TradeButton->SetDisabled(true);
+			bool FoundValidTrade = false;
+			if (!PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking"))
+			{
+				TradeButton->SetHelpText(LOCTEXT("ShipAutoDockNeededInfo", "You need the Auto Docking technology to dock automatically at stations"));
+				TradeButton->SetDisabled(true);
+			}
+			else
+			{
+				if (TargetSpacecraft->GetCurrentSector())
+				{
+					for (UFlareSimulatedSpacecraft* Spacecraft : TargetSpacecraft->GetCurrentSector()->GetSectorSpacecrafts())
+					{
+						if (Spacecraft->GetCompany()->GetPlayerHostility() == EFlareHostility::Owned && !Spacecraft->IsStation() && Spacecraft->GetDescription()->CargoBayCount > 0 && (IsDocked || IsOutsidePlayerFleet || IsAutoDocking) && !Spacecraft->IsTrading())
+						{
+							TradeButton->SetHelpText(LOCTEXT("TradeInfoStation", "Trade with this station"));
+							TradeButton->SetDisabled(false);
+							FoundValidTrade = true;
+							break;
+						}
+					}
+				}
+				if (!FoundValidTrade)
+				{
+					TradeButton->SetHelpText(LOCTEXT("CantTradeNoValidShips", "No available ships to trade with"));
+					TradeButton->SetDisabled(true);
+				}
+			}
 		}
 		else
 		{
-			TradeButton->SetHelpText(LOCTEXT("CantTradeInfo", "Trading requires to be docked in a peaceful sector, or outside the player fleet"));
-			TradeButton->SetDisabled(true);
+			// Disable trade while flying unless docked
+			if (CanTrade && !TargetSpacecraft->IsTrading())
+			{
+				TradeButton->SetHelpText(LOCTEXT("TradeInfo", "Trade with this spacecraft"));
+				TradeButton->SetDisabled(false);
+			}
+			else if (CanTrade && TargetSpacecraft->IsTrading())
+			{
+				TradeButton->SetHelpText(LOCTEXT("CantTradeInProgressInfo", "Trading in progress"));
+				TradeButton->SetDisabled(true);
+			}
+			else
+			{
+				TradeButton->SetHelpText(LOCTEXT("CantTradeInfo", "Trading requires to be docked in a peaceful sector, or outside the player fleet"));
+				TradeButton->SetDisabled(true);
+			}
 		}
 
 		// Disable upgrades
@@ -771,7 +834,14 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 		if (TargetSpacecraft->IsStation())
 		{
 			float Efficiency = TargetSpacecraft->GetStationEfficiency();
-			int DurationMalus = FMath::RoundToInt(UFlareFactory::GetProductionMalus(Efficiency));
+			int DurationMalus = FMath::FloorToInt(UFlareFactory::GetProductionMalus(Efficiency));
+
+/*
+	float Efficiency = Parent->GetStationEfficiency();
+	float Malus = GetProductionMalus(Efficiency);
+	int64 ProductionTime = FMath::FloorToInt(Cycle.ProductionTime * Malus);
+
+*/
 			if (DurationMalus > 1)
 			{
 				float DamageRatio = TargetSpacecraft->GetDamageRatio();
@@ -781,16 +851,20 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 				{
 					if (!TargetSpacecraft->GetOwnerHasStationLicense())
 					{
-						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This unlicensed station is damaged");
+						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_UnlicensedDamaged", "This unlicensed station is damaged");
 					}
 					else
 					{
-						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This station is damaged");
+						EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Damaged", "This station is damaged");
 					}
 				}
 				else if (!TargetSpacecraft->GetOwnerHasStationLicense())
 				{
-					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage", "This is an unlicensed station");
+					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unlicensed", "This is an unlicensed station");
+				}
+				else if (!TargetSpacecraft->GetCompany()->IsTechnologyUnlockedStation(TargetSpacecraft->GetDescription()))
+				{
+					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "This station is without technological knowledge");
 				}
 
 				AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "{0} and operates {1}x slower"), EfficiencyMessage,FText::AsNumber(DurationMalus)),
@@ -1129,12 +1203,18 @@ void SFlareSpacecraftInfo::OnUndock()
 		if (TargetSpacecraft->IsActive() && TargetSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
 		{
 			TargetSpacecraft->GetActive()->GetNavigationSystem()->Undock();
-			PC->GetMenuManager()->CloseMenu();
+			if (TargetSpacecraft == PC->GetPlayerShip())
+			{
+				PC->GetMenuManager()->CloseMenu();
+			}
 		}
 		else if(TargetSpacecraft->IsActive() && TargetSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
 		{
 			PC->GetShipPawn()->GetNavigationSystem()->Undock();
-			PC->GetMenuManager()->CloseMenu();
+			if (TargetSpacecraft == PC->GetPlayerShip())
+			{
+				PC->GetMenuManager()->CloseMenu();
+			}
 		}
 	}
 }
@@ -1238,10 +1318,12 @@ void SFlareSpacecraftInfo::OnScrapConfirmed()
 					FLOGV("SFlareSpacecraftInfo::OnScrap : found player station '%s'", *TargetStation->GetImmatriculation().ToString());
 					break;
 				}
-				else if (TargetStation == NULL)
-				{
-					TargetStation = SectorStations[Index];
-				}
+			}
+
+			if (TargetStation == NULL)
+			{
+				int32 RandomStationindex = FMath::RandRange(0, SectorStations.Num() - 1);
+				TargetStation = SectorStations[RandomStationindex];
 			}
 
 			// Scrap
@@ -1439,6 +1521,25 @@ EVisibility SFlareSpacecraftInfo::GetBuildVisibility() const
 	{
 		if (TargetSpacecraft->IsStation())
 		{
+			if (TargetSpacecraft->IsBeingCaptured())
+			{
+				CapturingIcon->SetVisibility(EVisibility::Visible);
+			}
+			else
+			{
+				CapturingIcon->SetVisibility(EVisibility::Collapsed);
+			}
+
+			if (TargetSpacecraft->GetOwnerHasStationLicense())
+			{
+				UnlicencedIcon->SetVisibility(EVisibility::Collapsed);
+			}
+			else
+			{
+				UnlicencedIcon->SetColorAndOpacity(FLinearColor::Red);
+				UnlicencedIcon->SetVisibility(EVisibility::Visible);
+			}
+
 			if (!TargetSpacecraft->IsUnderConstruction())
 
 			{
@@ -1487,15 +1588,15 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 {
 	if (IsValid(TargetSpacecraft))
 	{
+/*
 		bool TradeMenu = false;
-
 		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
 		{
 			TradeMenu = true;
 		}
-
+*/
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany(); // && TargetCompany == PC->GetCompany()
-		if (IsValid(TargetCompany) && PC && !TradeMenu)
+		if (IsValid(TargetCompany) && PC)// && !TradeMenu)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{
@@ -1529,29 +1630,6 @@ EVisibility SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility() const
 }
 EVisibility SFlareSpacecraftInfo::GetSpacecraftInfoVisibility() const
 {
-/*
-	// Not visible while trading
-	if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade)
-	{
-		return EVisibility::Collapsed;
-	}
-*/
-/*
-	if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
-	{
-		return EVisibility::Visible;
-		UFlareSimulatedSpacecraft* TradeLeftShip = PC->GetMenuManager()->GetTradeMenu()->GetTargetLeftShip();
-		if(TradeLeftShip->IsActive())
-		{
-			return EVisibility::Visible;
-		}
-
-		else
-		{
-			return EVisibility::Collapsed;
-		}
-		}
-*/
 	return EVisibility::Visible;
 }
 
@@ -1569,28 +1647,28 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 		// Get the object's distance
 		FText DistanceText;
 		bool TradeMenu = 0;
-
-		if (PC->GetMenuManager()->IsUIOpen())
+		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
 		{
-			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade)
-			{
-				TradeMenu = 1;
-			}
+			TradeMenu = true;
 		}
 
 		if (PC->GetPlayerShip() && PC->GetPlayerShip() != TargetSpacecraft)
 		{
-			AFlareSpacecraft* PlayerShipPawn;
+			AFlareSpacecraft* PlayerShipPawn = PC->GetPlayerShip()->GetActive();
 			AFlareSpacecraft* TargetSpacecraftPawn = TargetSpacecraft->GetActive();
 			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 			{
 				UFlareSimulatedSpacecraft* TradeLeftShip = PC->GetMenuManager()->GetTradeMenu()->GetTargetLeftShip();
-				PlayerShipPawn = TradeLeftShip->GetActive();
+				if (TradeLeftShip)
+				{
+					PlayerShipPawn = TradeLeftShip->GetActive();
+				}
+				else
+				{
+					PlayerShipPawn = nullptr;
+				}
 			}
-			else
-			{
-				PlayerShipPawn = PC->GetPlayerShip()->GetActive();
-			}
+
 			if (PlayerShipPawn && TargetSpacecraftPawn)
 			{
 				if (PlayerShipPawn->GetNavigationSystem()->GetDockStation() == TargetSpacecraftPawn)
@@ -1751,7 +1829,6 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 	{
 		// Get the object's distance
 		bool TradeMenu = false;
-
 		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade && PC->GetMenuManager()->IsUIOpen())
 		{
 			TradeMenu = true;
@@ -1760,7 +1837,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 		// Our company
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
 //		&& TargetCompany == PC->GetCompany()
-		if (TargetCompany && PC && !TradeMenu)
+		if (TargetCompany && PC)// && !TradeMenu)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{

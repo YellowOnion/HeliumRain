@@ -93,6 +93,12 @@ void SFlareOrbitalFleetInfo::Update()
 			{
 				continue;
 			}
+
+			if (Fleet->GetImmobilizedShipCount() == Fleet->GetShipCount())
+			{
+				continue;
+			}
+
 			FleetList->AddFleet(Fleet);
 		}
 	}

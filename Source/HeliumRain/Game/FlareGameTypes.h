@@ -537,6 +537,29 @@ struct FFlareCompanyAIDescription
 	float BudgetWarTradeWeight;
 
 	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 1.05*/
+	float WarDeclared_StationBudgetFactor;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.85*/
+	float WarDeclared_TechnologyBudgetFactor;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 1.25*/
+	float WarDeclared_TradeBudgetFactor;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 1.10*/
+	float WarDeclared_TransferToMilitaryBudgetFactor;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.05*/
+	float WarDeclared_TransferToMilitaryBudgetStationPercent;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.05*/
+	float WarDeclared_TransferToMilitaryBudgetTechnologyPercent;
+	UPROPERTY(EditAnywhere, Category = Company)
+	/** Default: 0.05*/
+	float WarDeclared_TransferToMilitaryBudgetTradePercent;
+
+	UPROPERTY(EditAnywhere, Category = Company)
 	/** Default: 1*/
 	int32 MaxTradeShipsBuildingPeace;
 	UPROPERTY(EditAnywhere, Category = Company)

@@ -697,7 +697,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 
 				if (TargetSpacecraft->GetDescription()->IsDroneCarrier)
 				{
-					AllowAutoConstructionButton->SetVisibility(EVisibility::Visible);
+					AllowAutoConstructionButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 					if (TargetSpacecraft->GetCompany()->IsTechnologyUnlocked("auto-trade"))
 					{
 						AllowExternalOrdersButton->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);

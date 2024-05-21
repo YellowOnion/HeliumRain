@@ -91,6 +91,5 @@ protected:
 	// Slate data
 	TSharedPtr<SFlareButton>                        DumpButton;
 	TSharedPtr<SFlareButton>                        PermissionButton;
-
-
+	TSharedPtr<STextBlock>							ResourceMode;
 };

@@ -62,7 +62,7 @@ public:
 	/** A notification was received, stop */
 	void RequestStopFastForward();
 
-	void RequestOrbitalFleetsUpdate();
+	void RequestOrbitalFleetsUpdate(bool Instant = false);
 
 	void UpdateSectorBattleStates();
 	void UpdateSectorStates();
@@ -96,7 +96,7 @@ protected:
 	void UpdateMap();
 
 	/** Update the map for a specific celestial body */
-	void UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body, TArray<FString> BrokenSectors);
+	void UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body);
 		
 
 	/*----------------------------------------------------

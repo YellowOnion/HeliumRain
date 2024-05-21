@@ -2673,16 +2673,31 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 		Efficiency = (1.f - Coef) * DamageRatio + Coef;
 	}
 
-	if (!OwnerHasStationLicense && IsStation())
+	if (IsStation())
 	{
-		//note: -1.f efficiency = 10X slower production
-		Efficiency = Efficiency -0.25f;
+		if (!OwnerHasStationLicense)
+		{
+			//note: -1.f efficiency = 10X slower production
+			Efficiency = Efficiency - 0.25f;
+		}
+
+		if (IsBeingCaptured())
+		{
+			Efficiency = Efficiency - 0.06f;
+		}
+		if (!Company->IsTechnologyUnlockedStation(GetDescription()))
+		{
+			Efficiency = Efficiency - 0.12f;
+		}
 	}
 
-	if (CurrentFleet && CurrentFleet->IsTraveling())
+	if (CurrentFleet)
 	{
+		if (CurrentFleet->IsTraveling())
+		{
 		//carriers which are traveling build a little slower, no help from locals perhaps?
 		Efficiency = Efficiency - 0.10f;
+		}
 	}
 	return Efficiency;
 }

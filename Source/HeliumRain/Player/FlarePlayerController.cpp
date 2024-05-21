@@ -744,33 +744,65 @@ void AFlarePlayerController::UnlockScannable(FName Identifier)
 	GameDifficulty = PlayerData.DifficultyId;
 
 	float DifficultyModifier = 1.0f;
-	
+	float DifficultyModifierAIBOOST = 0.f;
+	bool AICheats = GetPlayerData()->AICheats;
+
 	switch (GameDifficulty)
 	{
 		case -1: // Easy
-			DifficultyModifier = 1.10f;
+			DifficultyModifier = 1.15f;
 			break;
 		case 0: // Normal
 			DifficultyModifier = 1.0f;
+			DifficultyModifierAIBOOST = 0.05f;
 			break;
 		case 1: // Hard
-			DifficultyModifier = 0.80f;
+			DifficultyModifier = 0.95f;
+			DifficultyModifierAIBOOST = 0.15f;
 			break;
 		case 2: // Very Hard
-			DifficultyModifier = 0.70f;
+			DifficultyModifier = 0.90f;
+			DifficultyModifierAIBOOST = 0.30f;
 			break;
 		case 3: // Expert
-			DifficultyModifier = 0.50f;
+			DifficultyModifier = 0.80f;
+			DifficultyModifierAIBOOST = 0.70f;
 			break;
 		case 4: // Unfair
-			DifficultyModifier = 0.30f;
+			DifficultyModifier = 0.70f;
+			DifficultyModifierAIBOOST = 1.f;
 			break;
 	}
 
+	if (AICheats)
+	{
+		DifficultyModifierAIBOOST = DifficultyModifierAIBOOST * 1.30;
+	}
+
 	int32 ResearchGain = SCANNABLES_RESEARCH_GAIN_A * FMath::Pow(ArtefactCount, 4) + (SCANNABLES_RESEARCH_GAIN_B * DifficultyModifier);
-//	Company->GiveResearch(SCANNABLES_RESEARCH_GAIN_A * FMath::Pow(ArtefactCount, 4) + (SCANNABLES_RESEARCH_GAIN_B));
 	Company->GiveResearch(ResearchGain);
-	//first gives 10 research
+
+	int32 AIResearchGain = ResearchGain * DifficultyModifierAIBOOST;
+	if (AIResearchGain > 0)
+	{
+		UFlareSimulatedSector* CurrentSector = GetPlayerShip()->GetCurrentSector();
+		if (CurrentSector)
+		{
+			TArray<UFlareCompany*> Companies = GetGame()->GetGameWorld()->GetCompanies();
+			for (int32 CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
+			{
+				UFlareCompany* OtherCompany = Companies[CompanyIndex];
+				if (OtherCompany == Company)
+				{
+					continue;
+				}
+				if (OtherCompany->IsKnownSector(CurrentSector))
+				{
+					OtherCompany->GiveResearch(AIResearchGain);
+				}
+			}
+		}
+	}
 /*
 	Notify(LOCTEXT("ScannableUnlocked", "Artifact found"),
 		LOCTEXT("ScannableUnlockedInfo", "Artifact analyzis revealed valuable data for technology research."),
@@ -779,8 +811,7 @@ void AFlarePlayerController::UnlockScannable(FName Identifier)
 		false,
 		EFlareMenu::MENU_Technology);
 */
-
-	FText Formatted = FText::Format(LOCTEXT("ScannableUnlockedInfo", "Artifact analyzis revealed valuable data for technology research. \n +{0} research."),
+	FText Formatted = FText::Format(LOCTEXT("ScannableUnlockedInfo", "Artifact analysis revealed valuable data for technology research. \n +{0} research."),
 	FText::AsNumber(ResearchGain));
 
 	Notify(LOCTEXT("ScannableUnlocked", "Artifact found"),
@@ -1000,15 +1031,14 @@ void AFlarePlayerController::SetupMenu()
 
 void AFlarePlayerController::OnEnterMenu()
 {
+
 	if (!IsInMenu())
 	{
 		Possess(MenuPawn);
-
 		// Pause all gameplay actors
 		SetWorldPause(true);
 		MenuPawn->SetActorHiddenInGame(false);
 	}
-
 	GetGame()->GetPlanetarium()->SetActorHiddenInGame(true);
 	GetNavHUD()->UpdateHUDVisibility();
 }
@@ -1565,7 +1595,7 @@ void AFlarePlayerController::NotifyDockingComplete(AFlareSpacecraft* DockStation
 
 	// Reload if we were in a real menu
 	EFlareMenu::Type CurrentMenu = MenuManager->GetCurrentMenu();
-	if (CurrentMenu != EFlareMenu::MENU_None && CurrentMenu != EFlareMenu::MENU_ReloadSector && CurrentMenu != EFlareMenu::MENU_FastForwardSingle && CurrentMenu != EFlareMenu::MENU_GameOver)
+	if (CurrentMenu != EFlareMenu::MENU_None && CurrentMenu != EFlareMenu::MENU_ReloadSector && CurrentMenu != EFlareMenu::MENU_FastForwardSingle && CurrentMenu != EFlareMenu::MENU_GameOver && CurrentMenu != EFlareMenu::MENU_Trade)
 	{
 		MenuManager->Reload();
 	}

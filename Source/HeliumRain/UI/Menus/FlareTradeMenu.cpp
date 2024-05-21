@@ -65,6 +65,15 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 					.WidthOverride(Theme.ContentWidth)
 					[
 						SNew(SVerticalBox)
+						// Left ship selection list
+						+ SVerticalBox::Slot()
+						[
+							SAssignNew(LeftShipList, SFlareList)
+							.MenuManager(MenuManager)
+							.DisableFilters(true)
+							.Title(LOCTEXT("SelectSpacecraft", "Select a spacecraft to trade with"))
+							.OnItemSelected(this, &SFlareTradeMenu::OnSpacecraftSelectedLeft)
+						]
 
 						// Current ship's name
 						+ SVerticalBox::Slot()
@@ -95,21 +104,58 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							SAssignNew(LeftCargoBay2, SHorizontalBox)
 						]
 
-						// Undock button
 						+ SVerticalBox::Slot()
-							.AutoHeight()
+						.AutoHeight()
+						.Padding(Theme.SmallContentPadding)
+						.HAlign(HAlign_Left)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Fill)
+
+							// Change source (left side) button
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(Theme.SmallContentPadding)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("BackToSelectionSource", "SOURCE"))
+								.HelpText(LOCTEXT("BackToSelectionSourceInfo", "Change which ship is trading"))
+								.Icon(FFlareStyleSet::GetIcon("Stop"))
+								.OnClicked(this, &SFlareTradeMenu::OnBackToSelectionLeft)
+								.Visibility(this, &SFlareTradeMenu::GetBackToSelectionLeftVisibility)
+								.Width(3)
+							]
+
+							// Undock button
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
 							.Padding(Theme.SmallContentPadding)
 							.HAlign(HAlign_Left)
 							[
 								SNew(SFlareButton)
 								.Text(LOCTEXT("Undock", "UNDOCK"))
-							.HelpText(LOCTEXT("ShipUndockInfo", "Undock the ship and leave the station"))
-							.HotkeyText(LOCTEXT("SpacecraftKey5", "M5"))
-							.OnClicked(this, &SFlareTradeMenu::OnUndock)
-							.Visibility(this, &SFlareTradeMenu::GetUndockVisibility)
-							.Width(4)
+								.HelpText(LOCTEXT("ShipUndockInfo", "Undock the ship and leave the station"))
+								.HotkeyText(LOCTEXT("SpacecraftKey5", "M5"))
+								.OnClicked(this, &SFlareTradeMenu::OnUndock)
+								.Visibility(this, &SFlareTradeMenu::GetUndockVisibility)
+								.Width(3)
 							]
-
+							// Change the right side selection to the docked station for the left selected ship
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(Theme.SmallContentPadding)
+							.HAlign(HAlign_Left)
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("SelectDockedStation", "SELECT DOCKED"))
+								.HelpText(LOCTEXT("SelectDockedStationInfo", "Change the trade target to the currently docked station"))
+								.OnClicked(this, &SFlareTradeMenu::OnSelectDockedSelection)
+								.Visibility(this, &SFlareTradeMenu::GetSelectDockedVisibility)
+								.Width(3)
+							]
+						]
 						// Help text
 						+ SVerticalBox::Slot()
 						.AutoHeight()
@@ -140,14 +186,14 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 					[
 						SNew(SVerticalBox)
 						
-						// Ship selection list
+						// Right ship selection list
 						+ SVerticalBox::Slot()
 						[
-							SAssignNew(ShipList, SFlareList)
+							SAssignNew(RightShipList, SFlareList)
 							.MenuManager(MenuManager)
 							.StationList(true)
-							.Title(LOCTEXT("SelectSpacecraft", "Select a spacecraft to trade with"))
-							.OnItemSelected(this, &SFlareTradeMenu::OnSpacecraftSelected)
+							.Title(LOCTEXT("SelectStation", "Select a station to trade with"))
+							.OnItemSelected(this, &SFlareTradeMenu::OnSpacecraftSelectedRight)
 						]
 
 						// Ship's name
@@ -188,7 +234,6 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							.Visibility(this, &SFlareTradeMenu::GetCompanyFlagVisibility)
 							]
 						]
-
 
 						// Ship's cargo
 						+ SVerticalBox::Slot()
@@ -231,12 +276,12 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 							[
 								SNew(SFlareButton)
 								.Text(LOCTEXT("BackToSelection", "Change target"))
+								.HelpText(LOCTEXT("ChangeTargetInfo", "Change the currently selected trade target"))						
 								.Icon(FFlareStyleSet::GetIcon("Stop"))
-								.OnClicked(this, &SFlareTradeMenu::OnBackToSelection)
-								.Visibility(this, &SFlareTradeMenu::GetBackToSelectionVisibility)
+								.OnClicked(this, &SFlareTradeMenu::OnBackToSelectionRight)
+								.Visibility(this, &SFlareTradeMenu::GetBackToSelectionRightVisibility)
 								.Width(4)
 							]
-
 						]
 
 						// Construction text
@@ -305,9 +350,8 @@ void SFlareTradeMenu::Construct(const FArguments& InArgs)
 								.AutoHeight()
 								.Padding(Theme.ContentPadding)
 								[
-									SNew(STextBlock)
+									SAssignNew(InvalidTransaction, STextBlock)
 									.TextStyle(&Theme.NameFont)
-									.Text(this, &SFlareTradeMenu::GetTransactionInvalidDetails)
 									.Visibility(this, &SFlareTradeMenu::GetTransactionInvalidVisibility)
 									.WrapTextAt(TextWidth)
 								]
@@ -385,7 +429,8 @@ void SFlareTradeMenu::Setup()
 {
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
-	ShipList->SetVisibility(EVisibility::Collapsed);
+	LeftShipList->SetVisibility(EVisibility::Collapsed);
+	RightShipList->SetVisibility(EVisibility::Collapsed);
 }
 
 void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulatedSpacecraft* LeftSpacecraft, UFlareSimulatedSpacecraft* RightSpacecraft)
@@ -395,20 +440,27 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	// Setup
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
+	SetTransactionInvalidDetails();
 	TargetSector = ParentSector;
 	TargetLeftSpacecraft = LeftSpacecraft;
-	ShipList->Reset();
+	RightShipList->Reset();
 	WasActiveSector = false;
 
 	// First-person trading override
-	AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
-
-	if (TargetLeftSpacecraft->IsActive())
+	if (TargetLeftSpacecraft)
 	{
-		WasActiveSector = true;
-		if (PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+		AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+		if (TargetLeftSpacecraft->IsActive())
 		{
-			TargetRightSpacecraft = PhysicalSpacecraft->GetNavigationSystem()->GetDockStation()->GetParent();
+			WasActiveSector = true;
+			if (PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+			{
+				TargetRightSpacecraft = PhysicalSpacecraft->GetNavigationSystem()->GetDockStation()->GetParent();
+			}
+			else
+			{
+				TargetRightSpacecraft = RightSpacecraft;
+			}
 		}
 		else
 		{
@@ -418,36 +470,28 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	else
 	{
 		TargetRightSpacecraft = RightSpacecraft;
+		if (TargetRightSpacecraft->IsActive())
+		{
+			WasActiveSector = true;
+		}
 	}
 
 	// Not first person - list spacecrafts
 	//	if (TargetLeftSpacecraft->GetCurrentFleet() != MenuManager->GetPC()->GetPlayerFleet())
 //	if (TargetLeftSpacecraft != MenuManager->GetPC()->GetPlayerShip())
-		// Add stations
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < ParentSector->GetSectorStations().Num(); SpacecraftIndex++)
-		{
-			UFlareSimulatedSpacecraft* StationCandidate = ParentSector->GetSectorStations()[SpacecraftIndex];
-			if (StationCandidate && StationCandidate != LeftSpacecraft && StationCandidate != RightSpacecraft
-			 && StationCandidate->GetActiveCargoBay()->GetSlotCount() > 0
-			 && !StationCandidate->IsPlayerHostile())
-			{
-				ShipList->AddShip(StationCandidate);
-			}
 
-		// #1208 : don't trade between ships
-		// Add ships
-		//for (int32 SpacecraftIndex = 0; SpacecraftIndex < ParentSector->GetSectorShips().Num(); SpacecraftIndex++)
-		//{
-		//	// Don't allow trade with other
-		//	UFlareSimulatedSpacecraft* ShipCandidate = ParentSector->GetSectorShips()[SpacecraftIndex];
-		//	if (ShipCandidate && ShipCandidate != LeftSpacecraft && ShipCandidate != RightSpacecraft
-		//	 && ShipCandidate->GetActiveCargoBay()->GetSlotCount() > 0
-		//	 && ShipCandidate->GetDamageSystem()->IsAlive()
-		//	 && ShipCandidate->GetCompany() == MenuManager->GetPC()->GetCompany())
-		//	{
-		//		ShipList->AddShip(ShipCandidate);
-		//	}
-		//}
+	UpdateLeftShips();
+
+// Add stations (right side)
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ParentSector->GetSectorStations().Num(); SpacecraftIndex++)
+	{
+		UFlareSimulatedSpacecraft* StationCandidate = ParentSector->GetSectorStations()[SpacecraftIndex];
+		if (StationCandidate && StationCandidate != LeftSpacecraft && StationCandidate != RightSpacecraft
+			&& StationCandidate->GetActiveCargoBay()->GetSlotCount() > 0
+			&& !StationCandidate->IsPlayerHostile())
+		{
+			RightShipList->AddShip(StationCandidate);
+		}
 	}
 
 	// Setup widgets
@@ -456,18 +500,28 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	PreviousTradeDirection = 0;
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
-	ShipList->RefreshList();
+	RightShipList->RefreshList();
 
 	// Show selector if still needed
 	if (TargetRightSpacecraft)
 	{
-		ShipList->SetVisibility(EVisibility::Collapsed);
+		RightShipList->SetVisibility(EVisibility::Collapsed);
 		CompanyFlag->SetCompany(TargetRightSpacecraft->GetCompany());
 	}
 	else
 	{
-		ShipList->SetVisibility(EVisibility::Visible);
+		RightShipList->SetVisibility(EVisibility::Visible);
 	}
+
+	if (TargetLeftSpacecraft)
+	{
+		LeftShipList->SetVisibility(EVisibility::Collapsed);
+	}
+	else
+	{
+		LeftShipList->SetVisibility(EVisibility::Visible);
+	}
+
 	DonationButton->SetActive(false);
 }
 
@@ -506,8 +560,8 @@ void SFlareTradeMenu::FillTradeBlock(UFlareSimulatedSpacecraft* TargetSpacecraft
 					[
 						SNew(SFlareCargoInfo)
 						.Spacecraft(TargetSpacecraft)
-					.CargoIndex(SortedCargoBay[CargoIndex].CargoInitialIndex)
-					.OnClicked(this, &SFlareTradeMenu::OnTransferResources,
+						.CargoIndex(SortedCargoBay[CargoIndex].CargoInitialIndex)
+						.OnClicked(this, &SFlareTradeMenu::OnTransferResources,
 						TargetSpacecraft,
 						OtherSpacecraft,
 						SortedCargoBay[CargoIndex].Cargo->Resource)
@@ -523,8 +577,8 @@ void SFlareTradeMenu::Exit()
 
 	// Reset cargo
 	PreviousTradeDirection = -1;
-	TargetLeftSpacecraft = NULL;
-	TargetRightSpacecraft = NULL;
+//	TargetLeftSpacecraft = NULL;
+//	TargetRightSpacecraft = NULL;
 	LeftCargoBay1->ClearChildren();
 	LeftCargoBay2->ClearChildren();
 	RightCargoBay1->ClearChildren();
@@ -537,24 +591,25 @@ void SFlareTradeMenu::Exit()
 
 	// Reset menus
 	PriceBox->Hide();
-	ShipList->Reset();
-	ShipList->SetVisibility(EVisibility::Collapsed);
+	LeftShipList->Reset();
+	LeftShipList->SetVisibility(EVisibility::Collapsed);
+	RightShipList->Reset();
+	RightShipList->SetVisibility(EVisibility::Collapsed);
 	SetVisibility(EVisibility::Collapsed);
 }
-
+/*
 void SFlareTradeMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-
 	if (IsEnabled() && !WasActiveSector)
 	{
-		if (TargetLeftSpacecraft->IsActive())
+		if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive())
 		{
 			Enter(TargetSector, TargetLeftSpacecraft, TargetRightSpacecraft);
 		}
 	}
 }
-
+*/
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
@@ -588,7 +643,7 @@ EVisibility SFlareTradeMenu::GetCompanyFlagVisibility() const
 
 EVisibility SFlareTradeMenu::GetTradingVisibility() const
 {
-	return (TargetLeftSpacecraft && TargetRightSpacecraft) ? EVisibility::Visible : EVisibility::Collapsed;
+	return (TargetRightSpacecraft) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 EVisibility SFlareTradeMenu::GetConstructionInfosVisibility() const
@@ -596,10 +651,22 @@ EVisibility SFlareTradeMenu::GetConstructionInfosVisibility() const
 	return (TargetRightSpacecraft && TargetRightSpacecraft->IsStation() && TargetRightSpacecraft->IsUnderConstruction()) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
+EVisibility SFlareTradeMenu::GetSelectDockedVisibility() const
+{
+	if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
+	{
+		if ((TargetRightSpacecraft && TargetRightSpacecraft->IsActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation() != TargetRightSpacecraft->GetActive()) || RightShipList->GetVisibility() == EVisibility::Visible)
+		{
+			return EVisibility::Visible;
+		}
+	}
+
+	return EVisibility::Collapsed;
+}
+
 EVisibility SFlareTradeMenu::GetUndockVisibility() const
 {
-	if (TargetLeftSpacecraft&&TargetLeftSpacecraft->IsActive()&& TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked() && MenuManager->GetPC()->GetPlayerShip() == TargetLeftSpacecraft)
-		//MenuManager->GetPC()->GetCompany() == TargetLeftSpacecraft->GetCompany())
+	if (TargetLeftSpacecraft&&TargetLeftSpacecraft->IsActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())// && MenuManager->GetPC()->GetPlayerShip() == TargetLeftSpacecraft)
 	{
 		return EVisibility::Visible;
 	}
@@ -615,18 +682,24 @@ void SFlareTradeMenu::OnUndock()
 			if (TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
 			{
 				TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->Undock();
-				MenuManager->CloseMenu();
+				if (MenuManager->GetPC()->GetPlayerShip() == TargetLeftSpacecraft)
+				{
+					MenuManager->CloseMenu();
+				}
 			}
 			else if (TargetLeftSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
 			{
 				MenuManager->GetPC()->GetShipPawn()->GetNavigationSystem()->Undock();
-				MenuManager->CloseMenu();
+				if (MenuManager->GetPC()->GetPlayerShip() == TargetLeftSpacecraft)
+				{
+					MenuManager->CloseMenu();
+				}
 			}
 		}
 	}
 }
 
-EVisibility SFlareTradeMenu::GetBackToSelectionVisibility() const
+EVisibility SFlareTradeMenu::GetBackToSelectionLeftVisibility() const
 {
 	if (!IsEnabled())
 	{
@@ -638,40 +711,62 @@ EVisibility SFlareTradeMenu::GetBackToSelectionVisibility() const
 		return EVisibility::Collapsed;
 	}
 
-	FText Reason;
-	if (TargetRightSpacecraft && !TargetLeftSpacecraft->CanTradeWith(TargetRightSpacecraft, Reason))
+	if (!MultipleOwnedShipsOrFleets)
 	{
-		return EVisibility::Collapsed;
+		if (FirstShipCandidateLeft == nullptr)
+		{
+			{
+				return EVisibility::Collapsed;
+			}
+		}
+		else if (FirstShipCandidateLeft == TargetLeftSpacecraft)
+		{
+			return EVisibility::Collapsed;
+		}
 	}
 
 	// First-person trading override
 	AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
-	if (PhysicalSpacecraft && PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
+	if (PhysicalSpacecraft)
 	{
 		bool IsAutoDocking = MenuManager->GetPC()->GetCompany()->IsTechnologyUnlocked("auto-docking");
-		if (IsAutoDocking)
-		{
-			return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
-		}
-		else
+		if (!IsAutoDocking)
 		{
 			return EVisibility::Collapsed;
 		}
-/*
-		if (PhysicalSpacecraft->IsPlayerShip())
-		{
-			return EVisibility::Collapsed;
-		}
-*/
-//		else
-//		{
-			return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
-//		}
 	}
-	else
+
+	return EVisibility::Visible;
+
+}
+
+EVisibility SFlareTradeMenu::GetBackToSelectionRightVisibility() const
+{
+	if (!IsEnabled())
 	{
-		return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
+		return EVisibility::Collapsed;
 	}
+
+	FText Reason;
+	if (TargetLeftSpacecraft)
+	{
+		// First-person trading override
+		AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+		if (PhysicalSpacecraft)
+		{
+			bool IsAutoDocking = MenuManager->GetPC()->GetCompany()->IsTechnologyUnlocked("auto-docking");
+			if (IsAutoDocking)
+			{
+				return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
+			}
+			else
+			{
+				return EVisibility::Collapsed;
+			}
+			return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
+		}
+	}
+	return TargetRightSpacecraft ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 EVisibility SFlareTradeMenu::GetDonationButtonVisibility() const
@@ -699,8 +794,7 @@ EVisibility SFlareTradeMenu::GetTransactionDetailsVisibility() const
 
 EVisibility SFlareTradeMenu::GetTransactionInvalidVisibility() const
 {
-	FText Unused;
-	return (IsEnabled() && !IsTransactionValid(Unused) && TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionResource) ? EVisibility::Visible : EVisibility::Collapsed;
+	return (IsEnabled() && TargetRightSpacecraft) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 FText SFlareTradeMenu::GetLeftSpacecraftName() const
@@ -733,7 +827,7 @@ FText SFlareTradeMenu::GetRightcraftInfo() const
 		return FText();
 	}
 */
-	if (IsValid(TargetRightSpacecraft))
+	if (TargetLeftSpacecraft && IsValid(TargetRightSpacecraft))
 	{
 		// Get the object's distance
 //		return LOCTEXT("Crash", "Is Valid");
@@ -871,7 +965,7 @@ FText SFlareTradeMenu::GetShipTradeDetails() const
 {
 		if(!TargetLeftSpacecraft)
 		{
-			return FText(LOCTEXT("HelpText", "Your ship is ready to trade with another spacecraft."));
+			return FText();
 		}
 
 		AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
@@ -942,28 +1036,32 @@ FText SFlareTradeMenu::GetShipTradeDetails() const
 		}
 }
 
-FText SFlareTradeMenu::GetTransactionInvalidDetails() const
+void SFlareTradeMenu::SetTransactionInvalidDetails(bool DockingConfirmed)
 {
+	FText FormulatedText;
 	if (TransactionSourceSpacecraft && TransactionDestinationSpacecraft && TransactionResource)
 	{
 		FText Reason;
 		IsTransactionValid(Reason);
 
-		if (Reason.IsEmptyOrWhitespace())
+		if (!Reason.IsEmptyOrWhitespace())
 		{
-			Reason = LOCTEXT("TradeInvalidDefaultError", "The buyer needs an empty slot, or one with the matching resource.\n\u2022 Input resources are never sold.\n\u2022 Output resources are never bought");
-		}
-
-		return FText::Format(LOCTEXT("TradeInvalidInfoFormat", "Can't trade {0} from {1} to {2} !\n\u2022 {3}"),
+//			Reason = LOCTEXT("TradeInvalidDefaultError", "The buyer needs an empty slot, or one with the matching resource.\n\u2022 Input resources are never sold.\n\u2022 Output resources are never bought");
+			FormulatedText = FText::Format(LOCTEXT("TradeInvalidInfoFormat", "Can't trade {0} from {1} to {2} !\n\u2022 {3}\n"),
 			TransactionResource->Name,
 			UFlareGameTools::DisplaySpacecraftName(TransactionSourceSpacecraft),
 			UFlareGameTools::DisplaySpacecraftName(TransactionDestinationSpacecraft),
 			Reason);
+		}
 	}
-	else
+
+	if (!DockingConfirmed)
 	{
-		return FText();
+		FormulatedText = FText::Format(LOCTEXT("TradeInvalidInfoFormat", "{0}\u2022 Docking failed\n\u2022 Destination station requires a free docking port"),
+		FormulatedText);
 	}
+
+	InvalidTransaction->SetText(FormulatedText);
 }
 
 FText SFlareTradeMenu::GetResourcePriceInfo(FFlareResourceDescription* Resource) const
@@ -1000,32 +1098,49 @@ FText SFlareTradeMenu::GetResourcePriceInfo(FFlareResourceDescription* Resource)
 	return FText();
 }
 
-void SFlareTradeMenu::OnSpacecraftSelected(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
+void SFlareTradeMenu::OnSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
 {
 	UFlareSimulatedSpacecraft* Spacecraft = SpacecraftContainer->SpacecraftPtr;
+	if (Spacecraft)
+	{
+		UFlareSimulatedSpacecraft* OldLeftSpacecraft = TargetLeftSpacecraft;
+		TargetLeftSpacecraft = Spacecraft;
 
+		if (TargetLeftSpacecraft != OldLeftSpacecraft)
+		{
+			PreviousTradeDirection = 0;
+			FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
+			FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
+		}
+	}
+	LeftShipList->SetVisibility(EVisibility::Collapsed);
+	RightShipList->RefreshList();
+	SetTransactionInvalidDetails();
+}
+
+void SFlareTradeMenu::OnSpacecraftSelectedRight(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
+{
+	UFlareSimulatedSpacecraft* Spacecraft = SpacecraftContainer->SpacecraftPtr;
+	SelectSpacecraftRight(Spacecraft);
+}
+
+void SFlareTradeMenu::SelectSpacecraftRight(UFlareSimulatedSpacecraft* Spacecraft)
+{
 	if (Spacecraft)
 	{
 		// Store spacecrafts
-		if (TargetLeftSpacecraft)
-		{
-			TargetRightSpacecraft = Spacecraft;
-			CompanyFlag->SetCompany(TargetRightSpacecraft->GetCompany());
-		}
-		else
-		{
-			TargetLeftSpacecraft = Spacecraft;
-		}
+		TargetRightSpacecraft = Spacecraft;
+		CompanyFlag->SetCompany(TargetRightSpacecraft->GetCompany());
 
 		// Reset menus
 		PriceBox->Hide();
 		PreviousTradeDirection = 1;
 		FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 		FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
-		ShipList->SetVisibility(EVisibility::Collapsed);
+		RightShipList->SetVisibility(EVisibility::Collapsed);
 	}
+	SetTransactionInvalidDetails();
 }
-
 
 void SFlareTradeMenu::OnDonationToggle()
 {
@@ -1041,6 +1156,7 @@ void SFlareTradeMenu::OnDonationToggle()
 	QuantitySlider->SetValue(1.0f);
 	QuantityText->SetText(FText::AsNumber(TransactionQuantity));
 	UpdatePrice();
+	SetTransactionInvalidDetails();
 }
 
 void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource)
@@ -1063,13 +1179,13 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 
 		if (SelectedQuest && SelectedQuest->GetCurrentStep())
 		{
+			auto PlayerShip = (SourceSpacecraft->IsStation() ? DestinationSpacecraft : SourceSpacecraft);
 			for(UFlareQuestCondition* Condition : SelectedQuest->GetCurrentConditions())
 			{
 				UFlareQuestConditionBuyAtStation* BuyAtStationCondition = Cast<UFlareQuestConditionBuyAtStation>(Condition);
 				if (BuyAtStationCondition && BuyAtStationCondition->GetResource() == Resource && BuyAtStationCondition->GetTargetStation() == TransactionSourceSpacecraft)
 				{
-					int32 MissingQuantity = BuyAtStationCondition->GetTargetQuantity() - BuyAtStationCondition->GetCurrentProgression();
-					auto PlayerShip = (SourceSpacecraft->IsStation() ? DestinationSpacecraft : SourceSpacecraft);
+					int32 MissingQuantity = BuyAtStationCondition->GetTargetQuantity() - BuyAtStationCondition->GetCurrentProgression();				
 					int32 PreferredQuantity = MissingQuantity - PlayerShip->GetActiveCargoBay()->GetResourceQuantity(Resource, PlayerShip->GetCompany());
 
 					if (TransactionDestinationSpacecraft == PlayerShip)
@@ -1083,12 +1199,10 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 				}
 
 				UFlareQuestConditionSellAtStation* SellAtStationCondition = Cast<UFlareQuestConditionSellAtStation>(Condition);
-				if (SellAtStationCondition && SellAtStationCondition->GetResource() == Resource)
+				if (SellAtStationCondition && SellAtStationCondition->GetResource() == Resource && (SellAtStationCondition->GetTargetStation() == TransactionDestinationSpacecraft || DestinationSpacecraft==PlayerShip))
 				{
 					int32 MissingQuantity = SellAtStationCondition->GetTargetQuantity() - SellAtStationCondition->GetCurrentProgression();
-					auto PlayerShip = (SourceSpacecraft->IsStation() ? DestinationSpacecraft : SourceSpacecraft);
 					int32 PreferredQuantity = MissingQuantity - PlayerShip->GetActiveCargoBay()->GetResourceQuantity(Resource, PlayerShip->GetCompany());
-				
 					if (TransactionSourceSpacecraft == PlayerShip)
 					{
 						PreferredQuantity = MissingQuantity;
@@ -1101,6 +1215,7 @@ void SFlareTradeMenu::OnTransferResources(UFlareSimulatedSpacecraft* SourceSpace
 			}
 		}
 	}
+	SetTransactionInvalidDetails();
 }
 
 void SFlareTradeMenu::OnResourceQuantityChanged(float Value)
@@ -1145,6 +1260,7 @@ void SFlareTradeMenu::OnConfirmTransaction()
 {
 	bool ResetVariables = true;
 	bool Donation = false;
+	bool DockingConfirmed = true;
 
 	if(TransactionSourceSpacecraft && TransactionDestinationSpacecraft)
 	{
@@ -1175,18 +1291,22 @@ void SFlareTradeMenu::OnConfirmTransaction()
 					TransactionResource,
 					TransactionQuantity,
 					NULL, NULL, Donation);
-				ShipList->RefreshList();
+				RightShipList->RefreshList();
 			}
 			else
 			{
-				bool DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAtAndTrade(PhysicalSpacecraftDock, TransactionResource, TransactionQuantity, TransactionSourceSpacecraft, TransactionDestinationSpacecraft, Donation);
+				DockingConfirmed = PhysicalSpacecraft->GetNavigationSystem()->DockAtAndTrade(PhysicalSpacecraftDock, TransactionResource, TransactionQuantity, TransactionSourceSpacecraft, TransactionDestinationSpacecraft, Donation);
 				if (!DockingConfirmed)
 				{
 					ResetVariables = false;
 				}
 				else if (PhysicalSpacecraft->IsPlayerShip())
 				{
-					MenuManager->CloseMenu();
+					if (!MultipleOwnedShipsOrFleets)
+					{
+	//player ship is the only viable ship for trade menu, close menu.
+						MenuManager->CloseMenu();
+					}
 				}
 			}
 		}
@@ -1216,6 +1336,47 @@ void SFlareTradeMenu::OnConfirmTransaction()
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->InfoSound);
+	UpdateLeftShips();
+	SetTransactionInvalidDetails(DockingConfirmed);
+}
+
+void SFlareTradeMenu::OnSelectDockedSelection()
+{
+	if (TargetLeftSpacecraft && TargetLeftSpacecraft->GetActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation())
+	{
+		SelectSpacecraftRight(TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation()->GetParent());
+	}
+}
+
+void SFlareTradeMenu::OnBackToSelectionLeft()
+{
+	TargetLeftSpacecraft = NULL;
+	// Reset transaction data
+	LeftCargoBay1->ClearChildren();
+	LeftCargoBay2->ClearChildren();
+	LeftShipList->ClearSelection();
+	LeftShipList->SetVisibility(EVisibility::Visible);
+	OnCancelTransaction();
+}
+
+void SFlareTradeMenu::OnBackToSelectionRight()
+{
+	TargetRightSpacecraft = NULL;
+
+	OnCancelTransaction();
+/*
+	// Reset transaction data
+	TransactionDestinationSpacecraft = NULL;
+	TransactionSourceSpacecraft = NULL;
+	TransactionResource = NULL;
+	TransactionQuantity = 0;
+*/
+	// Reset menus
+	PriceBox->Hide();
+	RightCargoBay1->ClearChildren();
+	RightCargoBay2->ClearChildren();
+	RightShipList->ClearSelection();
+	RightShipList->SetVisibility(EVisibility::Visible);
 }
 
 void SFlareTradeMenu::OnCancelTransaction()
@@ -1232,24 +1393,45 @@ void SFlareTradeMenu::OnCancelTransaction()
 	FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 	FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 	MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->NegativeClickSound);
+	SetTransactionInvalidDetails();
 }
 
-void SFlareTradeMenu::OnBackToSelection()
+void SFlareTradeMenu::UpdateLeftShips()
+// Add ships (left side)
 {
-	TargetRightSpacecraft = NULL;
-		// Reset transaction data
-	TransactionDestinationSpacecraft = NULL;
-	TransactionSourceSpacecraft = NULL;
-	TransactionResource = NULL;
-	TransactionQuantity = 0;
+	LeftShipList->Reset();
+	MultipleOwnedShipsOrFleets = false;
+	int16 Addedships = 0;
 
-	// Reset menus
-	PriceBox->Hide();
-	RightCargoBay1->ClearChildren();
-	RightCargoBay2->ClearChildren();
-	ShipList->ClearSelection();
-	ShipList->SetVisibility(EVisibility::Visible);
+	// Data
+	FirstShipCandidateLeft = nullptr;
+	UFlareCompany* CheckingCompany = MenuManager->GetPC()->GetCompany();
+	if (TargetLeftSpacecraft)
+	{
+		CheckingCompany = TargetLeftSpacecraft->GetCompany();
+	}
+
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < TargetSector->GetSectorShips().Num(); SpacecraftIndex++)
+	{
+		UFlareSimulatedSpacecraft* ShipCandidate = TargetSector->GetSectorShips()[SpacecraftIndex];
+		if (ShipCandidate && ShipCandidate->GetCompany() == CheckingCompany && ShipCandidate->GetActiveCargoBay()->GetSlotCount() > 0 && !ShipCandidate->IsTrading())
+		{
+			LeftShipList->AddShip(ShipCandidate);
+			Addedships++;
+			if (FirstShipCandidateLeft == nullptr)
+			{
+				FirstShipCandidateLeft = ShipCandidate;
+			}
+		}
+	}
+
+	if (Addedships > 1)
+	{
+		MultipleOwnedShipsOrFleets = true;
+	}
+	LeftShipList->RefreshList();
 }
+
 
 void SFlareTradeMenu::UpdatePrice()
 {
@@ -1347,14 +1529,14 @@ bool SFlareTradeMenu::RefreshTradeBlocks() const
 		{
 		MenuManager->GetTradeMenu()->FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
 		MenuManager->GetTradeMenu()->FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
-		ShipList->RefreshList();
+		RightShipList->RefreshList();
 		return true;
 	}
 	else if (PreviousTradeDirection == 0)
 	{
 		MenuManager->GetTradeMenu()->FillTradeBlock(TargetLeftSpacecraft, TargetRightSpacecraft, LeftCargoBay1, LeftCargoBay2);
 		MenuManager->GetTradeMenu()->FillTradeBlock(TargetRightSpacecraft, TargetLeftSpacecraft, RightCargoBay1, RightCargoBay2);
-		ShipList->RefreshList();
+		RightShipList->RefreshList();
 		return true;
 	}
 

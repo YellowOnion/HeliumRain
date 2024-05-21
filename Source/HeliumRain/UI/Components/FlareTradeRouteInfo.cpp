@@ -263,6 +263,7 @@ void SFlareTradeRouteInfo::OnDeleteTradeRouteConfirmed(UFlareTradeRoute* TradeRo
 	FCHECK(TradeRoute);
 	TradeRoute->Dissolve();
 	Update();
+	MenuManager->UpdateOrbitMenuFleets();
 }
 
 void SFlareTradeRouteInfo::OnPauseTradeRoutes()
@@ -278,6 +279,7 @@ void SFlareTradeRouteInfo::OnPauseTradeRoutesConfirmed()
 	{
 		TradeRoute->SetPaused(true);
 	}
+	MenuManager->UpdateOrbitMenuFleets();
 }
 
 void SFlareTradeRouteInfo::OnUnpauseTradeRoutes()
@@ -293,8 +295,8 @@ void SFlareTradeRouteInfo::OnUnpauseTradeRoutesConfirmed()
 	{
 		TradeRoute->SetPaused(false);
 	}
+	MenuManager->UpdateOrbitMenuFleets();
 }
-
 
 FText SFlareTradeRouteInfo::GetTradeRouteName(UFlareTradeRoute* TradeRoute) const
 {
@@ -318,6 +320,7 @@ const FSlateBrush* SFlareTradeRouteInfo::GetTogglePauseTradeRouteIcon(UFlareTrad
 void SFlareTradeRouteInfo::OnTogglePauseTradeRoute(UFlareTradeRoute* TradeRoute)
 {
 	TradeRoute->SetPaused(!TradeRoute->IsPaused());
+	MenuManager->UpdateOrbitMenuFleets();
 }
 
 #undef LOCTEXT_NAMESPACE

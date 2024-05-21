@@ -740,6 +740,10 @@ public:
 	{
 		return Resource;
 	}
+	UFlareSimulatedSpacecraft* GetTargetStation()
+	{
+		return TargetStation;
+	}
 };
 
 //////////////////////////////////////////////////////

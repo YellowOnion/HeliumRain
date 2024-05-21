@@ -20,6 +20,7 @@ class SFlareList : public SCompoundWidget
 	, _FleetList(false)
 	, _WidthAdjuster(0.f)
 	, _ShowOwnedShips(false)
+	, _DisableFilters(false)
 	, _ArrayMode(ESelectionMode::Single)
 	{}			 
 
@@ -27,11 +28,11 @@ class SFlareList : public SCompoundWidget
 	SLATE_ARGUMENT(bool, UseSmallFont)
 	SLATE_ARGUMENT(bool, StationList)
 	SLATE_ARGUMENT(bool, FleetList)
-	SLATE_ARGUMENT(bool, ShowOwnedShips) 
-		
-	SLATE_ARGUMENT(TEnumAsByte<ESelectionMode::Type>, ArrayMode)
 	SLATE_ARGUMENT(float, WidthAdjuster)
-		
+	SLATE_ARGUMENT(bool, ShowOwnedShips)
+	SLATE_ARGUMENT(bool, DisableFilters)
+	SLATE_ARGUMENT(TEnumAsByte<ESelectionMode::Type>, ArrayMode)
+
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
 	SLATE_EVENT(FFlareListItemSelected, OnItemUnSelected)
@@ -162,7 +163,8 @@ protected:
 	bool														 FleetList;
 	bool														 LastDisableSort;
 	bool														 ShowOwnedShips;
-	bool														 UseExpandedDisplay; 
+	bool														 DisableFilters;
+	bool														 UseExpandedDisplay;
 	float														 WidthAdjuster;
 	TEnumAsByte<ESelectionMode::Type>							 ArraySelectionMode;
 };

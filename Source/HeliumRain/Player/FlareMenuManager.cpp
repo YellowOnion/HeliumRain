@@ -278,10 +278,10 @@ bool AFlareMenuManager::ToggleMenu(EFlareMenu::Type Target)
 
 
 
-bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterData Data, bool AddToHistory, bool OpenDirectly)
+bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterData Data, bool AddToHistory, bool OpenDirectly, bool UpdateQuestManager)
 {
 	// Filters
-	if (NextMenu.Key != EFlareMenu::MENU_None)
+	if (NextMenu.Key != EFlareMenu::MENU_None || GetGame()->IsLoggingoff())
 	{
 		return false;
 	}
@@ -303,7 +303,6 @@ bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterDat
 	}
 
 	// Reset current menu, set next menu
-	CurrentMenu.Key = EFlareMenu::MENU_None;
 	CurrentMenu.Value = FFlareMenuParameterData();
 	NextMenu.Key = Target;
 	NextMenu.Value = Data;
@@ -313,6 +312,8 @@ bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterDat
 	if (OpenDirectly)
 	{
 		SkipNextFade = true;
+// Note: for display purposes, some parts of HUD rely checking on CurrentMeny.Key being consistant. If CurrentMenu.Key changes on a delay due to the fadeout/in some aspects of menus which rely on checking the currently opened menu won't know how to display properly and can cause little "visual oddities" from the players perspective
+		CurrentMenu.Key = EFlareMenu::MENU_None;
 		ProcessNextMenu();
 	}
 	else
@@ -320,7 +321,7 @@ bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterDat
 		FadeOut();
 	}
 
-	if(GetGame() && GetGame()->GetQuestManager())
+	if(UpdateQuestManager && GetGame() && GetGame()->GetQuestManager())
 	{
 		GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("open-menu").PutInt32("menu", (Target+0)).PutPtr("data", &Data));
 	}
@@ -726,7 +727,7 @@ void AFlareMenuManager::OnEnterMenu(bool LightBackground, bool ShowOverlay, bool
 {
 	ResetMenu();
 	CurrentMenu = NextMenu;
-	
+
 	if (LightBackground)
 	{
 		UseLightBackground();
@@ -1147,7 +1148,14 @@ void AFlareMenuManager::OpenSector()
 void AFlareMenuManager::OpenTrade()
 {
 	OnEnterMenu();
-	TradeMenu->Enter(NextMenu.Value.Spacecraft->GetCurrentSector(), NextMenu.Value.Spacecraft, NULL);
+	if (NextMenu.Value.Spacecraft->GetCompany() == GetPC()->GetCompany())
+	{
+		TradeMenu->Enter(NextMenu.Value.Spacecraft->GetCurrentSector(), NextMenu.Value.Spacecraft, NULL);
+	}
+	else
+	{
+		TradeMenu->Enter(NextMenu.Value.Spacecraft->GetCurrentSector(), NULL, NextMenu.Value.Spacecraft);
+	}
 }
 
 void AFlareMenuManager::OpenTradeRoute()
@@ -1369,8 +1377,15 @@ FString AFlareMenuManager::GetMenuKey(EFlareMenu::Type MenuType)
 		case EFlareMenu::MENU_Settings:       Key = "SettingsMenu";     break;
 		default:                              Key = "NoKey";
 	}
-	
 	return GetKeyNameFromActionName(Key);
+}
+
+void AFlareMenuManager::UpdateOrbitMenuFleets()
+{
+	if (IsMenuOpen() && GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+	{
+		OrbitMenu->RequestOrbitalFleetsUpdate(true);
+	}
 }
 
 FString AFlareMenuManager::GetKeyNameFromActionName(FName ActionName)

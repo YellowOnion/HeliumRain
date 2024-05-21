@@ -31,6 +31,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 	WidthAdjuster = InArgs._WidthAdjuster;
 	ShowOwnedShips = InArgs._ShowOwnedShips;
 	ArraySelectionMode = InArgs._ArrayMode;
+	DisableFilters = InArgs._DisableFilters;
 	OriginatingMenu = InArgs._OriginatingMenu;
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
@@ -631,11 +632,21 @@ EVisibility SFlareList::GetNoObjectsVisibility() const
 
 EVisibility SFlareList::GetStationFilterVisibility() const
 {
+	if (DisableFilters)
+	{
+		return EVisibility::Hidden;
+	}
+
 	return (((HasShips&&!StationList) || StationList || HasFleets || FleetList) ? EVisibility::Visible : EVisibility::Hidden);
 }
 
 EVisibility SFlareList::GetShipFiltersVisibility() const
 {
+	if (DisableFilters)
+	{
+		return EVisibility::Hidden;
+	}
+
 	return (((HasShips&&!StationList)||HasFleets || FleetList) ? EVisibility::Visible : EVisibility::Hidden);
 }
 
@@ -646,6 +657,10 @@ EVisibility SFlareList::GetFreighterFiltersVisibility() const
 	{
 		return EVisibility::Hidden;
 	}
+	if (DisableFilters)
+	{
+		return EVisibility::Hidden;
+	}
 	return (((HasShips && !StationList) || HasFleets || FleetList) ? EVisibility::Visible : EVisibility::Hidden);
 }
 
@@ -653,11 +668,21 @@ EVisibility SFlareList::GetFreighterFiltersVisibility() const
 
 EVisibility SFlareList::GetFleetFiltersVisibility() const
 {
+	if (DisableFilters)
+	{
+		return EVisibility::Hidden;
+	}
+
 	return (HasFleets||FleetList ? EVisibility::Visible : EVisibility::Hidden);
 }
 
 EVisibility SFlareList::GetFleetFilterVisibility() const
 {
+	if (DisableFilters)
+	{
+		return EVisibility::Hidden;
+	}
+
 	if (MenuManager->GetCurrentMenu() != EFlareMenu::MENU_Fleet)
 	{
 		return ((HasShips&&!StationList) ? EVisibility::Visible : EVisibility::Hidden);

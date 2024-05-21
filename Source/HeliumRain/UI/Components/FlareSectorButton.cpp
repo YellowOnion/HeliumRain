@@ -135,7 +135,6 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxTwo, SHorizontalBox)
-//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -149,7 +148,6 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxThree, SHorizontalBox)
-//					.Visibility(this, &SFlareSectorButton::GetFleetBoxVisibility)
 				]
 			]
 
@@ -213,11 +211,10 @@ void SFlareSectorButton::RefreshButton()
 	UpdateBackgroundImages();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-
-	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
-	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+	EFlareOrbitalMode::Type DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_TradeRoute)
 	{
-		DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+		DisplayMode = EFlareOrbitalMode::Stations;
 	}
 
 	FleetBoxOne->ClearChildren();
@@ -246,20 +243,18 @@ void SFlareSectorButton::RefreshButton()
 
 				CurrentBox = GetCurrentBox();
 				CurrentBox->AddSlot()
-					.AutoWidth()
-					[
-						SNew(SVerticalBox)
-
-						+ SVerticalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Center)
-
 					[
 						SNew(SImage)
 						.Image(FleetIcon)
-					.ColorAndOpacity(FleetColor)
+						.ColorAndOpacity(FleetColor)
 					]
-					];
+				];
 			}
 		}
 
@@ -424,10 +419,11 @@ void SFlareSectorButton::OnMouseLeave(const FPointerEvent& MouseEvent)
 bool SFlareSectorButton::ShouldDisplayFleets() const
 {
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
-	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+	EFlareOrbitalMode::Type DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+
+	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_TradeRoute)
 	{
-		DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+		DisplayMode = EFlareOrbitalMode::Stations;
 	}
 
 	if (DisplayMode == EFlareOrbitalMode::Fleets)
@@ -443,18 +439,6 @@ bool SFlareSectorButton::ShouldDisplayFleets() const
 UFlareSimulatedSector* SFlareSectorButton::GetSector()
 {
 	return Sector;
-}
-
-EVisibility SFlareSectorButton::GetFleetBoxVisibility() const
-{
-	if (ShouldDisplayFleets())
-	{
-		return EVisibility::Visible;
-	}
-	else
-	{
-		return EVisibility::Collapsed;
-	}
 }
 
 EVisibility SFlareSectorButton::GetBottomTextVisibility() const
@@ -486,10 +470,10 @@ FText SFlareSectorButton::GetSectorText() const
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 	FText SectorText;
 
-	EFlareOrbitalMode::Type DisplayMode = EFlareOrbitalMode::Stations;
-	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
+	EFlareOrbitalMode::Type DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_TradeRoute)
 	{
-		DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
+		DisplayMode = EFlareOrbitalMode::Stations;
 	}
 
 	// If the sector is known, display it
@@ -501,30 +485,33 @@ FText SFlareSectorButton::GetSectorText() const
 			int32 TotalSectorStations = Sector->GetSectorStations().Num();
 			FString DetailedStationString;
 
-			if (OwnedStations > 0)
+			if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Orbit)
 			{
-				FString FormattedNumber = FString::FormatAsNumber(OwnedStations);
-				DetailedStationString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
-			}
-			if (NeutralStations > 0 && NeutralStations != TotalSectorStations)
-			{
-				FString FormattedNumber = FString::FormatAsNumber(NeutralStations);
-				DetailedStationString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
-			}
-
-			if (Warcount > 0)
-			{
-				if (EnemyStations > 0)
+				if (OwnedStations > 0)
 				{
-					FString FormattedNumber = FString::FormatAsNumber(EnemyStations);
-					DetailedStationString += FString::Printf(TEXT(", %s"), *FormattedNumber);
-					if (EnemyStations == 1)
+					FString FormattedNumber = FString::FormatAsNumber(OwnedStations);
+					DetailedStationString += FString::Printf(TEXT(", %s owned"), *FormattedNumber);
+				}
+
+				if (NeutralStations > 0 && NeutralStations != TotalSectorStations)
+				{
+					FString FormattedNumber = FString::FormatAsNumber(NeutralStations);
+					DetailedStationString += FString::Printf(TEXT(", %s neut"), *FormattedNumber);
+				}
+				if (Warcount > 0)
+				{
+					if (EnemyStations > 0)
 					{
-						DetailedStationString += FString::Printf(TEXT(" foe"));
-					}
-					else
-					{
-						DetailedStationString += FString::Printf(TEXT(" foes"));
+						FString FormattedNumber = FString::FormatAsNumber(EnemyStations);
+						DetailedStationString += FString::Printf(TEXT(", %s"), *FormattedNumber);
+						if (EnemyStations == 1)
+						{
+							DetailedStationString += FString::Printf(TEXT(" foe"));
+						}
+						else
+						{
+							DetailedStationString += FString::Printf(TEXT(" foes"));
+						}
 					}
 				}
 			}
@@ -576,10 +563,9 @@ FText SFlareSectorButton::GetSectorText() const
 			SectorText = Sector->GetSectorBattleStateText(PlayerCompany);
 		}
 
-		return SectorText;
 	}
 
-	return FText();
+	return SectorText;
 }
 
 const FSlateBrush* SFlareSectorButton::GetBackgroundBrush() const

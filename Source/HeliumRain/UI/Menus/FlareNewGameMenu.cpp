@@ -497,6 +497,7 @@ void SFlareNewGameMenu::Enter()
 	{
 		const FFlareSpacecraftComponentDescription* PartDesc = PC->GetGame()->GetShipPartsCatalog()->Get("object-safe");
 		PC->GetMenuPawn()->SetCameraOffset(FVector2D(150, 30));
+		PC->GetMenuPawn()->ResetContent(false,true);
 		PC->GetMenuPawn()->ShowPart(PartDesc);
 		PC->GetMenuPawn()->SetCameraDistance(500);
 	}

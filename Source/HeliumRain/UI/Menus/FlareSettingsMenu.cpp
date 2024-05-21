@@ -2677,10 +2677,10 @@ void SFlareSettingsMenu::CreateBinds()
 		->AddDefaults(EKeys::LeftControl)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("RollCCW", "Roll left")))
 		->AddAxisMapping("NormalRollInput", -1.0f)
-		->AddDefaults(EKeys::E)));
+		->AddDefaults(EKeys::Q)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("RollCW", "Roll right")))
 		->AddAxisMapping("NormalRollInput", 1.0f)
-		->AddDefaults(EKeys::Q)));
+		->AddDefaults(EKeys::E)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextTarget", "Next target")))
 		->AddActionMapping("AlternateNextTarget")
 		->AddDefaults(EKeys::MouseScrollDown)));

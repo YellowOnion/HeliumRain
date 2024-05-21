@@ -1810,8 +1810,9 @@ void UFlareCompany::PayTribute(UFlareCompany* Company, bool AllowDepts)
 
 		if (this == Company->GetGame()->GetPC()->GetCompany())
 		{
-			Company->GivePlayerReputation(1);
+			Company->GivePlayerReputation(5);
 		}
+
 		SetHostilityTo(Company, false);
 		Company->SetHostilityTo(this, false);
 
@@ -1850,7 +1851,6 @@ bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 		return false;
 	}
 
-//	int32 StationCount = Station->GetCurrentSector()->GetSectorCompanyStationCount(this, true);
 	int32 StationCount = this->GetCompanySectorStationsCount(Station->GetCurrentSector(), true);
 	int32 MaxStationCount = IsTechnologyUnlocked("dense-sectors") ? Station->GetCurrentSector()->GetMaxStationsPerCompany() : Station->GetCurrentSector()->GetMaxStationsPerCompany() / 2;
 
@@ -2471,29 +2471,19 @@ int64 UFlareCompany::GetStationLicenseCost(UFlareSimulatedSector* BuyingSector)
 	}
 
 	int64 LicenseCost = 1000000;
+	int32 TotalUnlicencedStations = 0;
 	float Multiplier = 1.0;
 
 	if (BuyingSector->GetDescription()->IsIcy)
 	{
 		LicenseCost += 500000;
 	}
-/*\
-	if (BuyingSector->GetDescription()->IsSolarPoor)
-	{
-		//dusty
-		LicenseCost += 500000;
-	}
-*/
+
 	if (BuyingSector->GetDescription()->IsGeostationary)
 	{
 		LicenseCost += 500000;
 	}
-/*
-	if (!BuyingSector->GetDescription()->IsSolarPoor)
-	{
-		LicenseCost += 500000;
-	}
-*/
+
 	int32 CompaniesKnownSectors = 0;
 	int32 CompaniesStationPermits = 0;
 	for (UFlareCompany* LocalCompany : Game->GetGameWorld()->GetCompanies())
@@ -2511,7 +2501,16 @@ int64 UFlareCompany::GetStationLicenseCost(UFlareSimulatedSector* BuyingSector)
 
 	Multiplier += (CompaniesKnownSectors / 4) + CompaniesStationPermits;
 	LicenseCost = LicenseCost * Multiplier;
-	LicenseCost = LicenseCost + (500000 * this->GetCompanyStationLicenses().Num()) + (BuyingSector->GetPeople()->GetPopulation() * 50);
+
+	for (UFlareSimulatedSpacecraft* Station : GetCompanySectorStations(BuyingSector))
+	{
+		if (Station->GetCompany() == this)
+		{
+			TotalUnlicencedStations++;
+		}
+	}
+
+	LicenseCost = LicenseCost + (500000 * this->GetCompanyStationLicenses().Num()) + (BuyingSector->GetPeople()->GetPopulation() * 50) + (50000 * TotalUnlicencedStations);
 
 	LicenseStationCache.Add(BuyingSector, LicenseCost);
 	return LicenseCost;

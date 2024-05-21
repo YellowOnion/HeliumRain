@@ -354,16 +354,16 @@ void UFlareAIBehavior::UpdateDiplomacy(bool GlobalWar)
 						Skipchance = 0.2f;
 						break;
 					case 1: // Hard
-						Skipchance = 0.30f;
+						Skipchance = 0.25f;
 						break;
 					case 2: // Very Hard
-						Skipchance = 0.45f;
+						Skipchance = 0.35f;
 						break;
 					case 3: // Expert
-						Skipchance = 0.60f;
+						Skipchance = 0.50f;
 						break;
 					case 4: // Unfair
-						Skipchance = 0.75f;
+						Skipchance = 0.60f;
 						break;
 					}
 
@@ -409,52 +409,56 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		SetSectorAffilities(1.f);
 	}
+
 	StationCapture = 1.f;
 	TradingBuy = 1.f;
 	TradingSell = 1.f;
 	TradingBoth = 0.5f;
 
 	DaysUntilTryGetStationLicense = 365;
-	ShipyardAffility = 1.0;
-	ConsumerAffility = 0.5;
-	MaintenanceAffility = 0.1;
+	ShipyardAffility = 1.f;
+	ConsumerAffility = 0.5f;
+	MaintenanceAffility = 0.1f;
 
 	// Budget
-/*
-	BudgetTechnologyWeight = 0.30;
-	BudgetMilitaryWeight = 0.55;
-	BudgetStationWeight = 1.0;
-	BudgetTradeWeight = 1.0;
-*/
-	BudgetTechnologyWeight = 0.05;
-	BudgetMilitaryWeight = 0.30;
-	BudgetStationWeight = 0.34;
-	BudgetTradeWeight = 0.31;
+	BudgetTechnologyWeight = 0.05f;
+	BudgetMilitaryWeight = 0.30f;
+	BudgetStationWeight = 0.34f;
+	BudgetTradeWeight = 0.31f;
 
-	BudgetWarTechnologyWeight = 0.00;
-	BudgetWarMilitaryWeight = 0.75;
-	BudgetWarStationWeight = 0.125;
-	BudgetWarTradeWeight = 0.125;
+	BudgetWarTechnologyWeight = 0.00f;
+	BudgetWarMilitaryWeight = 0.75f;
+	BudgetWarStationWeight = 0.125f;
+	BudgetWarTradeWeight = 0.125f;
+
+	WarDeclared_StationBudgetFactor = 1.05f;
+	WarDeclared_TechnologyBudgetFactor = 0.85f;
+	WarDeclared_TradeBudgetFactor = 1.25f;
+	WarDeclared_TransferToMilitaryBudgetFactor = 1.10f;
+
+	WarDeclared_TransferToMilitaryBudgetStationPercent = 0.05f;
+	WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.04f;
+	WarDeclared_TransferToMilitaryBudgetTradePercent = 0.05f;
 
 	MaxTradeShipsBuildingPeace = 1;
 	MaxTradeShipsBuildingWar = 0;
 	MaxMilitaryShipsBuildingPeace = 1;
 	MaxMilitaryShipsBuildingWar = 100;
 
-	ConfidenceTarget = -0.1;
-	DeclareWarConfidence = 0.2;
-	RequestPeaceConfidence = -0.5;
-	PayTributeConfidence = -0.8;
+	ConfidenceTarget = -0.1f;
+	DeclareWarConfidence = 0.2f;
+	RequestPeaceConfidence = -0.5f;
+	PayTributeConfidence = -0.8f;
 
-	AttackThreshold = 0.99;
-	RetreatThreshold = 0.5;
-	DefeatAdaptation = 0.01;
+	AttackThreshold = 0.99f;
+	RetreatThreshold = 0.5f;
+	DefeatAdaptation = 0.01f;
 
 	DiplomaticReactivity = 1;
 
 	PacifismAfterTribute = 75;
-	PacifismIncrementRate = 0.8;
-	PacifismDecrementRate = 0.6;
+	PacifismIncrementRate = 0.8f;
+	PacifismDecrementRate = 0.6f;
 
 	DailyProductionCostSensitivityMilitary = 30;
 	DailyProductionCostSensitivityEconomic = 7;
@@ -474,21 +478,21 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		SetSectorAffility(ST->Boneyard, 0.f);
 	}
 
-	UpgradeMilitarySalvagerSRatio = 0.10;
-	UpgradeMilitarySalvagerLRatio = 0.10;
+	UpgradeMilitarySalvagerSRatio = 0.10f;
+	UpgradeMilitarySalvagerLRatio = 0.10f;
 
 	BuildMilitaryDiversitySize = 5;
 	BuildTradeDiversitySize = 5;
 	BuildMilitaryDiversitySizeBase = 5;
 	BuildTradeDiversitySizeBase = 10;
 	
-	BuildEfficientMilitaryChance = 0.05;
-	BuildEfficientMilitaryChanceSmall = 0.10;
+	BuildEfficientMilitaryChance = 0.05f;
+	BuildEfficientMilitaryChanceSmall = 0.10f;
 
-	BuildEfficientTradeChance = 0.10;
-	BuildEfficientTradeChanceSmall = 0.30;
+	BuildEfficientTradeChance = 0.10f;
+	BuildEfficientTradeChanceSmall = 0.30f;
 
-	BuildStationWorthMultiplier = 1.2;
+	BuildStationWorthMultiplier = 1.2f;
 	Station_Shipyard_Maximum = 5;
 	Scrap_Minimum_Ships = 60;
 	Scrap_Min_S_Cargo = 10;
@@ -520,9 +524,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetSectorAffility(ST->Boneyard, 10.f);
 		}
 
-		ShipyardAffility = 0.0;
-		ConsumerAffility = 0.10;
-		MaintenanceAffility = 0.05;
+		ShipyardAffility = 0.f;
+		ConsumerAffility = 0.10f;
+		MaintenanceAffility = 0.05f;
 
 		// Only buy
 		TradingSell = 0.f;
@@ -531,26 +535,28 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		// Doesn't capture station. Change in recovery
 		StationCapture = 0.f;
 
-		DeclareWarConfidence = -0.2;
-		RequestPeaceConfidence = -0.8;
-		PayTributeConfidence = -1.0;
+		DeclareWarConfidence = -0.2f;
+		RequestPeaceConfidence = -0.8f;
+		PayTributeConfidence = -1.0f;
 
-		AttackThreshold = 0.8;
-		RetreatThreshold = 0.2;
-		DefeatAdaptation = 0.001;
+		AttackThreshold = 0.8f;
+		RetreatThreshold = 0.2f;
+		DefeatAdaptation = 0.001f;
 
 		// Budget
 		MaxMilitaryShipsBuildingPeace = 3;
 
-		BudgetTechnologyWeight = 0;
-		BudgetMilitaryWeight = 0.90;
-		BudgetStationWeight = 0.075;
-		BudgetTradeWeight = 0.025;
+		BudgetTechnologyWeight = 0.f;
+		BudgetMilitaryWeight = 0.90f;
+		BudgetStationWeight = 0.075f;
+		BudgetTradeWeight = 0.025f;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.95;
-		BudgetWarStationWeight = 0.0375;
-		BudgetWarTradeWeight = 0.0125;
+		BudgetWarTechnologyWeight = 0.f;
+		BudgetWarMilitaryWeight = 0.95f;
+		BudgetWarStationWeight = 0.0375f;
+		BudgetWarTradeWeight = 0.0125f;
+
+		WarDeclared_TransferToMilitaryBudgetFactor = 0.50f;
 
 		PacifismAfterTribute = 50;
 		PacifismIncrementRate = 1.f;
@@ -559,10 +565,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		DailyProductionCostSensitivityMilitary = 0;
 		DailyProductionCostSensitivityEconomic = 0;
 
-		BuildEfficientMilitaryChance = 0.0125;
-		BuildEfficientMilitaryChanceSmall = 0.025;
-		UpgradeMilitarySalvagerSRatio = 0.25;
-		UpgradeMilitarySalvagerLRatio = 0.25;
+		BuildEfficientMilitaryChance = 0.0125f;
+		BuildEfficientMilitaryChanceSmall = 0.025f;
+		UpgradeMilitarySalvagerSRatio = 0.25f;
+		UpgradeMilitarySalvagerLRatio = 0.25f;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("flak");
@@ -590,18 +596,12 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.25;
-		BudgetMilitaryWeight = 1.0;
-		BudgetStationWeight = 1.0;
-		BudgetTradeWeight = 1.0;
-*/
 		MaxTradeShipsBuildingWar = 1;
 		MaxMilitaryShipsBuildingPeace = 2;
 
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
-		BuildEfficientTradeChance = 0.15;
+		BuildEfficientTradeChance = 0.15f;
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -628,28 +628,23 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.25;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-*/
+		BudgetTechnologyWeight = 0.02f;
+		BudgetMilitaryWeight = 0.10f;
+		BudgetStationWeight = 0.50f;
+		BudgetTradeWeight = 0.38f;
 
-		BudgetTechnologyWeight = 0.02;
-		BudgetMilitaryWeight = 0.10;
-		BudgetStationWeight = 0.50;
-		BudgetTradeWeight = 0.38;
+		BudgetWarTechnologyWeight = 0.f;
+		BudgetWarMilitaryWeight = 0.50f;
+		BudgetWarStationWeight = 0.25f;
+		BudgetWarTradeWeight = 0.25f;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.50;
-		BudgetWarStationWeight = 0.25;
-		BudgetWarTradeWeight = 0.25;
+		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.01f;
 
-		BuildEfficientMilitaryChance = 0.025;
-		BuildEfficientMilitaryChanceSmall = 0.5;
+		BuildEfficientMilitaryChance = 0.025f;
+		BuildEfficientMilitaryChanceSmall = 0.5f;
 
-		BuildEfficientTradeChance = 0.05;
-		BuildEfficientTradeChanceSmall = 0.15;
+		BuildEfficientTradeChance = 0.05f;
+		BuildEfficientTradeChanceSmall = 0.15f;
 		ResearchOrder.Reserve(5);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -678,12 +673,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-/*
-		BudgetTechnologyWeight = 0.5;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 2.0;
-		BudgetTradeWeight = 2.0;
-*/
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -706,34 +695,36 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		//already starts with instruments
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
-		ResearchOrder.Add("advanced - stations");
+		ResearchOrder.Add("advanced-stations");
 	}
 	else if((Company && Company == ST->IonLane) || (CompanyDescription && CompanyDescription->ShortName == FName("ION")))
 	{
 		CostSafetyMarginMilitaryShip = 1.2f;
 		CostSafetyMarginTradeShip = 1.0f;
 
-		BudgetTechnologyWeight = 0.01;
-		BudgetMilitaryWeight = 0.10;
-		BudgetStationWeight = 0.30;
-		BudgetTradeWeight = 0.59;
+		BudgetTechnologyWeight = 0.01f;
+		BudgetMilitaryWeight = 0.10f;
+		BudgetStationWeight = 0.30f;
+		BudgetTradeWeight = 0.59f;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.50;
-		BudgetWarStationWeight = 0.15;
-		BudgetWarTradeWeight = 0.35;
+		BudgetWarTechnologyWeight = 0.f;
+		BudgetWarMilitaryWeight = 0.50f;
+		BudgetWarStationWeight = 0.15f;
+		BudgetWarTradeWeight = 0.35f;
+
+		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.01f;
 
 		MaxTradeShipsBuildingPeace = 2;
 		MaxTradeShipsBuildingWar = 1;
 
-		DeclareWarConfidence = 0.1;
-		RequestPeaceConfidence = -0.4;
-		PayTributeConfidence = -0.85;
+		DeclareWarConfidence = 0.1f;
+		RequestPeaceConfidence = -0.4f;
+		PayTributeConfidence = -0.85f;
 
 		BuildLTradeOnlyTreshhold = 40;
 		BuildTradeDiversity = 2;
 		BuildTradeDiversitySize = 4;
-		BuildEfficientTradeChance = 0.20;
+		BuildEfficientTradeChance = 0.20f;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -756,11 +747,11 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("ch4"), 5.f);
 		}
 		// Budget
-		BuildEfficientMilitaryChance = 0.025;
-		BuildEfficientMilitaryChanceSmall = 0.5;
+		BuildEfficientMilitaryChance = 0.025f;
+		BuildEfficientMilitaryChanceSmall = 0.5f;
 
-		BuildEfficientTradeChance = 0.05;
-		BuildEfficientTradeChanceSmall = 0.15;
+		BuildEfficientTradeChance = 0.05f;
+		BuildEfficientTradeChanceSmall = 0.15f;
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -783,7 +774,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tools"), 5.f);
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 5.f);
 		}
-		ShipyardAffility = 3.0;
+		ShipyardAffility = 3.f;
 
 		// Budget
 		BuildMilitaryDiversity = 2;
@@ -792,7 +783,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		MaxTradeShipsBuildingWar = 1;
 		MaxMilitaryShipsBuildingPeace = 2;
 
-		BuildEfficientTradeChance = 0.15;
+		BuildEfficientTradeChance = 0.15f;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -802,7 +793,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		// Assures fleet supply availability
 		DaysUntilTryGetStationLicense = 60;
-		PacifismDecrementRate = 0.5;
+		PacifismDecrementRate = 0.5f;
 
 		if (!Basic)
 		{
@@ -815,32 +806,32 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("food"), 2.f);
 		}
 
-		ShipyardAffility = 0.0;
-		MaintenanceAffility = 10.0;
+		ShipyardAffility = 0.f;
+		MaintenanceAffility = 10.f;
 
 		CostSafetyMarginMilitaryShip = 1.2f;
 		CostSafetyMarginTradeShip = 1.0f;
 
 		// Budget
-		BudgetTechnologyWeight = 0.01;
-		BudgetMilitaryWeight = 0.05;
-		BudgetStationWeight = 0.30;
-		BudgetTradeWeight = 0.64;
+		BudgetTechnologyWeight = 0.01f;
+		BudgetMilitaryWeight = 0.05f;
+		BudgetStationWeight = 0.30f;
+		BudgetTradeWeight = 0.64f;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.50;
-		BudgetWarStationWeight = 0.15;
-		BudgetWarTradeWeight = 0.35;
+		BudgetWarTechnologyWeight = 0.f;
+		BudgetWarMilitaryWeight = 0.50f;
+		BudgetWarStationWeight = 0.15f;
+		BudgetWarTradeWeight = 0.35f;
 
-		DeclareWarConfidence = 1.0;
-		RequestPeaceConfidence = 0.0;
-		PayTributeConfidence = -0.1;
+		DeclareWarConfidence = 1.f;
+		RequestPeaceConfidence = 0.f;
+		PayTributeConfidence = -0.1f;
 
-		DiplomaticReactivity = 0.1;
+		DiplomaticReactivity = 0.1f;
 		BuildLTradeOnlyTreshhold = 40;
 		BuildTradeDiversitySize = 4;
 
-		BuildEfficientTradeChance = 0.15;
+		BuildEfficientTradeChance = 0.15f;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -853,15 +844,17 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildLMilitaryOnlyTreshhold = 40;
 
 		// budget
-		BudgetTechnologyWeight = 0.01;
-		BudgetMilitaryWeight = 0.61;
-		BudgetStationWeight = 0.30;
-		BudgetTradeWeight = 0.08;
+		BudgetTechnologyWeight = 0.01f;
+		BudgetMilitaryWeight = 0.61f;
+		BudgetStationWeight = 0.30f;
+		BudgetTradeWeight = 0.08f;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.75;
-		BudgetWarStationWeight = 0.15;
-		BudgetWarTradeWeight = 0.10;
+		BudgetWarTechnologyWeight = 0.f;
+		BudgetWarMilitaryWeight = 0.75f;
+		BudgetWarStationWeight = 0.15f;
+		BudgetWarTradeWeight = 0.10f;
+
+		WarDeclared_TransferToMilitaryBudgetFactor = 0.75f;
 
 		MaxMilitaryShipsBuildingPeace = 2;
 
@@ -869,8 +862,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildMilitaryDiversitySize = 4;
 		BuildMilitaryDiversitySizeBase = 0;
 		PacifismAfterTribute = 50;
-		BuildEfficientMilitaryChance = 0.10;
-		BuildEfficientMilitaryChanceSmall = 0.15;
+		BuildEfficientMilitaryChance = 0.10f;
+		BuildEfficientMilitaryChanceSmall = 0.15f;
 		ResearchOrder.Reserve(6);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("pirate-tech");
@@ -881,7 +874,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	}
 	else if ((Company && Company == ST->Quantalium) || (CompanyDescription && CompanyDescription->ShortName == FName("QNT")))
 	{
-		PacifismDecrementRate = 0.5;
+		PacifismDecrementRate = 0.45;
 
 		if (!Basic)
 		{
@@ -891,37 +884,38 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		{
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 10.f);
 		}
-/*
-		BudgetTechnologyWeight = 0.8;
-		BudgetMilitaryWeight = 0.5;
-		BudgetStationWeight = 1.0;
-		BudgetTradeWeight = 1.0;
-*/
-		BudgetTechnologyWeight = 0.20;
-		BudgetMilitaryWeight = 0.10;
-		BudgetStationWeight = 0.40;
-		BudgetTradeWeight = 0.30;
 
-		BudgetWarTechnologyWeight = 0.00;
-		BudgetWarMilitaryWeight = 0.50;
-		BudgetWarStationWeight = 0.25;
-		BudgetWarTradeWeight = 0.25;
+		BudgetTechnologyWeight = 0.30f;
+		BudgetMilitaryWeight = 0.10f;
+		BudgetStationWeight = 0.30f;
+		BudgetTradeWeight = 0.30f;
+
+		BudgetWarTechnologyWeight = 0.05f;
+		BudgetWarMilitaryWeight = 0.50f;
+		BudgetWarStationWeight = 0.20f;
+		BudgetWarTradeWeight = 0.25f;
+
+		WarDeclared_TechnologyBudgetFactor = 0.40f;
+		WarDeclared_TradeBudgetFactor = 1.50f;
+		WarDeclared_TransferToMilitaryBudgetStationPercent = 0.075f;
+		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.015f;
+		WarDeclared_TransferToMilitaryBudgetTradePercent = 0.075f;
 
 		MaxTradeShipsBuildingWar = 1;
 
-		BuildEfficientMilitaryChance = 0.10;
-		BuildEfficientMilitaryChanceSmall = 0.15;
+		BuildEfficientMilitaryChance = 0.10f;
+		BuildEfficientMilitaryChanceSmall = 0.15f;
 
-		BuildEfficientTradeChance = 0.20;
-		BuildEfficientTradeChanceSmall = 0.30;
+		BuildEfficientTradeChance = 0.20f;
+		BuildEfficientTradeChanceSmall = 0.30f;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
-		ResearchOrder.Add("advanced - stations");
+		ResearchOrder.Add("advanced-stations");
 	}
 	else if((Company && Company == ST->InfiniteOrbit) || (CompanyDescription && CompanyDescription->ShortName == FName("IFO")))
 	{
-		PacifismDecrementRate = 0.5;
+		PacifismDecrementRate = 0.45f;
 		MaxTradeShipsBuildingPeace = 2;
 		MaxTradeShipsBuildingWar = 1;
 		ResearchOrder.Reserve(3);
@@ -1053,6 +1047,36 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	if (CompanyDescription->AI_Behaviours.BudgetWarStationWeight)
 	{
 		BudgetWarStationWeight = CompanyDescription->AI_Behaviours.BudgetWarStationWeight;
+	}
+
+	if (CompanyDescription->AI_Behaviours.WarDeclared_StationBudgetFactor)
+	{
+		WarDeclared_StationBudgetFactor = CompanyDescription->AI_Behaviours.WarDeclared_StationBudgetFactor;
+	}
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TechnologyBudgetFactor)
+	{
+		WarDeclared_TechnologyBudgetFactor = CompanyDescription->AI_Behaviours.WarDeclared_TechnologyBudgetFactor;
+	}
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TradeBudgetFactor)
+	{
+		WarDeclared_TradeBudgetFactor = CompanyDescription->AI_Behaviours.WarDeclared_TradeBudgetFactor;
+	}
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetFactor)
+	{
+		WarDeclared_TransferToMilitaryBudgetFactor = CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetFactor;
+	}
+
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetStationPercent)
+	{
+		WarDeclared_TransferToMilitaryBudgetStationPercent = CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetStationPercent;
+	}
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetTechnologyPercent)
+	{
+		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetTechnologyPercent;
+	}
+	if (CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetTradePercent)
+	{
+		WarDeclared_TransferToMilitaryBudgetTradePercent = CompanyDescription->AI_Behaviours.WarDeclared_TransferToMilitaryBudgetTradePercent;
 	}
 
 	if (CompanyDescription->AI_Behaviours.BudgetWarTradeWeight)

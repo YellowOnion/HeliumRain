@@ -81,17 +81,6 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 				.Padding(Theme.SmallContentPadding)
 				[
 					SNew(SHorizontalBox)
-/*
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(SFlareButton)
-						.Width(3)
-					.Text(LOCTEXT("Shipyards", "Shipyards"))
-					.HelpText(LOCTEXT("ShipyardsInfo", "Display shipyards menu"))
-					.OnClicked(this, &SFlareOrbitalMenu::OnShipyard)
-					]
-*/
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
@@ -386,6 +375,7 @@ void SFlareOrbitalMenu::Exit()
 	PreviouslySelectedSector = NULL;
 }
 
+
 void SFlareOrbitalMenu::SetShipyardOpen(bool ShipyardOpen)
 {
 	ShipyardMenuOpen = ShipyardOpen;
@@ -412,9 +402,16 @@ void SFlareOrbitalMenu::RequestStopFastForward()
 	FastForwardStopRequested = true;
 }
 
-void SFlareOrbitalMenu::RequestOrbitalFleetsUpdate()
+void SFlareOrbitalMenu::RequestOrbitalFleetsUpdate(bool Instant)
 {
-	OrbitalFleetsUpdateRequested = true;
+	if (Instant)
+	{
+		OrbitalFleetsInfo->Update();
+	}
+	else
+	{
+		OrbitalFleetsUpdateRequested = true;
+	}
 }
 
 void SFlareOrbitalMenu::UpdateSectorStates()
@@ -470,35 +467,13 @@ void SFlareOrbitalMenu::UpdateMap()
 {
 	TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = Game->GetOrbitalBodies()->OrbitalBodies;
 
-	TArray<FString> BrokenSectors;
-/*
-	if (MenuManager->GetModStrings().Num())
-	{
-		for (FString MenuModStrings : MenuManager->GetModStrings())
-		{
-			if (MenuModStrings == "HarmonicResonance")
-			{
-				for (UFlareSimulatedSector* Sector : MenuManager->GetGame()->GetGameWorld()->GetSectors())
-				{
-					//if the mod harmonicresonance with the sector named pioneer is detected, do the workaround
-					if (Sector->GetName() == "pioneer")
-					{
-						//valhalla
-						BrokenSectors.Add("pioneer");
-						break;
-					}
-				}
-			}
-		}
-	}
-*/
 	SectorButtons.Empty();
 	SectorButtons.Reserve(MenuManager->GetPC()->GetCompany()->GetKnownSectors().Num());
-	UpdateMapForBody(NemaBox, &OrbitalBodies[0], BrokenSectors);
-	UpdateMapForBody(AnkaBox, &OrbitalBodies[1], BrokenSectors);
-	UpdateMapForBody(AstaBox, &OrbitalBodies[2], BrokenSectors);
-	UpdateMapForBody(HelaBox, &OrbitalBodies[3], BrokenSectors);
-	UpdateMapForBody(AdenaBox, &OrbitalBodies[4], BrokenSectors);
+	UpdateMapForBody(NemaBox, &OrbitalBodies[0]);
+	UpdateMapForBody(AnkaBox, &OrbitalBodies[1]);
+	UpdateMapForBody(AstaBox, &OrbitalBodies[2]);
+	UpdateMapForBody(HelaBox, &OrbitalBodies[3]);
+	UpdateMapForBody(AdenaBox, &OrbitalBodies[4]);
 }
 
 struct FSortByAltitudeAndPhase
@@ -522,7 +497,7 @@ struct FSortByAltitudeAndPhase
 	}
 };
 
-void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body, TArray<FString> BrokenSectors)
+void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, const FFlareSectorCelestialBodyDescription* Body)
 {
 	// Setup the planetary map
 	Map->SetPlanetImage(&Body->CelestialBodyPicture);
@@ -531,32 +506,15 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 
 	// Find highest altitude
 	int32 MaxAltitude = 0;
-//	bool UseBrokenSectorsWorkAround = false;
 
 	for (UFlareSimulatedSector* Sector : MenuManager->GetGame()->GetGameWorld()->GetSectors())
 	{
 		if (Sector->GetOrbitParameters()->Altitude > MaxAltitude
 		 && Sector->GetOrbitParameters()->CelestialBodyIdentifier == Body->CelestialBodyIdentifier)
 		{
-/*
-			for (FString PossibleBroken : BrokenSectors)
-			{
-				if (PossibleBroken == Sector->GetName())
-				{
-					UseBrokenSectorsWorkAround = true;
-					break;
-				}
-			}
-*/
 			MaxAltitude = Sector->GetOrbitParameters()->Altitude;
 		}
 	}
-/*
-	if (UseBrokenSectorsWorkAround)
-	{
-	MaxAltitude = 100000;
-	}
-*/
 	// Add the name
 	Map->AddSlot()
 	.Altitude(MaxAltitude)
@@ -583,12 +541,7 @@ void SFlareOrbitalMenu::UpdateMapForBody(TSharedPtr<SFlarePlanetaryBox> Map, con
 		TSharedPtr<int32> IndexPtr(new int32(MenuManager->GetPC()->GetCompany()->GetKnownSectors().Find(Sector)));
 		double Altitude = Sector->GetOrbitParameters()->Altitude;
 		double Phase = Sector->GetOrbitParameters()->Phase;
-/*
-		if (UseBrokenSectorsWorkAround)
-		{
-			Altitude = 100000;
-		}
-*/
+
 		Map->AddSlot()
 		.Altitude(Altitude)
 		.Phase(Phase)

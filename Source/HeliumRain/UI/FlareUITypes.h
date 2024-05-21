@@ -106,11 +106,11 @@ struct FFlareMenuParameterData
 	int32                                       DifficultyIndex;
 	int32										EconomyIndex;
 	int32                                       PlayerEmblemIndex;
-	bool										RandomizeStations;
-	bool										AICheats;
 	bool                                        PlayTutorial;
+	bool										RandomizeStations;
 	bool										PlayStory;
 	bool                                        OrderForPlayer;
+	bool										AICheats;
 	bool                                        SpacecraftOrderHeavy;
 	bool                                        SpacecraftOrderConfig;
 	FName                                       ComplexConnectorName;

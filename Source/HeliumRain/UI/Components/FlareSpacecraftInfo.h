@@ -207,6 +207,8 @@ protected:
 	TSharedPtr<SFlareButton>          OrderHeavyShipButton;
 
 	// Slate data (various)
+	TSharedPtr<SImage>			      CapturingIcon;
+	TSharedPtr<SImage>			      UnlicencedIcon;
 	TSharedPtr<STextBlock>            SpacecraftName;
 	TSharedPtr<SWidget>               OwnerWidget;
 	TSharedPtr<SFlareShipStatus>      ShipStatus;

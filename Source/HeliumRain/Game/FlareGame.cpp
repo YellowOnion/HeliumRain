@@ -307,7 +307,9 @@ void AFlareGame::PostLogin(APlayerController* Player)
 void AFlareGame::Logout(AController* Player)
 {
 	FLOG("AFlareGame::Logout");
+//IsLoggingOut can be checked to potentially stop the game from crashing when closing the game where needed
 
+	IsLoggingOut = true;
 	// Save the world, literally
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(Player);
 	DeactivateSector();

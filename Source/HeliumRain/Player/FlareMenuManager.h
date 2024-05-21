@@ -89,7 +89,7 @@ public:
 	bool ToggleMenu(EFlareMenu::Type Target);
 
 	/** Asynchronously switch to a target menu, with optional data */
-	bool OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterData Data = FFlareMenuParameterData(), bool AddToHistory = true, bool OpenDirectly = false);
+	bool OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterData Data = FFlareMenuParameterData(), bool AddToHistory = true, bool OpenDirectly = false, bool UpdateQuestManager = true);
 	
 	/** Close the current menu */
 	void CloseMenu(bool HardClose = false);
@@ -351,6 +351,8 @@ public:
 	{
 		return OrbitMenu;
 	}
+
+	void UpdateOrbitMenuFleets();
 
 	/** Get sector menu */
 	TSharedPtr<SFlareSectorMenu> GetSectorMenu()

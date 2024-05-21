@@ -239,7 +239,6 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	CurrentSpacecraft->StartPresentation();
 
 	// UI
-//	CurrentSpacecraft->Load(Spacecraft);
 	SetIsEnabled(true);
 	CurrentSpacecraft->Load(Spacecraft);
 }
@@ -293,12 +292,20 @@ void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDe
 	Gameplay
 ----------------------------------------------------*/
 
-void AFlareMenuPawn::ResetContent(bool Unsafe)
+void AFlareMenuPawn::ResetContent(bool Unsafe, bool DeleteSpacecraft)
 {
 	// Delete ship if existing
 	if (CurrentSpacecraft && !Unsafe)
 	{
-		CurrentSpacecraft->SetActorHiddenInGame(true);
+		if (DeleteSpacecraft)
+		{
+			CurrentSpacecraft->Destroy();
+			CurrentSpacecraft = NULL;
+		}
+		else
+		{
+			CurrentSpacecraft->SetActorHiddenInGame(true);
+		}
 	}
 
 	// Hide parts
@@ -323,8 +330,10 @@ void AFlareMenuPawn::UpdateCustomization()
 	else
 	{
 		UFlareSpacecraftComponent* CurrentPart = SlideFromAToB ? CurrentPartB : CurrentPartA;
-
-		CurrentPart->UpdateCustomization();
+		if (CurrentPart)
+		{
+			CurrentPart->UpdateCustomization();
+		}
 	}
 }
 

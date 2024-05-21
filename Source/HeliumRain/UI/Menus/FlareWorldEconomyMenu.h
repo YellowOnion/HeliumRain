@@ -90,6 +90,10 @@ protected:
 	/** Get the resource usage & production info */
 	FText GetResourceInfo() const;
 
+	/** Get average/totals etc text for population submenu */
+	FText GetPopulationInfosAverages() const;
+	FText GetPopulationInfosTotals() const;
+
 	/** Get the sector info */
 	FText GetSectorText(UFlareSimulatedSector* Sector) const;
 
@@ -230,4 +234,9 @@ protected:
 	TSharedPtr<SFlareButton>                                  StationShipsButton;
 	bool												      InputOutputMode;
 	bool												      StationShipMode;
+
+	uint32													  KnownPopulationTotal;
+	int64													  KnownPopulationMoney;
+	float													  KnownPopulationWealth;
+	float													  KnownPopulationHappiness;
 };

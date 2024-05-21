@@ -57,7 +57,6 @@ protected:
 
 	/** Get the visibility of text */
 	EVisibility GetBottomTextVisibility() const;
-	EVisibility GetFleetBoxVisibility() const;
 
 	/** Get the text to display */
 	FText GetSectorTitle() const;

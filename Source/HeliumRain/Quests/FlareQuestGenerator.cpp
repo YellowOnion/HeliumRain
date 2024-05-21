@@ -356,26 +356,26 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 
 		//Below basic operating costs, no contracts offered
 		int32 GameDifficulty = -1;
-		int32 RequiredMoneyMulti = 1;
+		float RequiredMoneyMulti = 1;
 		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
 		switch (GameDifficulty)
 		{
 		case -1: // Easy
-			RequiredMoneyMulti = 0;
+			RequiredMoneyMulti = 0.f;
 			break;
 		case 0: // Normal
 			break;
 		case 1: // Hard
-			RequiredMoneyMulti = 2;
+			RequiredMoneyMulti = 1.5f;
 			break;
 		case 2: // Very Hard
-			RequiredMoneyMulti = 4;
+			RequiredMoneyMulti = 3.f;
 			break;
 		case 3: // Expert
-			RequiredMoneyMulti = 8;
+			RequiredMoneyMulti = 6.f;
 			break;
 		case 4: // Unfair
-			RequiredMoneyMulti = 16;
+			RequiredMoneyMulti = 12.f;
 			break;
 		}
 
@@ -600,26 +600,26 @@ void UFlareQuestGenerator::GenerateMeteoriteQuest(UFlareSimulatedSpacecraft* Tar
 
 	//Below basic operating costs, no contracts offered
 	int32 GameDifficulty = -1;
-	int32 RequiredMoneyMulti = 1;
+	float RequiredMoneyMulti = 1.f;
 	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
 	switch (GameDifficulty)
 	{
 	case -1: // Easy
-		RequiredMoneyMulti = 0;
+		RequiredMoneyMulti = 0.f;
 		break;
 	case 0: // Normal
 		break;
 	case 1: // Hard
-		RequiredMoneyMulti = 2;
+		RequiredMoneyMulti = 1.25f;
 		break;
 	case 2: // Very Hard
-		RequiredMoneyMulti = 3;
+		RequiredMoneyMulti = 2.f;
 		break;
 	case 3: // Expert
-		RequiredMoneyMulti = 5;
+		RequiredMoneyMulti = 4.f;
 		break;
 	case 4: // Unfair
-		RequiredMoneyMulti = 8;
+		RequiredMoneyMulti = 6.f;
 		break;
 	}
 
@@ -768,7 +768,7 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 
 	if(ClientResearch > PlayerResearch)
 	{
-		// There is a chance to hava research reward
+		// There is a chance to have a research reward
 
 		float ResearchRewardProbability = 0.5f * (1.f - float(PlayerResearch) / float(ClientResearch));
 

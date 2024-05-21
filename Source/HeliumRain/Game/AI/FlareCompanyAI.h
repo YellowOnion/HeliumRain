@@ -118,7 +118,7 @@ public:
 	int64 GetTotalBudgets();
 	void AddIncomeToBudgets();
 	bool CanSpendBudget(EFlareBudget::Type Type, int64 Amount);
-	void RedistributeBudgetTowards(EFlareBudget::Type Type, float Ratio = 0.f);
+	void RedistributeBudgetTowards(EFlareBudget::Type Type, EFlareBudget::Type FromBudget, float Ratio = 0.f);
 	void RedistributeBudget(EFlareBudget::Type Type, int64 Amount);
 	void SpendBudget(EFlareBudget::Type Type, int64 Amount);
 	void SetBudget(EFlareBudget::Type Type, int64 Amount);

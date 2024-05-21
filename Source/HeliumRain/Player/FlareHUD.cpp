@@ -594,7 +594,7 @@ void AFlareHUD::DrawCockpitEquipment(AFlareSpacecraft* PlayerShip)
 			FText::AsNumber(FMath::RoundToInt(100 * FMath::Clamp(ScanningAngularRatio, 0.0f, 1.0f))));
 		FText DistanceText = FText::Format(LOCTEXT("DistanceFormat", "Signal distance : {0}m"),
 			FText::AsNumber(FMath::RoundToInt(ScanningDistance)));
-		FText AnalyzisText = FText::Format(LOCTEXT("AnalyzisFormat", "Signal analyzis : {0}%"),
+		FText AnalyzisText = FText::Format(LOCTEXT("AnalyzisFormat", "Signal analysis : {0}%"),
 			FText::AsNumber(FMath::RoundToInt(100 * ScanningAnalyzisRatio)));
 
 		// Draw panel
@@ -1845,23 +1845,39 @@ FVector2D AFlareHUD::DrawHUDDesignatorHint(FVector2D Position, float DesignatorI
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDContractIcon, Color);
 	}
 
-	if (TargetSpacecraft->IsStation() && TargetSpacecraft->GetParent()->IsUnderConstruction(true))
-	{
-		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDConstructionIcon, Color);
-	}
-	
 	if (TargetSpacecraft->GetParent()->IsShipyard())
 	{
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDShipyardIcon, Color);
 	}
+
 	else if (TargetSpacecraft->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade))
 	{
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDUpgradeIcon, Color);
 	}
 
-	if (TargetSpacecraft->IsStation() && TargetSpacecraft->GetParent()->HasCapability(EFlareSpacecraftCapability::Consumer))
+	if (TargetSpacecraft->IsStation())
 	{
-		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDConsumerIcon, Color);
+		{
+			if (TargetSpacecraft->GetParent()->HasCapability(EFlareSpacecraftCapability::Consumer))
+			{
+				Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDConsumerIcon, Color);
+			}
+
+			if (TargetSpacecraft->GetParent()->IsUnderConstruction(true))
+			{
+				Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDConstructionIcon, Color);
+			}
+
+			if (TargetSpacecraft->GetParent()->IsBeingCaptured())
+			{
+				Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDHarpoonedIcon, Color);
+			}
+
+			if (!TargetSpacecraft->GetParent()->GetOwnerHasStationLicense())
+			{
+				Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDDockingForbiddenTexture, Color);
+			}
+		}
 	}
 
 	return Position;

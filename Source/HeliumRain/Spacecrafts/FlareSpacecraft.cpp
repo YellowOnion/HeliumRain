@@ -2341,14 +2341,23 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		}
 
 		AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
+
 		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 		{
+/*
 			TransactionResource = NULL;
 			TransactionQuantity = NULL;
 			SourceSpacecraft = NULL;
 			DestinationSpacecraft = NULL;
 			TransactionDonation = 0;
-			PlayerMenu->GetTradeMenu()->GetRefreshTradeBlocks();
+*/
+			UFlareSimulatedSpacecraft* TradeMenuLeftTargetShip = PlayerMenu->GetTradeMenu()->GetTargetLeftShip();
+			UFlareSimulatedSpacecraft* TradeMenuRightTargetShip = PlayerMenu->GetTradeMenu()->GetTargetRightShip();
+
+			if (TradeMenuLeftTargetShip == ShipSimmed || TradeMenuLeftTargetShip == StationSimmed || TradeMenuRightTargetShip == ShipSimmed || TradeMenuRightTargetShip == StationSimmed)
+			{
+				PlayerMenu->GetTradeMenu()->GetRefreshTradeBlocks();
+			}
 		}
 	}
 }

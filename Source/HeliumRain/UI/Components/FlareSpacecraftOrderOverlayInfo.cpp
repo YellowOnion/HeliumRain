@@ -225,6 +225,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 	FText CargoInfo;
 	
 	bool GunsAndTurretsSet = false;
+	bool CargoSet = false;
 
 	if (Desc->DroneMaximum)
 	{
@@ -236,22 +237,22 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 	{
 		if (Desc->GunSlots.Num() || Desc->TurretSlots.Num())
 		{
-			ShipDesignation = LOCTEXT("MilitaryShip", "Military Ship (");
+			ShipDesignation = LOCTEXT("MilitaryShip", "Military Ship");
 		}
 		else if (CargoBayCount > 0 || CargoBayCapacity > 0)
 		{
-			ShipDesignation = LOCTEXT("TradeShip", "Trade Ship (");
+			ShipDesignation = LOCTEXT("TradeShip", "Trade Ship");
 		}
 	}
 	else
 	{
 		if (Desc->GunSlots.Num() || Desc->TurretSlots.Num())
 		{
-			ShipDesignation = LOCTEXT("MilitaryStation", "Militarized Station (");
+			ShipDesignation = LOCTEXT("MilitaryStation", "Militarized Station");
 		}
 		else
 		{
-			ShipDesignation = LOCTEXT("Station", "Station (");
+			ShipDesignation = LOCTEXT("Station", "Station");
 		}
 	}
 
@@ -289,12 +290,18 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftShipInfo() const
 			GunsandTurrets = FText::Format(LOCTEXT("GunsAndTurretsFormatCargo", "{0}, "),
 			GunsandTurrets);
 		}
+		CargoSet = true;
 		CargoInfo = FText::Format(LOCTEXT("CargoInformation", "{0}x{1} cargo units"),
 		FText::AsNumber(CargoBayCount),
 		FText::AsNumber(CargoBayCapacity));
 	}
 
-	return FText::Format(LOCTEXT("SpaceShipInfo", "{0}{1}{2})"),
+	if (!GunsAndTurretsSet && !CargoSet)
+	{
+		return FText::Format(LOCTEXT("SpaceShipInfo", "{0}"),
+		ShipDesignation);
+	}
+	return FText::Format(LOCTEXT("SpaceShipInfo", "{0} ({1}{2})"),
 	ShipDesignation,
 	GunsandTurrets,
 	CargoInfo);
