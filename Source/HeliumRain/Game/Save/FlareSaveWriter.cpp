@@ -588,12 +588,40 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveTradeOperation(FFlareTradeRouteSec
 	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
 
 	JsonObject->SetStringField("ResourceIdentifier", Data->ResourceIdentifier.ToString());
+	JsonObject->SetStringField("GotoSectorIndex", FormatInt32(Data->GotoSectorIndex));
+	JsonObject->SetStringField("GotoOperationIndex", FormatInt32(Data->GotoOperationIndex));
+
 	JsonObject->SetStringField("MaxQuantity", FormatInt32(Data->MaxQuantity));
 	JsonObject->SetStringField("InventoryLimit", FormatInt32(Data->InventoryLimit));
 	JsonObject->SetStringField("MaxWait", FormatInt32(Data->MaxWait));
 	JsonObject->SetStringField("Type", FormatEnum<EFlareTradeRouteOperation::Type>("EFlareTradeRouteOperation",Data->Type));
-	JsonObject->SetBoolField("CanTradeWithStorages", Data->CanTradeWithStorages);
 
+	SaveFloat(JsonObject, "LoadUnloadPriority", Data->LoadUnloadPriority);
+	SaveFloat(JsonObject, "BuySellPriority", Data->BuySellPriority);
+	JsonObject->SetBoolField("CanTradeWithStorages", Data->CanTradeWithStorages);
+	JsonObject->SetBoolField("CanDonate", Data->CanDonate);
+
+	TArray< TSharedPtr<FJsonValue> > Conditions;
+	Conditions.Reserve(Data->OperationConditions.Num());
+	for (int i = 0; i < Data->OperationConditions.Num(); i++)
+	{
+		Conditions.Add(MakeShareable(new FJsonValueObject(SaveOperationCondition(&Data->OperationConditions[i]))));
+	}
+
+	JsonObject->SetArrayField("Conditions", Conditions);
+
+	return JsonObject;
+}
+
+TSharedRef<FJsonObject> UFlareSaveWriter::SaveOperationCondition(FFlareTradeRouteOperationConditionSave* Data)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField("Type", FormatEnum<EFlareTradeRouteOperationConditions::Type>("EFlareTradeRouteOperationConditions", Data->ConditionRequirement));
+	JsonObject->SetStringField("ConditionPercentage", FormatInt32(Data->ConditionPercentage));
+	JsonObject->SetBoolField("SkipOnConditionFail", Data->SkipOnConditionFail);
+	JsonObject->SetBoolField("BooleanOne", Data->BooleanOne);
+	JsonObject->SetBoolField("BooleanTwo", Data->BooleanTwo);
+	JsonObject->SetBoolField("BooleanThree", Data->BooleanThree);
 	return JsonObject;
 }
 

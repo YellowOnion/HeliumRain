@@ -18,14 +18,47 @@ namespace EFlareTradeRouteOperation
 	{
 		Load,
 		Unload,
-		Buy,
-		Sell,
-		LoadOrBuy,
-		UnloadOrSell,
-		Donate,
-		UnloadOrDonate
+		GotoOperation,
+		Maintenance
 	};
 }
+
+UENUM()
+namespace EFlareTradeRouteOperationConditions
+{
+	enum Type
+	{
+		PercentOfTimes,
+		LoadPercentage,
+		RequiresMaintenance,
+		AtWar
+	};
+}
+
+/** Trade route sector data */
+USTRUCT()
+struct FFlareTradeRouteOperationConditionSave
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	TEnumAsByte<EFlareTradeRouteOperationConditions::Type> ConditionRequirement;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 ConditionPercentage;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool SkipOnConditionFail;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool BooleanOne;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool BooleanTwo;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool BooleanThree;
+};
 
 /** Trade route sector operation data */
 USTRUCT()
@@ -37,9 +70,18 @@ struct FFlareTradeRouteSectorOperationSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	TEnumAsByte<EFlareTradeRouteOperation::Type> Type;
 
+	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FFlareTradeRouteOperationConditionSave> OperationConditions;
+
 	/** Resource */
 	UPROPERTY(EditAnywhere, Category = Save)
 	FName ResourceIdentifier;
+
+	/** Used to tell goto command which Sector/Operation to skip to*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 GotoSectorIndex;
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 GotoOperationIndex;
 
 	/** Max quantity before next operation. -1 Mean no limit */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -53,11 +95,21 @@ struct FFlareTradeRouteSectorOperationSave
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 InventoryLimit;
 
-	/** Max/min inventory in fleet on buy/sell before next operation. -1 Mean no limit */
+	/** Priority to load or unload to player owned stations. 0.F means "disabled"*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	float LoadUnloadPriority;
+
+	/** Priority to buy or sell to other company stations. 0.F means "disabled"*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	float BuySellPriority;
+
+	/** Can Trade with storage hubs within operation */
 	UPROPERTY(EditAnywhere, Category = Save)
 	bool CanTradeWithStorages;
 
-
+	/** Can trade as a donation */
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool CanDonate;
 };
 
 
@@ -148,7 +200,6 @@ struct FFlareTradeRouteSave
 	/** Operation fail since last stats reset */
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 StatsOperationFailCount;
-
 };
 
 UCLASS()
@@ -179,8 +230,9 @@ public:
 
 	bool ProcessCurrentOperation(FFlareTradeRouteSectorOperationSave* Operation);
 
+	bool ProcessMaintenanceOperation(FFlareTradeRouteSectorOperationSave* Operation);
+	bool ProcessGotoOperation(FFlareTradeRouteSectorOperationSave* Operation);
 	bool ProcessLoadOperation(FFlareTradeRouteSectorOperationSave* Operation);
-
 	bool ProcessUnloadOperation(FFlareTradeRouteSectorOperationSave* Operation);
 
 	int32 GetOperationRemainingQuantity(FFlareTradeRouteSectorOperationSave* Operation);
@@ -206,21 +258,25 @@ public:
 	void ReplaceSector(UFlareSimulatedSector* Sector, UFlareSimulatedSector* NewSector);
 
 	void MoveSectorUp(UFlareSimulatedSector* Sector);
-
 	void MoveSectorDown(UFlareSimulatedSector* Sector);
 
+	void RemoveOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, FFlareTradeRouteOperationConditionSave* Condition);
+	void AddOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, EFlareTradeRouteOperationConditions::Type ConditionType);
 	virtual FFlareTradeRouteSectorOperationSave* AddSectorOperation(int32 SectorIndex, EFlareTradeRouteOperation::Type Type, FFlareResourceDescription* Resource);
 
 	virtual void RemoveSectorOperation(int32 SectorIndex, int32 OperationIndex);
 
 	void DeleteOperation(FFlareTradeRouteSectorOperationSave* Operation);
 
-	FFlareTradeRouteSectorOperationSave* MoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation);
-
-	FFlareTradeRouteSectorOperationSave* MoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation);
+	int32 MoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation);
+	int32 MoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation);
 
 	bool CanMoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation);
 	bool CanMoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation);
+
+	TArray<FFlareTradeRouteSectorOperationSave*> GatherAllOperations();
+
+	TArray<FFlareTradeRouteSectorOperationSave*> FindLinkedGotoOperations(FFlareTradeRouteSectorOperationSave* FromOperation);
 
 	/** Remove all fleet from the trade route and delete it. */
 	virtual void Dissolve();
@@ -243,12 +299,12 @@ public:
 
 protected:
 
-	UFlareFleet*                  TradeRouteFleet;
-
+	UFlareFleet*						   TradeRouteFleet;
 	UFlareCompany*			               TradeRouteCompany;
 	FFlareTradeRouteSave                   TradeRouteData;
 	AFlareGame*                            Game;
 	bool                                   IsFleetListLoaded;
+	bool								   ShouldRestartSimulation;
 
 public:
 
@@ -297,6 +353,7 @@ public:
     bool IsVisiting(UFlareSimulatedSector *Sector);
 
     int32 GetSectorIndex(UFlareSimulatedSector *Sector);
+	int32 GetOperationIndex(FFlareTradeRouteSectorOperationSave* Operation, bool ReturnOperationPosition = true);
 
 	UFlareSimulatedSector* GetTargetSector() const;
 
@@ -309,15 +366,11 @@ public:
 
 	static bool IsLoadKindOperation(EFlareTradeRouteOperation::Type OperationType)
 	{
-		return (OperationType == EFlareTradeRouteOperation::Load
-				|| OperationType == EFlareTradeRouteOperation::Buy
-				|| OperationType == EFlareTradeRouteOperation::LoadOrBuy);
+		return (OperationType == EFlareTradeRouteOperation::Load);
 	}
 
 	static bool IsUnloadKindOperation(EFlareTradeRouteOperation::Type OperationType)
 	{
-		return !IsLoadKindOperation(OperationType);
+		return (OperationType == EFlareTradeRouteOperation::Unload);
 	}
-
-
 };

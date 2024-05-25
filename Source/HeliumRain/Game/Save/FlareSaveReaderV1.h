@@ -47,6 +47,7 @@ protected:
 	void LoadStationConnection(const TSharedPtr<FJsonObject> Object, FFlareConnectionSave* Data);
 
 	void LoadTradeOperation(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteSectorOperationSave* Data);
+	void LoadOperationCondition(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteOperationConditionSave* Data);
 	void LoadCargo(const TSharedPtr<FJsonObject> Object, FFlareCargoSave* Data);
 	void LoadFactory(const TSharedPtr<FJsonObject> Object, FFlareFactorySave* Data, FFlareSpacecraftSave* SpacecraftData);
 	void LoadShipyardOrder(const TSharedPtr<FJsonObject> Object, FFlareShipyardOrderSave* Data);

@@ -797,11 +797,15 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 
 			SectorHelper::FlareTradeRequest Request;
 			Request.Resource = Deal.Resource;
-			Request.Operation = EFlareTradeRouteOperation::LoadOrBuy;
+			Request.Operation = EFlareTradeRouteOperation::Load;
 			Request.Client = Ship;
 			Request.CargoLimit = 0.f;
 			Request.AllowStorage = true;
+			Request.IsDonation = false;
 			Request.AllowUseNoTradeForMe = AllowUseNoTradeForMe;
+			Request.LoadUnloadPriority = 10.f;
+			Request.BuySellPriority = 1.f;
+
 			if(Deal.Resource == Game->GetScenarioTools()->FleetSupply)
 			{
 				Request.MaxQuantity = FMath::Min(Deal.BuyQuantity, Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Deal.Resource, Ship->GetCompany()));
@@ -943,12 +947,15 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 		// Try to unload or sell
 		SectorHelper::FlareTradeRequest Request;
 		Request.Resource = Deal.Resource;
-		Request.Operation = EFlareTradeRouteOperation::UnloadOrSell;
+		Request.Operation = EFlareTradeRouteOperation::Unload;
 		Request.Client = Ship;
 		Request.CargoLimit = 1.f;
 		Request.MaxQuantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Deal.Resource, Ship->GetCompany());
 		Request.AllowStorage = false;
 		Request.AllowUseNoTradeForMe = AllowUseNoTradeForMe;
+		Request.LoadUnloadPriority = 10.f;
+		Request.BuySellPriority = 1.f;
+
 #if DEBUG_AI_TRADING
 		if (Ship->GetCompany()->GetShortName() == DEBUG_AI_TRADING_COMPANY)
 		{

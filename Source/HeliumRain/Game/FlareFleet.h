@@ -274,6 +274,8 @@ public:
 
 	bool IsRepairing() const;
 	bool IsRefilling() const;
+	bool FleetNeedsRepair() const;
+	bool FleetNeedsRefill() const;
 
 	int32 GetTransportCapacity();
 

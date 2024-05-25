@@ -13,7 +13,10 @@ struct SectorHelper
 		EFlareTradeRouteOperation::Type Operation;
 		int32 MaxQuantity;
 		float CargoLimit;
+		float LoadUnloadPriority;
+		float BuySellPriority;
 		UFlareSimulatedSpacecraft *Client;
+		bool IsDonation = false;
 		bool AllowStorage = false;
 		bool AllowFullStock = false;
 		bool AllowUseNoTradeForMe = true;

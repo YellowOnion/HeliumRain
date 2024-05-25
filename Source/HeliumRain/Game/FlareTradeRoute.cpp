@@ -75,9 +75,9 @@ void UFlareTradeRoute::Simulate()
 	}
 
 	UFlareSimulatedSector* TargetSector = UpdateTargetSector();
-
 	// Not travelling, check if the fleet is in a trade route sector
 	UFlareSimulatedSector* CurrentSector = TradeRouteFleet->GetCurrentSector();
+	ShouldRestartSimulation = false;
 
 	if (TargetSector == CurrentSector)
 	{
@@ -86,7 +86,14 @@ void UFlareTradeRoute::Simulate()
 
 		while (TradeRouteData.CurrentOperationIndex < SectorOrder->Operations.Num())
 		{
-			if (ProcessCurrentOperation(&SectorOrder->Operations[TradeRouteData.CurrentOperationIndex]))
+			bool ProcessingResult = ProcessCurrentOperation(&SectorOrder->Operations[TradeRouteData.CurrentOperationIndex]);
+			if (ShouldRestartSimulation)
+			{
+				Simulate();
+				return;
+			}
+
+			if(ProcessingResult)
 			{
 				// Operation finish
 				TradeRouteData.CurrentOperationDuration = 0;
@@ -198,22 +205,76 @@ bool UFlareTradeRoute::ProcessCurrentOperation(FFlareTradeRouteSectorOperationSa
 		return true;
 	}
 
+	if (Operation->OperationConditions.Num() > 0)
+	{
+		for (FFlareTradeRouteOperationConditionSave& Condition : Operation->OperationConditions)
+		{
+			if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::PercentOfTimes)
+			{
+				if (FMath::FRand() >= ((float)Condition.ConditionPercentage / 100))
+				{
+					return Condition.SkipOnConditionFail;
+				}
+			}
+			else if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::LoadPercentage)
+			{
+				int32 FreeCargoSpace = TradeRouteFleet->GetFleetFreeCargoSpace();
+				int32 MaxmimumCargoSpace = TradeRouteFleet->GetFleetCapacity();
+
+				if ((FreeCargoSpace / MaxmimumCargoSpace) < ((float)Condition.ConditionPercentage / 100))
+				{
+					return Condition.SkipOnConditionFail;
+				}
+			}
+			else if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::RequiresMaintenance)
+			{
+				bool FleetNeedsRepair = TradeRouteFleet->FleetNeedsRepair();
+				bool FleetNeedsRefill = TradeRouteFleet->FleetNeedsRefill();
+
+				// Checking AND Condition
+				if (Condition.BooleanTwo)
+				{
+					if (Condition.BooleanOne == FleetNeedsRepair && Condition.BooleanThree == FleetNeedsRefill)
+					{
+					}
+					else
+					{
+						return Condition.SkipOnConditionFail;
+					}
+				}
+				else if (Condition.BooleanOne == FleetNeedsRepair || Condition.BooleanThree == FleetNeedsRefill)
+				{
+				}
+				else
+				{
+					return Condition.SkipOnConditionFail;
+				}
+			}
+			else if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::AtWar)
+			{
+				bool IsAtWar = TradeRouteFleet->GetFleetCompany()->AtWar();
+				if (Condition.BooleanOne != IsAtWar)
+				{
+					return Condition.SkipOnConditionFail;
+				}
+			}
+		}
+	}
 
 	// Return true if : limit reach or all ship full/empty or buy and no money or sell and nobody has money
-
 	switch (Operation->Type)
 	{
-		case EFlareTradeRouteOperation::Buy:
 		case EFlareTradeRouteOperation::Load:
-		case EFlareTradeRouteOperation::LoadOrBuy:
 			return ProcessLoadOperation(Operation);
 			break;
-		case EFlareTradeRouteOperation::Donate:
-		case EFlareTradeRouteOperation::UnloadOrDonate:
-		case EFlareTradeRouteOperation::Sell:
 		case EFlareTradeRouteOperation::Unload:
-		case EFlareTradeRouteOperation::UnloadOrSell:
 			return ProcessUnloadOperation(Operation);
+			break;
+		case EFlareTradeRouteOperation::GotoOperation:
+			return ProcessGotoOperation(Operation);
+			break;
+		case EFlareTradeRouteOperation::Maintenance:
+			return ProcessMaintenanceOperation(Operation);
 			break;
 
 		default:
@@ -223,12 +284,49 @@ bool UFlareTradeRoute::ProcessCurrentOperation(FFlareTradeRouteSectorOperationSa
 	return true;
 }
 
+
+bool UFlareTradeRoute::ProcessMaintenanceOperation(FFlareTradeRouteSectorOperationSave* Operation)
+{
+	// Repair
+	if (Operation->CanTradeWithStorages)
+	{
+		SectorHelper::RepairFleets(TradeRouteFleet->GetCurrentSector(), TradeRouteFleet->GetFleetCompany(), TradeRouteFleet);
+	}
+	// Rearm
+	if (Operation->CanDonate)
+	{
+		SectorHelper::RefillFleets(TradeRouteFleet->GetCurrentSector(), TradeRouteFleet->GetFleetCompany(), TradeRouteFleet);
+	}
+	// Try once and move on
+	return true;
+}
+
+bool UFlareTradeRoute::ProcessGotoOperation(FFlareTradeRouteSectorOperationSave* Operation)
+{
+	if (Operation->GotoSectorIndex != -1 && Operation->GotoOperationIndex != -1)
+	{
+		if (Operation->GotoSectorIndex < TradeRouteData.Sectors.Num())
+		{
+			FFlareTradeRouteSectorSave& SectorOrders = TradeRouteData.Sectors[Operation->GotoSectorIndex];
+			if (Operation->GotoOperationIndex < SectorOrders.Operations.Num())
+			{
+				UFlareSimulatedSector* SimulatedSector = Game->GetGameWorld()->FindSector(TradeRouteData.Sectors[Operation->GotoSectorIndex].SectorIdentifier);
+				SetTargetSector(SimulatedSector);
+				TradeRouteData.CurrentOperationIndex = Operation->GotoOperationIndex;
+				ShouldRestartSimulation = true;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave* Operation)
 {
 
 	FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation->ResourceIdentifier);
 
-	TArray<UFlareSimulatedSpacecraft*> UsefullShips;
+	TArray<UFlareSimulatedSpacecraft*> UsefulShips;
 
 	TArray<UFlareSimulatedSpacecraft*>&  RouteShips = TradeRouteFleet->GetShips();
 	int32 FleetFreeSpace = 0;
@@ -251,12 +349,12 @@ bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave*
 	{
 		UFlareSimulatedSpacecraft* Ship = RouteShips[ShipIndex];
 
-		// Keep trading ship as they will be usefull later
+		// Keep trading ship as they will be useful later
 		int32 FreeSpace = Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
 		if (FreeSpace > 0)
 		{
 			FleetFreeSpace += FreeSpace;
-			UsefullShips.Add(Ship);
+			UsefulShips.Add(Ship);
 		}
 
 		// TODO sort by most pertinent
@@ -275,10 +373,13 @@ bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave*
 	Request.Operation = Operation->Type;
 	Request.CargoLimit = -1;
 	Request.MaxQuantity = Operation->MaxQuantity;
+	Request.LoadUnloadPriority = Operation->LoadUnloadPriority;
+	Request.BuySellPriority = Operation->BuySellPriority;
+	Request.IsDonation = Operation->CanDonate;
 	Request.AllowStorage = Operation->CanTradeWithStorages;
 	Request.AllowFullStock = true;
 
-	for (UFlareSimulatedSpacecraft* Ship : UsefullShips)
+	for (UFlareSimulatedSpacecraft* Ship : UsefulShips)
 	{
 		if (Ship->IsTrading())
 		{
@@ -299,7 +400,6 @@ bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave*
 		}
 
 		UFlareSimulatedSpacecraft* StationCandidate = SectorHelper::FindTradeStation(Request);
-
 
 		if (StationCandidate)
 		{
@@ -393,13 +493,9 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 	Request.CargoLimit = -1;
 	Request.MaxQuantity = Operation->MaxQuantity;
 	Request.AllowStorage = Operation->CanTradeWithStorages;
-
-	bool IsDonation = false;
-
-	if (Operation->Type == EFlareTradeRouteOperation::Donate || Operation->Type == EFlareTradeRouteOperation::UnloadOrDonate)
-	{
-		IsDonation = true;
-	}
+	Request.LoadUnloadPriority = Operation->LoadUnloadPriority;
+	Request.BuySellPriority = Operation->BuySellPriority;
+	Request.IsDonation = Operation->CanDonate;
 
 	for (UFlareSimulatedSpacecraft* Ship : UsefullShips)
 	{
@@ -427,10 +523,10 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 		if (StationCandidate)
 		{
 			int64 TransactionPrice;
-			int32 Quantity = SectorHelper::Trade(Ship, StationCandidate, Resource, Request.MaxQuantity, &TransactionPrice, this, IsDonation);
+			int32 Quantity = SectorHelper::Trade(Ship, StationCandidate, Resource, Request.MaxQuantity, &TransactionPrice, this, Operation->CanDonate);
 			TradeRouteData.CurrentOperationProgress += Quantity;
 
-			if(!IsDonation)
+			if(!Operation->CanDonate)
 			{
 				TradeRouteData.StatsMoneySell += TransactionPrice;
 			}
@@ -491,8 +587,6 @@ int32 UFlareTradeRoute::GetOperationRemainingInventoryQuantity(FFlareTradeRouteS
 	FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation->ResourceIdentifier);
 	int32 ResourceQuantity = TradeRouteFleet->GetFleetResourceQuantity(Resource);
 
-
-
 	if(IsLoadKindOperation(Operation->Type))
 	{
 		return Operation->InventoryLimit - ResourceQuantity;
@@ -517,6 +611,7 @@ bool UFlareTradeRoute::IsOperationInventoryLimitReach(FFlareTradeRouteSectorOper
 
 void UFlareTradeRoute::SetTargetSector(UFlareSimulatedSector* Sector)
 {
+//	FName PreviousTargetSectorIdentifier* = TradeRouteData.TargetSectorIdentifier;
 	if (Sector)
 	{
 		TradeRouteData.TargetSectorIdentifier = Sector->GetIdentifier();
@@ -525,10 +620,13 @@ void UFlareTradeRoute::SetTargetSector(UFlareSimulatedSector* Sector)
 	{
 		TradeRouteData.TargetSectorIdentifier = NAME_None;
 	}
-	TradeRouteData.CurrentOperationDuration = 0;
-	TradeRouteData.CurrentOperationIndex = 0;
-	TradeRouteData.CurrentOperationProgress = 0;
 
+//	if (PreviousTargetSectorIdentifier != TradeRouteData.TargetSectorIdentifier)
+	{
+		TradeRouteData.CurrentOperationDuration = 0;
+		TradeRouteData.CurrentOperationIndex = 0;
+		TradeRouteData.CurrentOperationProgress = 0;
+	}
 }
 
 
@@ -621,10 +719,32 @@ void UFlareTradeRoute::MoveSectorUp(UFlareSimulatedSector* Sector)
 		{
 			if(SectorIndex > 0)
 			{
+				TArray<FFlareTradeRouteSectorOperationSave*> GatheredOperations = GatherAllOperations();
+				TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperations;
+				for (FFlareTradeRouteSectorOperationSave* AllOperations : GatheredOperations)
+				{
+					TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperationsCheck = FindLinkedGotoOperations(AllOperations);
+					if (FoundLinkedGotoOperationsCheck.Num() > 0)
+					{
+						FoundLinkedGotoOperations += FoundLinkedGotoOperationsCheck;
+					}
+				}
 
 				int32 SwapIndex = SectorIndex - 1;
-				FFlareTradeRouteSectorSave SwapTradeRouteSector = TradeRouteData.Sectors[SwapIndex];
 
+				for (FFlareTradeRouteSectorOperationSave* CheckingOperation : FoundLinkedGotoOperations)
+				{
+					if (SectorIndex == CheckingOperation->GotoSectorIndex)
+					{
+						CheckingOperation->GotoSectorIndex = SwapIndex;
+					}
+					else if (SectorIndex == CheckingOperation->GotoSectorIndex + 1)
+					{
+						CheckingOperation->GotoSectorIndex = SectorIndex;
+					}
+				}
+
+				FFlareTradeRouteSectorSave SwapTradeRouteSector = TradeRouteData.Sectors[SwapIndex];
 				TradeRouteData.Sectors[SwapIndex] = TradeRouteData.Sectors[SectorIndex];
 				TradeRouteData.Sectors[SectorIndex] = SwapTradeRouteSector;
 			}
@@ -642,7 +762,30 @@ void UFlareTradeRoute::MoveSectorDown(UFlareSimulatedSector* Sector)
 			if(SectorIndex < TradeRouteData.Sectors.Num() - 1)
 			{
 
+				TArray<FFlareTradeRouteSectorOperationSave*> GatheredOperations = GatherAllOperations();
+				TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperations;
+				for (FFlareTradeRouteSectorOperationSave* AllOperations : GatheredOperations)
+				{
+					TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperationsCheck = FindLinkedGotoOperations(AllOperations);
+					if (FoundLinkedGotoOperationsCheck.Num() > 0)
+					{
+						FoundLinkedGotoOperations += FoundLinkedGotoOperationsCheck;
+					}
+				}
+
 				int32 SwapIndex = SectorIndex + 1;
+				for (FFlareTradeRouteSectorOperationSave* CheckingOperation : FoundLinkedGotoOperations)
+				{
+					if (SectorIndex == CheckingOperation->GotoSectorIndex)
+					{
+						CheckingOperation->GotoSectorIndex = SwapIndex;
+					}
+					else if (SectorIndex == CheckingOperation->GotoSectorIndex - 1)
+					{
+						CheckingOperation->GotoSectorIndex = SectorIndex;
+					}
+				}
+
 				FFlareTradeRouteSectorSave SwapTradeRouteSector = TradeRouteData.Sectors[SwapIndex];
 
 				TradeRouteData.Sectors[SwapIndex] = TradeRouteData.Sectors[SectorIndex];
@@ -660,20 +803,85 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::AddSectorOperation(int32 
 		FLOGV("Fail to configure trade route '%s', sector %d: only %d sector present.", *GetTradeRouteName().ToString(), SectorIndex, TradeRouteData.Sectors.Num());
 		return NULL;
 	}
-
+// Operation Defaults
 	FFlareTradeRouteSectorSave* Sector = &TradeRouteData.Sectors[SectorIndex];
-
 	FFlareTradeRouteSectorOperationSave Operation;
 	Operation.Type = Type;
 	Operation.ResourceIdentifier = Resource->Identifier;
+
+	Operation.GotoSectorIndex = -1;
+	Operation.GotoOperationIndex = -1;
 	Operation.MaxQuantity = -1;
 	Operation.MaxWait = -1;
 	Operation.InventoryLimit = -1;
-	Operation.CanTradeWithStorages = false;
+
+	Operation.LoadUnloadPriority = 10.f;
+	Operation.BuySellPriority = 1.f;
+
+	if (Operation.Type == EFlareTradeRouteOperation::Maintenance)
+	{
+		//Maintenance TradeWith = Repair, Donate = Rearm
+		Operation.CanTradeWithStorages = true;
+		Operation.CanDonate = true;
+	}
+	else
+	{
+		Operation.CanTradeWithStorages = false;
+		Operation.CanDonate = false;
+	}
 
 	Sector->Operations.Add(Operation);
 
 	return &Sector->Operations.Last();
+}
+
+void UFlareTradeRoute::RemoveOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, FFlareTradeRouteOperationConditionSave* Condition)
+{
+	if (Operation && Condition)
+	{
+		for (int32 ConditionsIndex = 0; ConditionsIndex < Operation->OperationConditions.Num(); ConditionsIndex++)
+		{
+			if (&Operation->OperationConditions[ConditionsIndex] == Condition)
+			{
+				Operation->OperationConditions.RemoveAt(ConditionsIndex);
+				return;
+			}
+		}
+	}
+}
+
+void UFlareTradeRoute::AddOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, EFlareTradeRouteOperationConditions::Type ConditionType)
+{
+	if (Operation)
+	{
+		FFlareTradeRouteOperationConditionSave NewOperationCondition;
+		NewOperationCondition.ConditionRequirement = ConditionType;
+		NewOperationCondition.ConditionPercentage = 0;
+
+		if (ConditionType == EFlareTradeRouteOperationConditions::PercentOfTimes)
+		{
+			NewOperationCondition.ConditionPercentage = 50;
+		}
+		else if (ConditionType == EFlareTradeRouteOperationConditions::LoadPercentage)
+		{
+			NewOperationCondition.ConditionPercentage = 50;
+			NewOperationCondition.SkipOnConditionFail = true;
+		}
+		else if (ConditionType == EFlareTradeRouteOperationConditions::RequiresMaintenance)
+		{
+			NewOperationCondition.BooleanOne = true;
+			NewOperationCondition.BooleanTwo = false;
+			NewOperationCondition.BooleanThree = true;
+			NewOperationCondition.SkipOnConditionFail = true;
+		}
+		else if (ConditionType == EFlareTradeRouteOperationConditions::AtWar)
+		{
+			NewOperationCondition.BooleanOne = true;
+			NewOperationCondition.SkipOnConditionFail = true;
+		}
+
+		Operation->OperationConditions.Add(NewOperationCondition);
+	}
 }
 
 void UFlareTradeRoute::RemoveSectorOperation(int32 SectorIndex, int32 OperationIndex)
@@ -699,6 +907,13 @@ void UFlareTradeRoute::DeleteOperation(FFlareTradeRouteSectorOperationSave* Oper
 		{
 			if(&Sector->Operations[OperationIndex] == Operation)
 			{
+				TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperations = FindLinkedGotoOperations(Operation);
+				for (FFlareTradeRouteSectorOperationSave* CheckingOperation : FoundLinkedGotoOperations)
+				{
+					CheckingOperation->GotoSectorIndex = - 1;
+					CheckingOperation->GotoOperationIndex = -1;
+				}
+
 				if(Operation == GetActiveOperation())
 				{
 					// Active operation, reset progress
@@ -715,6 +930,42 @@ void UFlareTradeRoute::DeleteOperation(FFlareTradeRouteSectorOperationSave* Oper
 			}
 		}
 	}
+}
+
+TArray<FFlareTradeRouteSectorOperationSave*> UFlareTradeRoute::FindLinkedGotoOperations(FFlareTradeRouteSectorOperationSave* FromOperation)
+{
+	TArray<FFlareTradeRouteSectorOperationSave*> FoundOperations;
+	for (int SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
+	{
+		FFlareTradeRouteSectorSave* SectorOrders = &TradeRouteData.Sectors[SectorIndex];
+
+		for (int OperationIndex = 0; OperationIndex < SectorOrders->Operations.Num(); OperationIndex++)
+		{
+			FFlareTradeRouteSectorOperationSave* CheckingOperation = &SectorOrders->Operations[OperationIndex];
+			if (CheckingOperation->GotoSectorIndex != -1 && CheckingOperation->GotoOperationIndex != -1)
+			{
+				if (FromOperation)
+				{
+					if (CheckingOperation->GotoSectorIndex < TradeRouteData.Sectors.Num())
+					{
+						FFlareTradeRouteSectorSave* CheckingSector = &TradeRouteData.Sectors[CheckingOperation->GotoSectorIndex];
+						if (CheckingOperation->GotoOperationIndex < CheckingSector->Operations.Num())
+						{
+							if (&CheckingSector->Operations[CheckingOperation->GotoOperationIndex] == FromOperation)
+							{
+								FoundOperations.Add(CheckingOperation);
+							}
+						}
+					}
+				}
+				else
+				{
+					FoundOperations.Add(CheckingOperation);
+				}
+			}
+		}
+	}
+	return FoundOperations;
 }
 
 bool UFlareTradeRoute::CanMoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation)
@@ -736,7 +987,6 @@ bool UFlareTradeRoute::CanMoveOperationUp(FFlareTradeRouteSectorOperationSave* O
 		}
 	}
 	return true;
-
 }
 
 bool UFlareTradeRoute::CanMoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation)
@@ -760,7 +1010,7 @@ bool UFlareTradeRoute::CanMoveOperationDown(FFlareTradeRouteSectorOperationSave*
 	return true;
 }
 
-FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation)
+int32 UFlareTradeRoute::MoveOperationUp(FFlareTradeRouteSectorOperationSave* Operation)
 {
 	for (int32 SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
 	{
@@ -773,8 +1023,10 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationUp(FFlareTra
 				if(OperationIndex == 0)
 				{
 					//Already on top
-					return Operation;
+					return OperationIndex;
 				}
+
+				TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperations = FindLinkedGotoOperations(Operation);
 
 				if(Operation == GetActiveOperation())
 				{
@@ -786,19 +1038,23 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationUp(FFlareTra
 					TradeRouteData.CurrentOperationIndex++;
 				}
 
-				FFlareTradeRouteSectorOperationSave NewOperation = *Operation;
+				for (FFlareTradeRouteSectorOperationSave* CheckingOperation : FoundLinkedGotoOperations)
+				{
+					CheckingOperation->GotoOperationIndex--;
+				}
 
+				FFlareTradeRouteSectorOperationSave NewOperation = *Operation;
 				Sector->Operations.RemoveAt(OperationIndex);
 				Sector->Operations.Insert(NewOperation, OperationIndex-1);
-				return &Sector->Operations[OperationIndex-1];
+				return OperationIndex-1;
 			}
 		}
 	}
 
-	return Operation;
+	return -1;
 }
 
-FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation)
+int32 UFlareTradeRoute::MoveOperationDown(FFlareTradeRouteSectorOperationSave* Operation)
 {
 	for (int32 SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
 	{
@@ -811,8 +1067,10 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationDown(FFlareT
 				if(OperationIndex == Sector->Operations.Num()-1)
 				{
 					//Already on bottom
-					return Operation;
+					return OperationIndex;
 				}
+
+				TArray<FFlareTradeRouteSectorOperationSave*> FoundLinkedGotoOperations = FindLinkedGotoOperations(Operation);
 
 				if(Operation == GetActiveOperation())
 				{
@@ -824,16 +1082,21 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::MoveOperationDown(FFlareT
 					TradeRouteData.CurrentOperationIndex--;
 				}
 
+				for (FFlareTradeRouteSectorOperationSave* CheckingOperation : FoundLinkedGotoOperations)
+				{
+					CheckingOperation->GotoOperationIndex++;
+				}
+
 				FFlareTradeRouteSectorOperationSave NewOperation = *Operation;
 
 				Sector->Operations.RemoveAt(OperationIndex);
 				Sector->Operations.Insert(NewOperation, OperationIndex+1);
-				return &Sector->Operations[OperationIndex+1];
+				return OperationIndex+1;
 			}
 		}
 	}
 
-	return Operation;
+	return -1;
 }
 
 /** Remove all ship from the trade route and delete it.*/
@@ -874,6 +1137,22 @@ void UFlareTradeRoute::InitFleetList()
 /*----------------------------------------------------
 	Getters
 ----------------------------------------------------*/
+
+TArray<FFlareTradeRouteSectorOperationSave*> UFlareTradeRoute::GatherAllOperations()
+{
+	TArray<FFlareTradeRouteSectorOperationSave*> FoundOperations;
+	for (int SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
+	{
+		FFlareTradeRouteSectorSave* SectorOrders = &TradeRouteData.Sectors[SectorIndex];
+
+		for (int OperationIndex = 0; OperationIndex < SectorOrders->Operations.Num(); OperationIndex++)
+		{
+			FFlareTradeRouteSectorOperationSave* CheckingOperation = &SectorOrders->Operations[OperationIndex];
+			FoundOperations.Add(CheckingOperation);
+		}
+	}
+	return FoundOperations;
+}
 
 UFlareFleet* UFlareTradeRoute::GetFleet()
 {
@@ -932,14 +1211,15 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 {
 	FFlareTradeRouteSectorSave* SectorOrder = GetSectorOrders(Sector);
 
-	auto IsUseful = [](FFlareResourceUsage Usage, EFlareTradeRouteOperation::Type OperationType, bool Owned)
+	auto IsUseful = [](FFlareResourceUsage Usage, EFlareTradeRouteOperation::Type OperationType, bool Owned, float LoadUnloadPriority, float BuySellPriority)
+
 	{
-		if(Owned && (OperationType == EFlareTradeRouteOperation::Buy || OperationType == EFlareTradeRouteOperation::Sell || OperationType == EFlareTradeRouteOperation::Donate))
+		if (Owned && (LoadUnloadPriority < 1.f))
 		{
 			return false;
 		}
 
-		if(!Owned && (OperationType == EFlareTradeRouteOperation::Load || OperationType == EFlareTradeRouteOperation::Unload))
+		if (!Owned && (BuySellPriority < 1.f))
 		{
 			return false;
 		}
@@ -966,15 +1246,60 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 
 	for(FFlareTradeRouteSectorOperationSave& Operation : SectorOrder->Operations)
 	{
+		if (Operation.Type == EFlareTradeRouteOperation::GotoOperation)
+		{
+			if (Operation.GotoSectorIndex != -1 && Operation.GotoOperationIndex != -1)
+			{
+				return true;
+			}
+			continue;
+		}
+		else if (Operation.Type == EFlareTradeRouteOperation::Maintenance)
+		{
+			int32 AvailableFS;
+			int32 OwnedFS;
+			int32 AffordableFS;
+			bool CheckedAvailableFleetSupplyCount = false;
+
+			// Repair
+			if (Operation.CanTradeWithStorages)
+			{
+				if (TradeRouteFleet->FleetNeedsRepair())
+				{
+					if (!CheckedAvailableFleetSupplyCount)
+					{
+						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+						CheckedAvailableFleetSupplyCount = true;
+					}
+					if (AffordableFS > 0)
+					{
+						return true;
+					}
+				}
+			}
+			// Rearm
+			if (Operation.CanDonate)
+			{
+				if (TradeRouteFleet->FleetNeedsRefill())
+				{
+					if (!CheckedAvailableFleetSupplyCount)
+					{
+						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+						CheckedAvailableFleetSupplyCount = true;
+					}
+					if (AffordableFS > 0)
+					{
+						return true;
+					}
+				}
+			}
+
+			continue;
+		}
+
+		//LOAD/UNLOAD Operation checks below
 		FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation.ResourceIdentifier);
-
-
-		bool UnloadOperation = (Operation.Type == EFlareTradeRouteOperation::Unload
-							  || Operation.Type == EFlareTradeRouteOperation::Sell
-							  || Operation.Type == EFlareTradeRouteOperation::UnloadOrSell
-							  || Operation.Type == EFlareTradeRouteOperation::Donate
-							  || Operation.Type == EFlareTradeRouteOperation::UnloadOrDonate);
-
+		bool UnloadOperation = (Operation.Type == EFlareTradeRouteOperation::Unload);
 
 		int32 ResourceCount = TradeRouteFleet->GetFleetResourceQuantity(Resource);
 		if(UnloadOperation && ResourceCount == 0)
@@ -994,10 +1319,9 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 			}
 
 			FFlareResourceUsage Usage = Station->GetResourceUseType(Resource);
-
-			if(IsUseful(Usage, Operation.Type, TradeRouteCompany == Station->GetCompany()))
+			if(IsUseful(Usage, Operation.Type, TradeRouteCompany == Station->GetCompany(), Operation.LoadUnloadPriority,Operation.BuySellPriority))
 			{
-					return true;
+				return true;
 			}
 
 		}
@@ -1028,6 +1352,32 @@ int32 UFlareTradeRoute::GetSectorIndex(UFlareSimulatedSector *Sector)
         }
     }
     return -1;
+}
+
+int32 UFlareTradeRoute::GetOperationIndex(FFlareTradeRouteSectorOperationSave* Operation,bool ReturnOperationPosition)
+{
+	TArray<FFlareTradeRouteSectorOperationSave*> FoundOperations;
+	for (int SectorIndex = 0; SectorIndex < TradeRouteData.Sectors.Num(); SectorIndex++)
+	{
+		FFlareTradeRouteSectorSave* SectorOrders = &TradeRouteData.Sectors[SectorIndex];
+
+		for (int OperationIndex = 0; OperationIndex < SectorOrders->Operations.Num(); OperationIndex++)
+		{
+			FFlareTradeRouteSectorOperationSave* CheckingOperation = &SectorOrders->Operations[OperationIndex];
+			if (CheckingOperation == Operation)
+			{
+				if (ReturnOperationPosition)
+				{
+					return OperationIndex;
+				}
+				else
+				{
+					return SectorIndex;
+				}
+			}
+		}
+	}
+	return -1;
 }
 
 UFlareSimulatedSector* UFlareTradeRoute::GetTargetSector() const

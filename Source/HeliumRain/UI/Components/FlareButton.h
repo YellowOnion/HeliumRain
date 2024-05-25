@@ -120,10 +120,10 @@ protected:
 	
 	// Slate data
 	FFlareButtonClicked            OnClicked;
+	TSharedPtr<SBox>			   MainContentBox;
 	TSharedPtr<SBorder>            InnerContainer;
 	TSharedPtr<STextBlock>         TextBlock;
 	TSharedPtr<SButton>            InternalButton;
-
 	// Attributes
 	TAttribute<const FSlateBrush*> Icon;
 	TAttribute<FSlateColor>        Color;
@@ -148,5 +148,6 @@ public:
 		return InternalButton;
 	}
 
-
+	void SetWidth(float _Width);
+	void SetHeight(float _Height);
 };

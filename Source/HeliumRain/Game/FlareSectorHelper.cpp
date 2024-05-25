@@ -31,8 +31,6 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	}
 
 	UFlareCompany* ClientCompany = Request.AllowUseNoTradeForMe ? Request.Client->GetCompany() : nullptr;
-
-
 	UFlareSimulatedSector* Sector = Request.Client->GetCurrentSector();
 	TArray<UFlareSimulatedSpacecraft*>& SectorStations = Sector->GetSectorStations();
 
@@ -44,54 +42,22 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	float EmptyRatioBonus = 0;
 	bool  NeedInput = false;
 	bool  NeedOutput = false;
-	bool  Donation = false;
+	bool  Donation = Request.IsDonation;
 
-	switch(Request.Operation)
+	switch (Request.Operation)
 	{
-		case EFlareTradeRouteOperation::Buy:
-			BuyQuantityScoreMultiplier = 10.f;
-			FullRatioBonus = 0.1;
-			NeedOutput = true;
-		break;
-		case EFlareTradeRouteOperation::Sell:
-			SellQuantityScoreMultiplier = 10.f;
-			EmptyRatioBonus = 0.1;
-			NeedInput = true;
-		break;
 		case EFlareTradeRouteOperation::Load:
-			LoadQuantityScoreMultiplier = 10.f;
+			LoadQuantityScoreMultiplier = Request.LoadUnloadPriority;
+			BuyQuantityScoreMultiplier = Request.BuySellPriority;
 			FullRatioBonus = 0.1;
 			NeedOutput = true;
-		break;
+			break;
 		case EFlareTradeRouteOperation::Unload:
-			UnloadQuantityScoreMultiplier = 10.f;
+			UnloadQuantityScoreMultiplier = Request.LoadUnloadPriority;
+			SellQuantityScoreMultiplier = Request.BuySellPriority;
 			EmptyRatioBonus = 0.1;
-			NeedInput = true;
-		break;
-		case EFlareTradeRouteOperation::LoadOrBuy:
-			LoadQuantityScoreMultiplier = 10.f;
-			BuyQuantityScoreMultiplier = 1.f;
-			FullRatioBonus = 0.1;
-			NeedOutput = true;
-		break;
-		case EFlareTradeRouteOperation::UnloadOrSell:
-			UnloadQuantityScoreMultiplier = 10.f;
-			SellQuantityScoreMultiplier = 1.f;
-			EmptyRatioBonus = 0.1;
-			NeedInput = true;
-		case EFlareTradeRouteOperation::Donate:
-			SellQuantityScoreMultiplier = 10.f;
-			EmptyRatioBonus = 0.1;
-			Donation = true;
 			NeedInput = true;
 			break;
-		case EFlareTradeRouteOperation::UnloadOrDonate:
-			UnloadQuantityScoreMultiplier = 10.f;
-			SellQuantityScoreMultiplier = 1.f;
-			Donation = true;
-			EmptyRatioBonus = 0.1;
-			NeedInput = true;
-		break;
 	}
 
 	float BestScore = 0;
@@ -103,7 +69,6 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	{
 		UFlareSimulatedSpacecraft* Station = SectorStations[StationIndex];
 		//FLOGV("   Check trade for %s", *Station->GetImmatriculation().ToString());
-
 
 		FText Unused;
 		if(!Request.Client->CanTradeWith(Station, Unused))
@@ -118,8 +83,6 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 		}
 
 		FFlareResourceUsage StationResourceUsage = Station->GetResourceUseType(Request.Resource);
-
-
 		if(NeedOutput && (!StationResourceUsage.HasUsage(EFlareResourcePriceContext::FactoryOutput) &&
 						  !StationResourceUsage.HasUsage(EFlareResourcePriceContext::ConsumerConsumption) &&
 						  !StationResourceUsage.HasUsage(EFlareResourcePriceContext::HubOutput)))

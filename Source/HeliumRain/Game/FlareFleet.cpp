@@ -157,81 +157,6 @@ bool UFlareFleet::CanTravel(FText& OutInfo, UFlareSimulatedSector* TargetSector)
 	return true;
 }
 
-uint32 UFlareFleet::GetImmobilizedShipCount()
-{
-	uint32 ImmobilizedShip = 0;
-
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		if (!FleetShips[ShipIndex]->CanTravel() && FleetShips[ShipIndex]->GetDamageSystem()->IsAlive() && !FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
-		{
-			ImmobilizedShip++;
-		}
-	}
-	return ImmobilizedShip;
-}
-
-uint32 UFlareFleet::GetTradingShipCount() const
-{
-	uint32 TradingShip = 0;
-
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		if (FleetShips[ShipIndex]->IsTrading())
-		{
-			TradingShip++;
-		}
-	}
-	return TradingShip;
-}
-
-int32 UFlareFleet::GetTransportCapacity()
-{
-	int32 CompanyCapacity = 0;
-
-	for(UFlareSimulatedSpacecraft* Ship : FleetShips)
-	{
-		if(Ship->GetDamageSystem()->IsStranded())
-		{
-			continue;
-		}
-
-		CompanyCapacity += Ship->GetActiveCargoBay()->GetCapacity();
-	}
-
-	return CompanyCapacity;
-}
-
-uint32 UFlareFleet::GetShipCount() const
-{
-	return FleetCount;
-}
-
-uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
-{
-	uint32 Count = 0;
-
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
-		{
-			continue;
-		}
-
-		if (FleetShips[ShipIndex]->GetDescription()->Size == Size && FleetShips[ShipIndex]->IsMilitary())
-		{
-			Count++;
-		}
-	}
-
-	return Count;
-}
-
-uint32 UFlareFleet::GetMaxShipCount()
-{
-	return 20;
-}
-
 FText UFlareFleet::GetStatusInfo() const
 {
 	bool Intersepted = false;
@@ -291,40 +216,6 @@ FText UFlareFleet::GetStatusInfo() const
 	}
 
 	return FText();
-}
-
-
-int32 UFlareFleet::GetFleetCapacity() const
-{
-	int32 CargoCapacity = 0;
-
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		CargoCapacity += FleetShips[ShipIndex]->GetActiveCargoBay()->GetCapacity();
-	}
-	return CargoCapacity;
-}
-
-int32 UFlareFleet::GetFleetFreeCargoSpace() const
-{
-	int32 FreeCargoSpace = 0;
-
-	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
-	{
-		FreeCargoSpace += FleetShips[ShipIndex]->GetActiveCargoBay()->GetFreeCargoSpace();
-	}
-	return FreeCargoSpace;
-}
-
-int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage) const
-{
-	int32 CombatPoints = 0;
-
-	for(UFlareSimulatedSpacecraft* Ship: FleetShips)
-	{
-		CombatPoints += Ship->GetCombatPoints(ReduceByDamage);
-	}
-	return CombatPoints;
 }
 
 void UFlareFleet::RemoveImmobilizedShips()
@@ -734,6 +625,22 @@ bool UFlareFleet::IsRepairing() const
 	return false;
 }
 
+bool UFlareFleet::FleetNeedsRepair() const
+{
+	if (!IsRepairing())
+	{
+		for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+		{
+			if (Ship->GetDamageRatio() < 1)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool UFlareFleet::IsRefilling() const
 {
 	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
@@ -746,9 +653,133 @@ bool UFlareFleet::IsRefilling() const
 	return false;
 }
 
+bool UFlareFleet::FleetNeedsRefill() const
+{
+	if (!IsRefilling())
+	{
+		for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+		{
+			if (Ship->NeedRefill())
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 /*----------------------------------------------------
 	Getters
 ----------------------------------------------------*/
+
+uint32 UFlareFleet::GetImmobilizedShipCount()
+{
+	uint32 ImmobilizedShip = 0;
+
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		if (!FleetShips[ShipIndex]->CanTravel() && FleetShips[ShipIndex]->GetDamageSystem()->IsAlive() && !FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
+		{
+			ImmobilizedShip++;
+		}
+	}
+	return ImmobilizedShip;
+}
+
+uint32 UFlareFleet::GetTradingShipCount() const
+{
+	uint32 TradingShip = 0;
+
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		if (FleetShips[ShipIndex]->IsTrading())
+		{
+			TradingShip++;
+		}
+	}
+	return TradingShip;
+}
+
+int32 UFlareFleet::GetFleetCapacity() const
+{
+	int32 CargoCapacity = 0;
+
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		CargoCapacity += FleetShips[ShipIndex]->GetActiveCargoBay()->GetCapacity();
+	}
+	return CargoCapacity;
+}
+
+int32 UFlareFleet::GetFleetFreeCargoSpace() const
+{
+	int32 FreeCargoSpace = 0;
+
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		FreeCargoSpace += FleetShips[ShipIndex]->GetActiveCargoBay()->GetFreeCargoSpace();
+	}
+	return FreeCargoSpace;
+}
+
+int32 UFlareFleet::GetTransportCapacity()
+{
+	int32 CompanyCapacity = 0;
+
+	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+	{
+		if (Ship->GetDamageSystem()->IsStranded())
+		{
+			continue;
+		}
+
+		CompanyCapacity += Ship->GetActiveCargoBay()->GetCapacity();
+	}
+
+	return CompanyCapacity;
+}
+
+uint32 UFlareFleet::GetShipCount() const
+{
+	return FleetCount;
+}
+
+uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
+{
+	uint32 Count = 0;
+
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
+		{
+			continue;
+		}
+
+		if (FleetShips[ShipIndex]->GetDescription()->Size == Size && FleetShips[ShipIndex]->IsMilitary())
+		{
+			Count++;
+		}
+	}
+
+	return Count;
+}
+
+uint32 UFlareFleet::GetMaxShipCount()
+{
+	return 20;
+}
+
+int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage) const
+{
+	int32 CombatPoints = 0;
+
+	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+	{
+		CombatPoints += Ship->GetCombatPoints(ReduceByDamage);
+	}
+	return CombatPoints;
+}
 
 TArray<UFlareSimulatedSpacecraft*>& UFlareFleet::GetShips()
 {

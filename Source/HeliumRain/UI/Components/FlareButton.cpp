@@ -64,7 +64,7 @@ void SFlareButton::Construct(const FArguments& InArgs)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
-					SNew(SBox)
+					SAssignNew(MainContentBox,SBox)
 					.WidthOverride(Width)
 					.HeightOverride(Height)
 					.Padding(FMargin(0))
@@ -179,6 +179,26 @@ void SFlareButton::Construct(const FArguments& InArgs)
 /*----------------------------------------------------
 	Interaction
 ----------------------------------------------------*/
+
+void SFlareButton::SetWidth(float _Width)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	if (_Width * Theme.ButtonWidth != Width)
+	{
+		Width = _Width * Theme.ButtonWidth;
+		MainContentBox->SetWidthOverride(Width);
+	}
+}
+
+void SFlareButton::SetHeight(float _Height)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	if (_Height * Theme.ButtonHeight != Height)
+	{
+		Height = _Height * Theme.ButtonHeight;
+		MainContentBox->SetHeightOverride(Height);
+	}
+}
 
 void SFlareButton::SetActive(bool State)
 {

@@ -44,7 +44,7 @@ public:
 	/** Exit this menu */
 	void Exit();
 
-	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+//	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 	
 	void GenerateSectorList();
 
@@ -105,18 +105,30 @@ protected:
 
 	TSharedRef<SWidget> OnGenerateOperationComboLine(TSharedPtr<FText> Item);
 
+	void UpdateSelectableConditionsArrays(bool RefreshOptions = true);
+	FText OnGetCurrentOperationConditionsComboLine() const;
 	FText OnGetCurrentOperationComboLine() const;
 
+	void OnOperationConditionsComboLineSelectionChanged(TSharedPtr<FText> Item, ESelectInfo::Type SelectInfo);
 	void OnOperationComboLineSelectionChanged(TSharedPtr<FText> Item, ESelectInfo::Type SelectInfo);
 
 	/** Can edit operation */
 	EVisibility GetOperationDetailsVisibility() const;
 
 	/** Can edit trade route */
-	EVisibility GetMainVisibility() const;	
+	EVisibility GetMainVisibility() const;
+
+	EVisibility GetVisibilityOperationConditions() const;
+	EVisibility GetVisibilityConditionToggled(TSharedPtr<SFlareButton> ToggleConditionButton) const;
+
+	/** Should options specific to trade load/unload show?*/
+	EVisibility GetVisibilityTradeOperation() const;
+	EVisibility GetVisibilityTradeSubOperation() const;
 
 	/** Add button */
 	FText GetAddSectorText() const;
+
+	FText GetOperationTitleText(FFlareTradeRouteSectorOperationSave* Operation, int IndexValue) const;
 
 	/** Get status */
 	FText GetOperationStatusText(FFlareTradeRouteSectorOperationSave* Operation, FName SectorName) const;
@@ -139,12 +151,20 @@ protected:
 	EVisibility GetAssignFleetVisibility() const;
 	
 	bool IsEditOperationDisabled(FFlareTradeRouteSectorOperationSave* Operation) const;
-	
+
+	EVisibility GetSelectButtonVisibility(FFlareTradeRouteSectorOperationSave* Operation) const;
+
+	EVisibility GetTradeHubsButtonVisibility() const;
+	EVisibility GetDonationButtonVisibility() const;
+
 	EVisibility GetQuantityLimitVisibility() const;
 
 	EVisibility GetInventoryLimitVisibility() const;
 
+	EVisibility GetWaitOptionsVisibility() const;
 	EVisibility GetWaitLimitVisibility() const;
+
+	FText GetConditionPercentageValue(FFlareTradeRouteOperationConditionSave* Condition) const;
 
 	/*----------------------------------------------------
 		Actions callbacks
@@ -171,8 +191,13 @@ protected:
 	void OnRemoveSectorClicked(UFlareSimulatedSector* Sector);
 
 	/** Edit & Delete */
-	void OnEditOperationClicked(FFlareTradeRouteSectorOperationSave* Operation, UFlareSimulatedSector* Sector);
+	void UpdateSelectedOperation();
+	void OnEditOperationClicked(FFlareTradeRouteSectorOperationSave* Operation, UFlareSimulatedSector* Sector, int SectorIndex, int OperationIndex);
 	void OnDeleteOperationClicked(FFlareTradeRouteSectorOperationSave* Operation);
+	void OnOperationAltered();
+
+	/** Select route*/
+	void OnSelectOperationClicked(FFlareTradeRouteSectorOperationSave* Operation, UFlareSimulatedSector* Sector, int SectorIndex, int OperationIndex);
 
 	/** Done editing current operation */
 	void OnDoneClicked();
@@ -184,12 +209,33 @@ protected:
 	void OnPauseTradeRouteClicked();
 
 	/** Step controls */
+	void OnConditionPercentageChanged(float Value, FFlareTradeRouteOperationConditionSave* Condition);
+
+	FSlateColor GetConditionOneBoolColor(FFlareTradeRouteOperationConditionSave* Condition) const;
+	FSlateColor GetConditionThreeBoolColor(FFlareTradeRouteOperationConditionSave* Condition) const;
+	FText GetConditionBoolTwoName(FFlareTradeRouteOperationConditionSave* Condition) const;
+
+	void UpdateConditionsToggleName();
+	void OnConditionsToggle();
+	void OnConditionsAdd();
+	void OnConditionView(FFlareTradeRouteOperationConditionSave* Condition);
+	void OnConditionDelete(FFlareTradeRouteOperationConditionSave* Condition);
+	void RefreshConditionsMenus();
+
+	void OnConditionAlterSkipFail(FFlareTradeRouteOperationConditionSave* Condition);
+	void OnConditionAlterBoolOne(FFlareTradeRouteOperationConditionSave* Condition);
+	void OnConditionAlterBoolTwo(FFlareTradeRouteOperationConditionSave* Condition);
+	void OnConditionAlterBoolThree(FFlareTradeRouteOperationConditionSave* Condition);
+
+	void OnOperationDonationToggle();
 	void OnOperationTradeWithHubsToggle();
 	void OnOperationUpClicked();
 	void OnOperationDownClicked();
 	void OnQuantityLimitToggle();
 	void OnInventoryLimitToggle();
 	void OnWaitLimitToggle();
+	void OnTradeSelfChanged(float Value);
+	void OnTradeOthersChanged(float Value);
 	void OnQuantityLimitChanged(float Value);
 	void OnInventoryLimitChanged(float Value);
 	void OnQuantityLimitEntered(const FText& TextValue);
@@ -218,7 +264,13 @@ protected:
 	// Menu data
 	int32                                              MaxSectorsInRoute;
 	UFlareTradeRoute*                                  TargetTradeRoute;
-	FFlareTradeRouteSectorOperationSave*               SelectedOperation;
+	FFlareTradeRouteSectorOperationSave*			   SelectedOperation;
+	FFlareTradeRouteSectorOperationSave*               EditSelectedOperation;
+	
+	//Sector Index and Operation index for EditSelectedOperation
+	int32											   EditSelectedOperationSI;
+	int32											   EditSelectedOperationOI;
+
 	UFlareSimulatedSector*                             SelectedSector;
 
 	// Sector data
@@ -235,10 +287,28 @@ protected:
 	TArray<TSharedPtr<FText>>                          OperationNameList;
 	TArray<EFlareTradeRouteOperation::Type>            OperationList;
 
+	TSharedPtr<SFlareButton>                           AddConditionButton;
+	TSharedPtr<SFlareDropList<TSharedPtr<FText> >>     OperationConditionsSelector;
+	TArray<TSharedPtr<FText>>                          OperationConditionsNameList;
+	TArray<EFlareTradeRouteOperationConditions::Type>  OperationConditionsList;
+
+	TArray<TSharedPtr<FText>>                          OperationConditionsNameListDefault;
+	TArray<EFlareTradeRouteOperationConditions::Type>  OperationConditionsListDefault;
+
 	TSharedPtr<SEditableText>                          EditRouteName;
 	TSharedPtr<SHorizontalBox>                         TradeSectorList;
 	TSharedPtr<SVerticalBox>                           TradeFleetList;
+	TSharedPtr<SVerticalBox>                           ConditionsList;
 
+	TSharedPtr<SSlider>                                TradeSelfSlider;
+	TSharedPtr<STextBlock>				               TradeSelfLimitText;
+
+	TSharedPtr<SSlider>                                TradeOthersSlider;
+	TSharedPtr<STextBlock>				               TradeOthersLimitText;
+
+	TSharedPtr<SFlareButton>                           ToggleConditionsButton;
+
+	TSharedPtr<SFlareButton>                           DonateButton;
 	TSharedPtr<SFlareButton>                           TradeWithHubsButton;
 	TSharedPtr<SFlareButton>                           QuantityLimitButton;
 	TSharedPtr<SFlareButton>                           InventoryLimitButton;
@@ -248,8 +318,6 @@ protected:
 	TSharedPtr<SSlider>                                WaitLimitSlider;
 	TSharedPtr<SEditableText>                          QuantityLimitText;
 	TSharedPtr<SEditableText>                          InventoryLimitText;
-
-	TSharedPtr<SFlareButton>                           DonateButton;
 
 	// Deals
 	TSharedPtr<SHorizontalBox>                         EditSuggestedPurchasesBox;

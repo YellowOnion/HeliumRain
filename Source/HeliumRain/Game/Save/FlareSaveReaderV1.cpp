@@ -750,12 +750,50 @@ void UFlareSaveReaderV1::LoadTurretPilot(const TSharedPtr<FJsonObject> Object, F
 void UFlareSaveReaderV1::LoadTradeOperation(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteSectorOperationSave* Data)
 {
 	LoadFName(Object, "ResourceIdentifier", &Data->ResourceIdentifier);
+	LoadInt32(Object, "GotoSectorIndex", (int32*)&Data->GotoSectorIndex, -1);
+	LoadInt32(Object, "GotoOperationIndex", (int32*)&Data->GotoOperationIndex, -1);
+
 	LoadInt32(Object, "MaxQuantity", (int32*) &Data->MaxQuantity);
 	LoadInt32(Object, "InventoryLimit", (int32*) &Data->InventoryLimit, -1);
 	LoadInt32(Object, "MaxWait", (int32*) &Data->MaxWait);
 	Data->Type = LoadEnum<EFlareTradeRouteOperation::Type>(Object, "Type", "EFlareTradeRouteOperation");
+
+	LoadFloat(Object, "LoadUnloadPriority", &Data->LoadUnloadPriority);
+	LoadFloat(Object, "BuySellPriority", &Data->BuySellPriority);
+
 	Data->CanTradeWithStorages = false;
 	Object->TryGetBoolField(TEXT("CanTradeWithStorages"), Data->CanTradeWithStorages);
+	Data->CanDonate = false;
+	Object->TryGetBoolField(TEXT("CanDonate"), Data->CanDonate);
+
+	const TArray<TSharedPtr<FJsonValue>>* Conditions;
+	if (Object->TryGetArrayField("Conditions", Conditions))
+	{
+		Data->OperationConditions.Reserve(Conditions->Num());
+		for (TSharedPtr<FJsonValue> Item : *Conditions)
+		{
+			FFlareTradeRouteOperationConditionSave ChildData;
+			LoadOperationCondition(Item->AsObject(), &ChildData);
+			Data->OperationConditions.Add(ChildData);
+		}
+	}
+}
+
+
+void UFlareSaveReaderV1::LoadOperationCondition(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteOperationConditionSave* Data)
+{
+	Data->ConditionRequirement = LoadEnum<EFlareTradeRouteOperationConditions::Type>(Object, "Type", "EFlareTradeRouteOperationConditions");
+	LoadInt32(Object, "ConditionPercentage", (int32*)&Data->ConditionPercentage);
+
+	Data->SkipOnConditionFail = false;
+	Data->BooleanOne = false;
+	Data->BooleanTwo = false;
+	Data->BooleanThree = false;
+
+	Object->TryGetBoolField(TEXT("SkipOnConditionFail"), Data->SkipOnConditionFail);
+	Object->TryGetBoolField(TEXT("BooleanOne"), Data->BooleanOne);
+	Object->TryGetBoolField(TEXT("BooleanTwo"), Data->BooleanTwo);
+	Object->TryGetBoolField(TEXT("BooleanThree"), Data->BooleanThree);
 }
 
 void UFlareSaveReaderV1::LoadCargo(const TSharedPtr<FJsonObject> Object, FFlareCargoSave* Data)

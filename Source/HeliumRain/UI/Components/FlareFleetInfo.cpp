@@ -640,7 +640,8 @@ bool SFlareFleetInfo::IsRepairDisabled() const
 
 		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, PC->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
 
-		if (AffordableFS == 0) {
+		if (AffordableFS == 0)
+		{
 			return true;
 		}
 
@@ -772,7 +773,8 @@ bool SFlareFleetInfo::IsRefillDisabled() const
 
 		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
 
-		if (AffordableFS == 0) {
+		if (AffordableFS == 0)
+		{
 			return true;
 		}
 
